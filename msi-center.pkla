@@ -1,0 +1,4 @@
+[MSI Center]
+Identity=unix-user:sandy
+Action=*
+ResultActive=yes
