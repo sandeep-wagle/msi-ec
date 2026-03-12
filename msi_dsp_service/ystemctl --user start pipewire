@@ -1,0 +1,20 @@
+[0;1;32m●[0m pipewire-pulse.service - PipeWire PulseAudio
+     Loaded: loaded (/usr/local/lib/systemd/user/pipewire-pulse.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Tue 2026-03-10 15:49:50 +0545; 2h 20min ago
+TriggeredBy: [0;1;32m●[0m pipewire-pulse.socket
+   Main PID: 1630 (pipewire-pulse)
+      Tasks: 3 (limit: 18729)
+     Memory: 7.9M
+        CPU: 303ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/session.slice/pipewire-pulse.service
+             └─1630 /usr/local/bin/pipewire-pulse
+
+Mar 10 15:49:50 sandy-GF63-Thin-11SC systemd[1618]: Started PipeWire PulseAudio.
+Mar 10 15:49:50 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mpw.stream: media.class Audio/Sink does not expect Output stream direction[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;31m[0;1;39m[0;1;31mpw.node: 0x6031b5b77e10: can't add port 0x6031b5ba0750: -28, No space left on device[0m
+Mar 10 15:51:00 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmod.protocol-pulse: [gsd-power] timeout on stream 0x6031b5e5ee30 channel:0[0m
+Mar 10 15:51:30 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmod.protocol-pulse: [gsd-power] timeout on stream 0x6031b5f006e0 channel:1[0m
+Mar 10 15:51:51 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmod.protocol-pulse: [GNOME Settings] timeout on stream 0x6031b5d95400 channel:0[0m
+Mar 10 15:52:18 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmod.protocol-pulse: [gnome-control-center] timeout on stream 0x6031b5f44fb0 channel:0[0m
+Mar 10 16:52:14 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmod.protocol-pulse: [gsd-power] timeout on stream 0x6031b60bb390 channel:1[0m
+Mar 10 16:57:13 sandy-GF63-Thin-11SC pipewire-pulse[1630]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmod.protocol-pulse: [Mutter] timeout on stream 0x6031b6cec070 channel:0[0m

@@ -1,0 +1,14 @@
+[Unit]
+Description=MSI DSP Audio Engine
+After=pipewire.service
+PartOf=pipewire.session.service
+
+[Service]
+Type=simple
+ExecStart=/home/sandy/development/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service
+Restart=on-failure
+RestartSec=5
+Environment=PIPEWIRE_RUNTIME_DIR=/run/user/1000
+
+[Install]
+WantedBy=pipewire.service
