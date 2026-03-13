@@ -1,6 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import '../../../domain/repositories/msi_repository.dart';
 import 'sound_event.dart';
@@ -10,7 +12,8 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
   final MsiRepository _repository;
   static const String _prefKey = 'sound_settings';
 
-  // Preset values for each audio profile
+  Timer? _debounceTimer;
+
   static final Map<String, Map<String, dynamic>> _profilePresets = {
     'Music': {
       'eqGains': [2.0, 1.5, 0.5, 0.0, 0.0, -1.0, -1.5, -2.0, -2.5, -3.0],
@@ -97,8 +100,10 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
         );
         emit(newState);
 
-        // Apply restored settings to hardware/audio engine
-        await _repository.setSoundProfile(newState.profile);
+        // Set profile name in repo FIRST so UPDATE commands use the right name.
+        _repository.setActiveProfileName(newState.profile);
+
+        unawaited(_repository.setSoundProfile(newState.profile));
         await _repository.setSoundEQ(newState.eqGains);
         await _repository.setSoundSampleRate(newState.sampleRate);
         await _repository.setSoundEnhancement(
@@ -135,6 +140,15 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     SetSoundProfile event,
     Emitter<SoundState> emit,
   ) async {
+    debugPrint('SoundBloc: Setting sound profile to ${event.profile}');
+
+    // FIX 1: Update profile name in the repository FIRST.
+    // setSoundEffectGain calls _updateDspRealtime which builds
+    // UPDATE:{name:_soundProfileName, ...}. Without this, the UPDATE would
+    // carry the OLD profile name every time and save gains to the wrong file.
+    _repository.setActiveProfileName(event.profile);
+
+    // Build initial state from hardcoded presets.
     final preset = _profilePresets[event.profile];
     SoundState newState;
     if (preset != null && event.profile != 'Custom') {
@@ -148,45 +162,72 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     } else {
       newState = state.copyWith(profile: event.profile);
     }
-    emit(newState);
 
-    // Load per-profile settings if available
+    // Override with any previously-saved per-profile customisations.
     final profilePrefs = await SharedPreferences.getInstance();
     final profileBass = profilePrefs.getString('${event.profile}_bassGain');
     final profileTreble = profilePrefs.getString('${event.profile}_trebleGain');
     final profileVoice = profilePrefs.getString('${event.profile}_voiceGain');
     final profileEqGains = profilePrefs.getString('${event.profile}_eqGains');
 
-    if (profileBass != null &&
-        profileTreble != null &&
-        profileVoice != null &&
-        profileEqGains != null) {
-      final loadedState = newState.copyWith(
+    if (profileBass != null) {
+      newState = newState.copyWith(
         bassGain: double.tryParse(profileBass) ?? newState.bassGain,
-        trebleGain: double.tryParse(profileTreble) ?? newState.trebleGain,
-        voiceGain: double.tryParse(profileVoice) ?? newState.voiceGain,
-        eqGains: List<double>.from(json.decode(profileEqGains)),
       );
-      emit(loadedState);
-      await _repository.setSoundEQ(loadedState.eqGains);
-      await _repository.setSoundEffectGain('bass', loadedState.bassGain);
-      await _repository.setSoundEffectGain('treble', loadedState.trebleGain);
-      await _repository.setSoundEffectGain('voice', loadedState.voiceGain);
+    }
+    if (profileTreble != null) {
+      newState = newState.copyWith(
+        trebleGain: double.tryParse(profileTreble) ?? newState.trebleGain,
+      );
+    }
+    if (profileVoice != null) {
+      newState = newState.copyWith(
+        voiceGain: double.tryParse(profileVoice) ?? newState.voiceGain,
+      );
+    }
+    if (profileEqGains != null) {
+      try {
+        newState = newState.copyWith(
+          eqGains: List<double>.from(json.decode(profileEqGains)),
+        );
+      } catch (_) {
+        // Keep resolved preset values if persisted EQ data is malformed.
+      }
     }
 
-    await _repository.setSoundProfile(event.profile);
+    emit(newState);
+    debugPrint('SoundBloc: Emitted new state for profile ${event.profile}');
+
+    // Push all resolved values to the DSP engine with the CORRECT profile name.
+    await _repository.setSoundEQ(newState.eqGains);
+    await _repository.setSoundEffectGain('bass', newState.bassGain);
+    await _repository.setSoundEffectGain('treble', newState.trebleGain);
+    await _repository.setSoundEffectGain('voice', newState.voiceGain);
+
+    // FIX 2: setSoundProfile is fire-and-forget here — we only call it so the
+    // DSP service updates its internal bookkeeping / LOAD response cache.
+    // We no longer read back its response values (which previously overwrote
+    // Flutter's saved customisations with DSP defaults).
+    unawaited(_repository.setSoundProfile(event.profile));
+
     await _saveSettings();
+    debugPrint('SoundBloc: Profile ${event.profile} setup complete');
   }
 
   Future<void> _onUpdateEQGains(
     UpdateEQGains event,
     Emitter<SoundState> emit,
   ) async {
-    // Debounce: wait 250ms then apply
     emit(state.copyWith(eqGains: event.gains));
     await Future.delayed(const Duration(milliseconds: 250));
     await _repository.setSoundEQ(event.gains);
     await _saveSettings();
+    // FIX 3: Persist per-profile EQ so the next profile load restores it.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      '${state.profile}_eqGains',
+      json.encode(state.eqGains),
+    );
   }
 
   Future<void> _onToggleEnhancement(
@@ -251,6 +292,8 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeEffectGain event,
     Emitter<SoundState> emit,
   ) async {
+    debugPrint('SoundBloc: Effect gain change - ${event.effect}: ${event.gain}');
+
     switch (event.effect) {
       case 'bass':
         emit(state.copyWith(bassGain: event.gain));
@@ -262,10 +305,34 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
         emit(state.copyWith(voiceGain: event.gain));
         break;
     }
-    // Debounce 200ms before applying to PipeWire
-    await Future.delayed(const Duration(milliseconds: 200));
-    await _repository.setSoundEffectGain(event.effect, event.gain);
-    await _saveSettings();
+
+    // Cancel previous debounce timer
+    _debounceTimer?.cancel();
+
+    // Start new debounce timer (120ms as suggested)
+    _debounceTimer = Timer(const Duration(milliseconds: 120), () async {
+      debugPrint('SoundBloc: Applying debounced DSP update for ${event.effect}');
+      try {
+        await _repository.setSoundEffectGain(event.effect, event.gain);
+        await _saveSettings();
+        // FIX 3: Persist per-profile gains so the next profile load restores them.
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          '${state.profile}_bassGain',
+          state.bassGain.toString(),
+        );
+        await prefs.setString(
+          '${state.profile}_trebleGain',
+          state.trebleGain.toString(),
+        );
+        await prefs.setString(
+          '${state.profile}_voiceGain',
+          state.voiceGain.toString(),
+        );
+      } catch (e) {
+        debugPrint('SoundBloc: Error applying DSP update: $e');
+      }
+    });
   }
 
   Future<void> _onChangeStereoWidth(

@@ -32,12 +32,15 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       final jsonStr = prefs.getString(_prefKey);
       if (jsonStr != null) {
         final map = json.decode(jsonStr);
+        final parsedPerformanceMode = PerformanceMode.fromString(
+          map['performanceMode'] ?? 'balanced',
+        );
         final newState = SettingsState(
           gpuMode: GpuMode.fromString(map['gpuMode'] ?? 'hybrid'),
           batteryLimit: map['batteryLimit'] ?? 100,
-          performanceMode: PerformanceMode.fromString(
-            map['performanceMode'] ?? 'balanced',
-          ),
+          performanceMode: parsedPerformanceMode == PerformanceMode.unknown
+              ? PerformanceMode.balanced
+              : parsedPerformanceMode,
           webcamEnabled: map['webcamEnabled'] ?? false,
           superBatteryEnabled: map['superBatteryEnabled'] ?? false,
           fanMode: FanMode.fromString(map['fanMode'] ?? 'auto'),
@@ -75,6 +78,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) async {
     final previousMode = state.gpuMode;
     emit(state.copyWith(gpuMode: event.mode, isGpuLoading: true));
+    await _yieldForUiFrame();
     final success = await _repository.setGpuMode(event.mode);
     if (success) {
       await _saveSettings();
@@ -120,6 +124,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
           isPerformanceLoading: true,
         ),
       );
+      await _yieldForUiFrame();
       // Set performance to high (same as extreme mode)
       final success = await _repository.setPerformanceMode(
         PerformanceMode.extreme,
@@ -139,6 +144,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     emit(
       state.copyWith(performanceMode: event.mode, isPerformanceLoading: true),
     );
+    await _yieldForUiFrame();
     final success = await _repository.setPerformanceMode(event.mode);
 
     if (!success) {
@@ -222,6 +228,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   ) async {
     final previousFanMode = state.fanMode;
     emit(state.copyWith(fanMode: event.mode, isFanLoading: true));
+    await _yieldForUiFrame();
     final success = await _repository.setFanMode(event.mode);
     if (success) {
       await _saveSettings();
@@ -280,6 +287,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     emit(
       state.copyWith(isPerformanceLoading: true, performanceLevel: event.level),
     );
+    await _yieldForUiFrame();
     debugPrint(
       '[BLOC] Emitted new state with performanceLevel: ${event.level}',
     );
@@ -324,7 +332,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     final map = {
       'gpuMode': state.gpuMode.name,
       'batteryLimit': state.batteryLimit,
-      'performanceMode': state.performanceMode.toString().split('.').last,
+      'performanceMode': state.performanceMode.name,
       'webcamEnabled': state.webcamEnabled,
       'superBatteryEnabled': state.superBatteryEnabled,
       'fanMode': state.fanMode.name,
@@ -332,5 +340,9 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
       'userFanMode': state.userFanMode?.name,
     };
     await prefs.setString(_prefKey, json.encode(map));
+  }
+
+  Future<void> _yieldForUiFrame() async {
+    await Future<void>.delayed(const Duration(milliseconds: 16));
   }
 }

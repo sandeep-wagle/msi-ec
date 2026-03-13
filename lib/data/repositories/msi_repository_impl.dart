@@ -4,25 +4,25 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:injectable/injectable.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:msi_controller/domain/entities/system_info.dart';
 import 'package:msi_controller/domain/entities/audio_profile.dart';
 import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/services/hardware_monitor_service.dart';
 
 @LazySingleton(as: MsiRepository)
 class MsiRepositoryImpl implements MsiRepository {
   static const MethodChannel _channel = MethodChannel('msi_controller/channel');
 
-  final _systemInfoController = StreamController<SystemInfo>.broadcast();
-  final _fanInfoController = StreamController<List<FanInfo>>.broadcast();
+  final HardwareMonitorService _hardwareMonitor = HardwareMonitorService();
+
+  @override
+  Stream<SystemInfo> get systemInfoStream => _hardwareMonitor.systemInfoStream;
+
+  @override
+  Stream<List<FanInfo>> get fanInfoStream => _hardwareMonitor.fanInfoStream;
+
   final _volumeController = StreamController<double>.broadcast();
-
-  @override
-  Stream<SystemInfo> get systemInfoStream => _systemInfoController.stream;
-
-  @override
-  Stream<List<FanInfo>> get fanInfoStream => _fanInfoController.stream;
 
   @override
   Stream<double> get volumeStream => _volumeController.stream;
@@ -37,10 +37,11 @@ class MsiRepositoryImpl implements MsiRepository {
   bool _isSystemPolling = false;
   bool _isFanPolling = false;
   bool _hasMsiEc = false;
+  bool _isDspUpdating = false;
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _pollSystemInfo();
       _pollFanInfo();
     });
@@ -235,7 +236,7 @@ class MsiRepositoryImpl implements MsiRepository {
         );
         if (_hasMeaningfulChange(_lastSystemInfo, info)) {
           _lastSystemInfo = info;
-          _systemInfoController.add(info);
+          _hardwareMonitor.updateSystemInfo(info);
         }
       }
     } on PlatformException catch (e) {
@@ -271,7 +272,7 @@ class MsiRepositoryImpl implements MsiRepository {
         }).toList();
         if (_hasFanChange(_lastFanInfo, fans)) {
           _lastFanInfo = fans;
-          _fanInfoController.add(fans);
+          _hardwareMonitor.updateFanInfo(fans);
         }
       }
     } on PlatformException catch (e) {
@@ -308,11 +309,21 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   Future<void> _updateDspRealtime() async {
+    if (_isDspUpdating) {
+      debugPrint('Repository: DSP update already in progress, skipping');
+      return;
+    }
+
+    debugPrint('Repository: Starting DSP realtime update');
+    _isDspUpdating = true;
+
     try {
       final socket = await Socket.connect(
         InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
         0,
       );
+      debugPrint('Repository: Connected to DSP socket');
+
       final profile = AudioProfile(
         name: _soundProfileName,
         bass: _bassGain,
@@ -324,15 +335,33 @@ class MsiRepositoryImpl implements MsiRepository {
         volume: _volume,
       );
       final json = profile.toJson();
-      socket.write('UPDATE:${jsonEncode(json)}');
+      debugPrint(
+        'DSP update: profile=${profile.name}, bass=${profile.bass}, treble=${profile.treble}, voice=${profile.voice}',
+      );
+
+      final command = 'UPDATE:${jsonEncode(json)}';
+      debugPrint('Repository: Sending command: $command');
+
+      socket.write(command);
       await socket.flush();
-      final response = await socket.first;
-      socket.close();
-      if (utf8.decode(response) == 'OK') {
-        debugPrint('Real-time DSP update applied');
+      debugPrint('Repository: Command flushed, waiting for response');
+
+      final response = await socket.first.timeout(const Duration(seconds: 5));
+      final responseStr = utf8.decode(response).trim();
+      debugPrint('Repository: Received response: $responseStr');
+
+      if (responseStr == 'OK') {
+        debugPrint('Real-time DSP update applied successfully');
+      } else {
+        debugPrint('Realtime DSP update unexpected response: $responseStr');
       }
+
+      await socket.close();
+      debugPrint('Repository: Socket closed');
     } catch (e) {
       debugPrint('Failed to send realtime update: $e');
+    } finally {
+      _isDspUpdating = false;
     }
   }
 
@@ -657,32 +686,15 @@ class MsiRepositoryImpl implements MsiRepository {
         final jsonStr = utf8.decode(response);
         if (jsonStr.startsWith('{')) {
           final map = json.decode(jsonStr);
-          _bassGain = (map['bass'] ?? 0.0).toDouble();
-          _trebleGain = (map['treble'] ?? 0.0).toDouble();
-          _voiceGain = (map['voice'] ?? 0.0).toDouble();
-          _eqGains = List<double>.from(
-            map['eq_gains'] ?? List.generate(10, (_) => 0.0),
-          );
-          _volume = (map['volume'] ?? 1.0).toDouble();
+          // Only update internal tracking state; bloc owns the authoritative values.
           _compressor = map['compressor'] ?? false;
           _surround = map['surround'] ?? false;
           debugPrint(
-            'Loaded profile $profile: bass=$_bassGain, treble=$_trebleGain, voice=$_voiceGain',
+            'Loaded profile $profile: bass=${map['bass']}, treble=${map['treble']}, voice=${map['voice']}',
           );
-
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('${profile}_bassGain', _bassGain.toString());
-          await prefs.setString(
-            '${profile}_trebleGain',
-            _trebleGain.toString(),
-          );
-          await prefs.setString('${profile}_voiceGain', _voiceGain.toString());
-          await prefs.setString('${profile}_eqGains', jsonEncode(_eqGains));
-          await prefs.setString('current_profile', profile);
         }
       }
-
-      await _updateDsp();
+      // DSP already applied settings via LOAD command on its side — no _updateDsp() needed.
       return true;
     } catch (e) {
       debugPrint('Failed to load sound profile: $e');
@@ -889,12 +901,23 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   @override
+  void setActiveProfileName(String profile) {
+    _soundProfileName = profile;
+  }
+
+  @override
   Future<bool> setSoundEffectGain(String effect, double gain) async {
     if (effect == 'bass') _bassGain = gain;
     if (effect == 'treble') _trebleGain = gain;
     if (effect == 'voice') _voiceGain = gain;
     await _updateDspRealtime();
     return true;
+  }
+
+  @override
+  Future<void> applyCurrentProfile() async {
+    debugPrint('Repository: Applying current profile settings');
+    await _updateDspRealtime();
   }
 
   @override
@@ -914,7 +937,5 @@ class MsiRepositoryImpl implements MsiRepository {
   @override
   void dispose() {
     _pollingTimer?.cancel();
-    _systemInfoController.close();
-    _fanInfoController.close();
   }
 }

@@ -44,12 +44,14 @@ abstract class MsiRepository {
 
   // Sound Tune Advanced
   Future<bool> setSoundProfile(String profile);
+  void setActiveProfileName(String profile);
   Future<bool> setSoundEQ(List<double> gains);
   Future<bool> setSoundEnhancement(String enhancement, bool enable);
   Future<void> setSoundSampleRate(int hertz);
   Future<void> setSoundStereoWidth(double width);
   Future<void> setSoundVolumeBoost(double boost);
   Future<bool> setSoundEffectGain(String effect, double gain);
+  Future<void> applyCurrentProfile();
   Stream<double> get volumeStream;
   double get currentVolume;
 

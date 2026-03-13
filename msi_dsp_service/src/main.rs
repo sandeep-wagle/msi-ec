@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::sync::LazyLock;
+use std::collections::HashMap;
+use std::fs;
+use std::process::Command;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixListener;
 
@@ -112,13 +115,24 @@ fn get_default_profile(name: &str) -> AudioProfile {
             volume: 1.0,
             buffer_size: 256,
         },
+        "Custom" => AudioProfile {
+            name: "Custom".into(),
+            bass: 0.0,
+            treble: 0.0,
+            voice: 0.0,
+            eq_gains: vec![0.0; 10],
+            compressor: false,
+            surround: false,
+            volume: 1.0,
+            buffer_size: 256,
+        },
         _ => AudioProfile::default(),
     }
 }
 
 fn initialize_profiles() {
     let mut settings = PROFILE_SETTINGS.lock().unwrap();
-    let profile_names = ["Music", "Gaming", "Movie", "Voice", "Communication", "Smart"];
+    let profile_names = ["Music", "Gaming", "Movie", "Voice", "Communication", "Smart", "Custom"];
     
     for name in profile_names.iter() {
         let profile_path = format!("{}/{}.json", PROFILES_DIR, name);
@@ -460,7 +474,7 @@ fn update_filter_params(profile: &AudioProfile) {
                 for ch in ['L', 'R'] {
                     let param = format!("{}{}:Gain", band, ch);
                     let cmd = format!(
-                        "pw-cli set-param {} {} {}",
+                        "pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'",
                         node_id, param, gain
                     );
                     let _ = Command::new("sh")
@@ -472,7 +486,7 @@ fn update_filter_params(profile: &AudioProfile) {
         
         for ch in ['L', 'R'] {
             let cmd = format!(
-                "pw-cli set-param {} bass{}:Gain {}",
+                "pw-cli set-param {} Props '{{ params = [ \"bass{}:Gain\" {} ] }}'",
                 node_id, ch, profile.bass
             );
             let _ = Command::new("sh")
@@ -480,7 +494,7 @@ fn update_filter_params(profile: &AudioProfile) {
                 .output();
             
             let cmd = format!(
-                "pw-cli set-param {} treble{}:Gain {}",
+                "pw-cli set-param {} Props '{{ params = [ \"treble{}:Gain\" {} ] }}'",
                 node_id, ch, profile.treble
             );
             let _ = Command::new("sh")
@@ -488,7 +502,7 @@ fn update_filter_params(profile: &AudioProfile) {
                 .output();
             
             let cmd = format!(
-                "pw-cli set-param {} voice{}:Gain {}",
+                "pw-cli set-param {} Props '{{ params = [ \"voice{}:Gain\" {} ] }}'",
                 node_id, ch, profile.voice
             );
             let _ = Command::new("sh")
@@ -625,11 +639,37 @@ async fn main() -> Result<()> {
                     } else if message.starts_with("LOAD:") {
                         let profile_name = message.replace("LOAD:", "").trim().to_string();
                         info!("Received LOAD profile command: {}", profile_name);
-                        
-                        let profile_opt = {
+
+                        let mut profile_opt = {
                             let settings = PROFILE_SETTINGS.lock().unwrap();
                             settings.get(&profile_name).cloned()
                         };
+
+                        if profile_opt.is_none() {
+                            let profile_path = format!("{}/{}.json", PROFILES_DIR, profile_name);
+                            if let Ok(content) = fs::read_to_string(&profile_path) {
+                                if let Ok(profile) = serde_json::from_str::<AudioProfile>(&content) {
+                                    info!("Loaded profile {} from disk on demand", profile_name);
+                                    {
+                                        let mut settings = PROFILE_SETTINGS.lock().unwrap();
+                                        settings.insert(profile_name.clone(), profile.clone());
+                                    }
+                                    profile_opt = Some(profile);
+                                }
+                            }
+                        }
+
+                        if profile_opt.is_none() {
+                            let mut fallback = get_default_profile(&profile_name);
+                            fallback.name = profile_name.clone();
+                            info!("Using default profile fallback for {}", profile_name);
+                            {
+                                let mut settings = PROFILE_SETTINGS.lock().unwrap();
+                                settings.insert(profile_name.clone(), fallback.clone());
+                                let _ = save_profile_to_file(&fallback);
+                            }
+                            profile_opt = Some(fallback);
+                        }
                         
                         if let Some(profile) = profile_opt {
                             // Send response immediately

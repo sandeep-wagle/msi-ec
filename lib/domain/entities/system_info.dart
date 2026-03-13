@@ -27,18 +27,28 @@ enum PerformanceMode {
   }
 
   static PerformanceMode fromString(String value) {
-    switch (value.toLowerCase()) {
+    final normalized = value
+        .toLowerCase()
+        .replaceAll('_', '')
+        .replaceAll('-', '')
+        .replaceAll(' ', '');
+
+    switch (normalized) {
       case 'extreme':
         return PerformanceMode.extreme;
+      case 'highperformance':
       case 'performance':
+      case 'high':
         return PerformanceMode.highPerformance;
       case 'balanced':
         return PerformanceMode.balanced;
       case 'silent':
         return PerformanceMode.silent;
-      case 'super battery':
+      case 'superbattery':
         return PerformanceMode.superBattery;
       case 'user':
+      case 'custom':
+      case 'customize':
         return PerformanceMode.user;
       default:
         return PerformanceMode.unknown;
