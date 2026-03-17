@@ -8,7 +8,7 @@ import '../logic/blocs/settings/settings_bloc.dart';
 import '../logic/blocs/sound/sound_bloc.dart';
 import 'hardware_monitoring_screen.dart';
 import 'features_screen.dart';
-import 'modes_screen.dart';
+import 'user_scenario_screen.dart';
 import 'system_diagnosis_screen.dart';
 import '../widgets/sdk_initialization_loader.dart';
 
@@ -25,7 +25,6 @@ class _MainScreenState extends State<MainScreen>
   String? _initError;
   late TabController _tabController;
   bool _isTabLoading = false;
-  int _currentTabIndex = 0;
   double _loadProgress = 0.0;
   Timer? _progressTimer;
 
@@ -47,41 +46,10 @@ class _MainScreenState extends State<MainScreen>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
-    setState(() {
-      _currentTabIndex = _tabController.index;
-    });
+    setState(() {});
   }
 
-  void _simulateLoad(int targetIndex) {
-    setState(() {
-      _isTabLoading = true;
-      _loadProgress = 0.0;
-    });
 
-    _progressTimer?.cancel();
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 30), (timer) {
-      if (mounted) {
-        setState(() {
-          _loadProgress += 0.04;
-          if (_loadProgress >= 1.0) {
-            _loadProgress = 1.0;
-            timer.cancel();
-            Future.delayed(const Duration(milliseconds: 300), () {
-              if (mounted) {
-                setState(() {
-                  _isTabLoading = false;
-                  _currentTabIndex = targetIndex;
-                  _tabController.index = targetIndex;
-                });
-              }
-            });
-          }
-        });
-      } else {
-        timer.cancel();
-      }
-    });
-  }
 
   Future<void> _initializeService() async {
     setState(() {
@@ -110,13 +78,14 @@ class _MainScreenState extends State<MainScreen>
     // Small delay to let Blocs start if they haven't
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // Wait until both are not loading
-    while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) &&
-        mounted) {
+    // Wait until both are not loading (with emergency 10s timeout)
+    var waitTime = 0;
+    while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) && waitTime < 10000 && mounted) {
       setState(() {
         _loadProgress = (_loadProgress + 0.05).clamp(0.4, 0.9);
       });
       await Future.delayed(const Duration(milliseconds: 200));
+      waitTime += 200;
     }
 
     if (mounted) {
@@ -261,7 +230,7 @@ class _MainScreenState extends State<MainScreen>
                   controller: _tabController,
                   children: [
                     HardwareMonitoringScreen(),
-                    ModesScreen(),
+                    UserScenarioScreen(),
                     SystemDiagnosisScreen(),
                     FeaturesScreen(),
                   ],

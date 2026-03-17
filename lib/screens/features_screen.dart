@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/di/injection.dart';
-import '../domain/repositories/msi_repository.dart';
 import 'fan_screen.dart';
 import 'battery_screen.dart';
 import 'settings_screen.dart';
@@ -19,7 +17,6 @@ class FeaturesScreen extends StatefulWidget {
 
 class _FeaturesScreenState extends State<FeaturesScreen>
     with AutomaticKeepAliveClientMixin {
-  final MsiRepository _repository = getIt<MsiRepository>();
 
   @override
   bool get wantKeepAlive => true;
@@ -268,7 +265,6 @@ class _FeatureCard extends StatefulWidget {
 }
 
 class _FeatureCardState extends State<_FeatureCard> {
-  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -276,8 +272,8 @@ class _FeatureCardState extends State<_FeatureCard> {
     final isDark = theme.brightness == Brightness.dark;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
+      onEnter: (_) => setState(() {}),
+      onExit: (_) => setState(() {}),
       child: Container(
         decoration: BoxDecoration(
           color: isDark

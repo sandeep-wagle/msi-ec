@@ -12,7 +12,6 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
   final MsiRepository _repository;
   static const String _prefKey = 'sound_settings';
 
-  Timer? _debounceTimer;
 
   static final Map<String, Map<String, dynamic>> _profilePresets = {
     'Music': {
@@ -55,7 +54,16 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     on<ChangeSampleRate>(_onChangeSampleRate, transformer: restartable());
     on<ChangeStereoWidth>(_onChangeStereoWidth, transformer: restartable());
     on<ChangeVolumeBoost>(_onChangeVolumeBoost, transformer: restartable());
+    on<ChangeVolumeBoostPreview>(_onChangeVolumeBoostPreview, transformer: restartable());
     on<ChangeEffectGain>(_onChangeEffectGain, transformer: restartable());
+    on<ChangeEffectGainPreview>(_onChangeEffectGainPreview, transformer: restartable());
+    on<UpdateEQGainsPreview>(_onUpdateEQGainsPreview, transformer: restartable());
+    on<ChangeNoiseLevel>(_onChangeNoiseLevel, transformer: restartable());
+    on<ToggleLimiter>(_onToggleLimiter, transformer: restartable());
+    on<ChangeCompressorRatio>(_onChangeCompressorRatio, transformer: restartable());
+    on<ChangeSurroundVariation>(_onChangeSurroundVariation, transformer: restartable());
+    on<ChangeMicrophoneGain>(_onChangeMicrophoneGain, transformer: restartable());
+    on<ResetSoundSettings>(_onResetSoundSettings);
     on<SyncVolume>(_onSyncVolume);
 
     _repository.volumeStream.listen((vol) {
@@ -89,7 +97,7 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
           voiceClarity: map['voiceClarity'] ?? true,
           trebleEnhancer: map['trebleEnhancer'] ?? false,
           smartVolume: map['smartVolume'] ?? false,
-          stereoWidth: (map['stereoWidth'] ?? 0.5).toDouble(),
+          stereoWidth: (map['stereoWidth'] ?? 1.2).toDouble(), // Increased default for better effect
           volumeBoost: systemVol > 0
               ? systemVol
               : (map['volumeBoost'] ?? 1.0).toDouble(),
@@ -97,37 +105,53 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
           bassGain: (map['bassGain'] ?? 0.0).toDouble(),
           trebleGain: (map['trebleGain'] ?? 0.0).toDouble(),
           voiceGain: (map['voiceGain'] ?? 0.0).toDouble(),
+          noiseLevel: (map['noiseLevel'] ?? 2.0).toDouble(),
+          limiterEnabled: map['limiterEnabled'] ?? false,
+          compressorRatio: (map['compressorRatio'] ?? 5.0).toDouble(),
+          trackerEnabled: map['trackerEnabled'] ?? false,
+          sharingEnabled: map['sharingEnabled'] ?? false,
+          microphoneGain: (map['microphoneGain'] ?? 1.0).toDouble(),
+          surroundVariation: map['surroundVariation'] ?? 'Surround',
+          nightMode: map['nightMode'] ?? false,
+          effectsEnabled: map['effectsEnabled'] ?? true,
+          micEnabled: map['micEnabled'] ?? true,
+          micNoiseSuppression: map['micNoiseSuppression'] ?? false,
+          echoCancellation: map['echoCancellation'] ?? false,
         );
         emit(newState);
 
         // Set profile name in repo FIRST so UPDATE commands use the right name.
         _repository.setActiveProfileName(newState.profile);
 
+        const timeout = Duration(seconds: 1);
         unawaited(_repository.setSoundProfile(newState.profile));
-        await _repository.setSoundEQ(newState.eqGains);
-        await _repository.setSoundSampleRate(newState.sampleRate);
-        await _repository.setSoundEnhancement(
-          'virtualSurround',
-          newState.virtualSurround,
-        );
-        await _repository.setSoundEnhancement('bassBoost', newState.bassBoost);
-        await _repository.setSoundEnhancement(
-          'voiceClarity',
-          newState.voiceClarity,
-        );
-        await _repository.setSoundEnhancement(
-          'trebleEnhancer',
-          newState.trebleEnhancer,
-        );
-        await _repository.setSoundEnhancement(
-          'smartVolume',
-          newState.smartVolume,
-        );
-        await _repository.setSoundStereoWidth(newState.stereoWidth);
-        await _repository.setSoundVolumeBoost(newState.volumeBoost);
-        await _repository.setSoundEffectGain('bass', newState.bassGain);
-        await _repository.setSoundEffectGain('treble', newState.trebleGain);
-        await _repository.setSoundEffectGain('voice', newState.voiceGain);
+        
+        try {
+          await _repository.setSoundEQ(newState.eqGains).timeout(timeout);
+          await _repository.setSoundSampleRate(newState.sampleRate).timeout(timeout);
+          await _repository.setSoundEnhancement('virtualSurround', newState.virtualSurround).timeout(timeout);
+          await _repository.setSoundEnhancement('bassBoost', newState.bassBoost).timeout(timeout);
+          await _repository.setSoundEnhancement('voiceClarity', newState.voiceClarity).timeout(timeout);
+          await _repository.setSoundEnhancement('trebleEnhancer', newState.trebleEnhancer).timeout(timeout);
+          await _repository.setSoundEnhancement('smartVolume', newState.smartVolume).timeout(timeout);
+          await _repository.setSoundStereoWidth(newState.stereoWidth).timeout(timeout);
+          await _repository.setSoundVolumeBoost(newState.volumeBoost).timeout(timeout);
+          await _repository.setSoundEffectGain('bass', newState.bassGain).timeout(timeout);
+          await _repository.setSoundEffectGain('treble', newState.trebleGain).timeout(timeout);
+          await _repository.setSoundEffectGain('voice', newState.voiceGain).timeout(timeout);
+          await _repository.setSoundNoiseLevel(newState.noiseLevel).timeout(timeout);
+          await _repository.setSoundLimiterEnabled(newState.limiterEnabled).timeout(timeout);
+          await _repository.setSoundCompressorRatio(newState.compressorRatio).timeout(timeout);
+          await _repository.setSoundSurroundVariation(newState.surroundVariation).timeout(timeout);
+          await _repository.setSoundNightMode(newState.nightMode).timeout(timeout);
+          await _repository.setSoundEffectsEnabled(newState.effectsEnabled).timeout(timeout);
+          await _repository.setSoundMicEnabled(newState.micEnabled).timeout(timeout);
+          await _repository.setSoundMicGain(newState.microphoneGain).timeout(timeout);
+          await _repository.setSoundMicNoiseSuppression(newState.micNoiseSuppression).timeout(timeout);
+          await _repository.setSoundEchoCancellation(newState.echoCancellation).timeout(timeout);
+        } catch (e) {
+          debugPrint('SoundBloc: Timeout or error during initial hardware sync: $e');
+        }
       }
     } catch (e) {
       // Fallback to initial if error
@@ -218,16 +242,33 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     UpdateEQGains event,
     Emitter<SoundState> emit,
   ) async {
-    emit(state.copyWith(eqGains: event.gains));
-    await Future.delayed(const Duration(milliseconds: 250));
-    await _repository.setSoundEQ(event.gains);
+    // FIX 3 & Safety: Ensure we don't spam if nothing actually changed
+    bool changed = false;
+    for (int i = 0; i < event.gains.length; i++) {
+       if ((event.gains[i] - state.eqGains[i]).abs() > 0.01) {
+         changed = true;
+         break;
+       }
+    }
+    if (!changed) return;
+
+    final roundedGains = event.gains.map((g) => g.roundToDouble()).toList();
+    emit(state.copyWith(eqGains: roundedGains));
+    await _repository.setSoundEQ(roundedGains);
     await _saveSettings();
-    // FIX 3: Persist per-profile EQ so the next profile load restores it.
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       '${state.profile}_eqGains',
       json.encode(state.eqGains),
     );
+  }
+
+  Future<void> _onUpdateEQGainsPreview(
+    UpdateEQGainsPreview event,
+    Emitter<SoundState> emit,
+  ) async {
+    final roundedGains = event.gains.map((g) => g.roundToDouble()).toList();
+    emit(state.copyWith(eqGains: roundedGains));
   }
 
   Future<void> _onToggleEnhancement(
@@ -251,11 +292,48 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
       case 'smartVolume':
         newState = state.copyWith(smartVolume: event.value);
         break;
+      case 'trackerEnabled':
+        newState = state.copyWith(trackerEnabled: event.value);
+        break;
+      case 'sharingEnabled':
+        newState = state.copyWith(sharingEnabled: event.value);
+        break;
+      case 'limiterEnabled':
+        newState = state.copyWith(limiterEnabled: event.value);
+        await _repository.setSoundLimiterEnabled(event.value);
+        break;
+      case 'nightMode':
+        newState = state.copyWith(nightMode: event.value);
+        await _repository.setSoundNightMode(event.value);
+        break;
+      case 'effectsEnabled':
+        newState = state.copyWith(effectsEnabled: event.value);
+        await _repository.setSoundEffectsEnabled(event.value);
+        break;
+      case 'micEnabled':
+        newState = state.copyWith(micEnabled: event.value);
+        await _repository.setSoundMicEnabled(event.value);
+        break;
+      case 'micNoiseSuppression':
+        newState = state.copyWith(micNoiseSuppression: event.value);
+        await _repository.setSoundMicNoiseSuppression(event.value);
+        break;
+      case 'echoCancellation':
+        newState = state.copyWith(echoCancellation: event.value);
+        await _repository.setSoundEchoCancellation(event.value);
+        break;
       default:
         return;
     }
     emit(newState);
-    await _repository.setSoundEnhancement(event.enhancement, event.value);
+    if (event.enhancement != 'limiterEnabled' && 
+        event.enhancement != 'nightMode' && 
+        event.enhancement != 'effectsEnabled' && 
+        event.enhancement != 'micEnabled' && 
+        event.enhancement != 'micNoiseSuppression' &&
+        event.enhancement != 'echoCancellation') {
+      await _repository.setSoundEnhancement(event.enhancement, event.value);
+    }
     await _saveSettings();
   }
 
@@ -284,6 +362,18 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
       'bassGain': state.bassGain,
       'trebleGain': state.trebleGain,
       'voiceGain': state.voiceGain,
+      'noiseLevel': state.noiseLevel,
+      'limiterEnabled': state.limiterEnabled,
+      'compressorRatio': state.compressorRatio,
+      'trackerEnabled': state.trackerEnabled,
+      'sharingEnabled': state.sharingEnabled,
+      'microphoneGain': state.microphoneGain,
+      'surroundVariation': state.surroundVariation,
+      'nightMode': state.nightMode,
+      'effectsEnabled': state.effectsEnabled,
+      'micEnabled': state.micEnabled,
+      'micNoiseSuppression': state.micNoiseSuppression,
+      'echoCancellation': state.echoCancellation,
     };
     await prefs.setString(_prefKey, json.encode(map));
   }
@@ -292,47 +382,62 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeEffectGain event,
     Emitter<SoundState> emit,
   ) async {
-    debugPrint('SoundBloc: Effect gain change - ${event.effect}: ${event.gain}');
+    // FIX 3: Guard against duplicate values
+    double currentGain = 0.0;
+    if (event.effect == 'bass') currentGain = state.bassGain;
+    if (event.effect == 'treble') currentGain = state.trebleGain;
+    if (event.effect == 'voice') currentGain = state.voiceGain;
+
+    final roundedGain = event.gain.roundToDouble();
+
+    if ((roundedGain - currentGain).abs() < 0.1) {
+      debugPrint('SoundBloc: Effect ${event.effect} gain unchanged after rounding, skipping DSP commit');
+      return;
+    }
+
+    debugPrint('SoundBloc: COMMITTING effect gain change - ${event.effect}: $roundedGain');
 
     switch (event.effect) {
       case 'bass':
-        emit(state.copyWith(bassGain: event.gain));
+        emit(state.copyWith(bassGain: roundedGain));
         break;
       case 'treble':
-        emit(state.copyWith(trebleGain: event.gain));
+        emit(state.copyWith(trebleGain: roundedGain));
         break;
       case 'voice':
-        emit(state.copyWith(voiceGain: event.gain));
+        emit(state.copyWith(voiceGain: roundedGain));
         break;
     }
 
-    // Cancel previous debounce timer
-    _debounceTimer?.cancel();
+    try {
+      await _repository.setSoundEffectGain(event.effect, roundedGain);
+      await _saveSettings();
+      // Persist per-profile gains
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('${state.profile}_bassGain', state.bassGain.toString());
+      await prefs.setString('${state.profile}_trebleGain', state.trebleGain.toString());
+      await prefs.setString('${state.profile}_voiceGain', state.voiceGain.toString());
+    } catch (e) {
+      debugPrint('SoundBloc: Error applying DSP update: $e');
+    }
+  }
 
-    // Start new debounce timer (120ms as suggested)
-    _debounceTimer = Timer(const Duration(milliseconds: 120), () async {
-      debugPrint('SoundBloc: Applying debounced DSP update for ${event.effect}');
-      try {
-        await _repository.setSoundEffectGain(event.effect, event.gain);
-        await _saveSettings();
-        // FIX 3: Persist per-profile gains so the next profile load restores them.
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(
-          '${state.profile}_bassGain',
-          state.bassGain.toString(),
-        );
-        await prefs.setString(
-          '${state.profile}_trebleGain',
-          state.trebleGain.toString(),
-        );
-        await prefs.setString(
-          '${state.profile}_voiceGain',
-          state.voiceGain.toString(),
-        );
-      } catch (e) {
-        debugPrint('SoundBloc: Error applying DSP update: $e');
-      }
-    });
+  Future<void> _onChangeEffectGainPreview(
+    ChangeEffectGainPreview event,
+    Emitter<SoundState> emit,
+  ) async {
+    final roundedGain = event.gain.roundToDouble();
+    switch (event.effect) {
+      case 'bass':
+        emit(state.copyWith(bassGain: roundedGain));
+        break;
+      case 'treble':
+        emit(state.copyWith(trebleGain: roundedGain));
+        break;
+      case 'voice':
+        emit(state.copyWith(voiceGain: roundedGain));
+        break;
+    }
   }
 
   Future<void> _onChangeStereoWidth(
@@ -348,8 +453,96 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoost event,
     Emitter<SoundState> emit,
   ) async {
-    emit(state.copyWith(volumeBoost: event.boost));
-    await _repository.setSoundVolumeBoost(event.boost);
+    // FIX 2: Clamp volume to 1.0 safely
+    final clampedBoost = event.boost.clamp(0.0, 1.0);
+    
+    if ((clampedBoost - state.volumeBoost).abs() < 0.01) return;
+
+    emit(state.copyWith(volumeBoost: clampedBoost));
+    await _repository.setSoundVolumeBoost(clampedBoost);
+    await _saveSettings();
+  }
+
+  Future<void> _onChangeVolumeBoostPreview(
+    ChangeVolumeBoostPreview event,
+    Emitter<SoundState> emit,
+  ) async {
+    emit(state.copyWith(volumeBoost: event.boost.clamp(0.0, 1.0)));
+  }
+
+  Future<void> _onChangeNoiseLevel(
+    ChangeNoiseLevel event,
+    Emitter<SoundState> emit,
+  ) async {
+    emit(state.copyWith(noiseLevel: event.level));
+    await _repository.setSoundNoiseLevel(event.level);
+    await _saveSettings();
+  }
+
+  Future<void> _onToggleLimiter(
+    ToggleLimiter event,
+    Emitter<SoundState> emit,
+  ) async {
+    emit(state.copyWith(limiterEnabled: event.enabled));
+    await _repository.setSoundLimiterEnabled(event.enabled);
+    await _saveSettings();
+  }
+
+  Future<void> _onChangeCompressorRatio(
+    ChangeCompressorRatio event,
+    Emitter<SoundState> emit,
+  ) async {
+    emit(state.copyWith(compressorRatio: event.ratio));
+    await _repository.setSoundCompressorRatio(event.ratio);
+    await _saveSettings();
+  }
+
+  Future<void> _onChangeSurroundVariation(
+    ChangeSurroundVariation event,
+    Emitter<SoundState> emit,
+  ) async {
+    emit(state.copyWith(surroundVariation: event.variation));
+    await _repository.setSoundSurroundVariation(event.variation);
+    await _saveSettings();
+  }
+
+  Future<void> _onChangeMicrophoneGain(
+    ChangeMicrophoneGain event,
+    Emitter<SoundState> emit,
+  ) async {
+    emit(state.copyWith(microphoneGain: event.gain));
+    await _repository.setSoundMicGain(event.gain);
+    await _saveSettings();
+  }
+
+  Future<void> _onResetSoundSettings(
+    ResetSoundSettings event,
+    Emitter<SoundState> emit,
+  ) async {
+    final newState = SoundState.initial();
+    emit(newState);
+    await _repository.setSoundProfile(newState.profile);
+    await _repository.setSoundEQ(newState.eqGains);
+    await _repository.setSoundEnhancement('virtualSurround', newState.virtualSurround);
+    await _repository.setSoundEnhancement('bassBoost', newState.bassBoost);
+    await _repository.setSoundEnhancement('voiceClarity', newState.voiceClarity);
+    await _repository.setSoundEnhancement('trebleEnhancer', newState.trebleEnhancer);
+    await _repository.setSoundEnhancement('smartVolume', newState.smartVolume);
+    await _repository.setSoundStereoWidth(newState.stereoWidth);
+    await _repository.setSoundVolumeBoost(newState.volumeBoost);
+    await _repository.setSoundEffectGain('bass', newState.bassGain);
+    await _repository.setSoundEffectGain('treble', newState.trebleGain);
+    await _repository.setSoundEffectGain('voice', newState.voiceGain);
+    await _repository.setSoundNoiseLevel(newState.noiseLevel);
+    await _repository.setSoundLimiterEnabled(newState.limiterEnabled);
+    await _repository.setSoundCompressorRatio(newState.compressorRatio);
+    await _repository.setSoundSurroundVariation(newState.surroundVariation);
+    await _repository.setSoundNightMode(newState.nightMode);
+    await _repository.setSoundEffectsEnabled(newState.effectsEnabled);
+    await _repository.setSoundMicEnabled(newState.micEnabled);
+    await _repository.setSoundMicGain(newState.microphoneGain);
+    await _repository.setSoundMicNoiseSuppression(newState.micNoiseSuppression);
+    await _repository.setSoundEchoCancellation(newState.echoCancellation);
     await _saveSettings();
   }
 }

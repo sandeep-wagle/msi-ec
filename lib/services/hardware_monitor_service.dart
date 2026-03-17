@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import '../../domain/entities/system_info.dart';
 
 class HardwareMonitorService {

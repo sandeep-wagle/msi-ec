@@ -10,6 +10,7 @@ import 'logic/blocs/sound/sound_bloc.dart';
 import 'logic/blocs/sound/sound_event.dart';
 import 'logic/blocs/settings/settings_bloc.dart';
 import 'logic/blocs/settings/settings_event.dart';
+import 'logic/blocs/audio/audio_bloc.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -34,6 +35,9 @@ class MsiControllerApp extends StatelessWidget {
         ),
         BlocProvider(
           create: (_) => SettingsBloc(repository)..add(LoadSettings()),
+        ),
+        BlocProvider(
+          create: (_) => getIt<AudioBloc>(),
         ),
       ],
       child: ListenableBuilder(

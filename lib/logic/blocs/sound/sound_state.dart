@@ -16,6 +16,20 @@ class SoundState extends Equatable {
   final double bassGain;
   final double trebleGain;
   final double voiceGain;
+  // Nahimic-style enhancements
+  final double noiseLevel;
+  final bool limiterEnabled;
+  final double compressorRatio;
+  // Additional fields
+  final bool trackerEnabled;
+  final bool sharingEnabled;
+  final bool nightMode;
+  final bool effectsEnabled;
+  final bool micEnabled;
+  final bool micNoiseSuppression;
+  final bool echoCancellation;
+  final double microphoneGain;
+  final String surroundVariation;
 
   const SoundState({
     required this.profile,
@@ -32,6 +46,18 @@ class SoundState extends Equatable {
     this.bassGain = 0.0,
     this.trebleGain = 0.0,
     this.voiceGain = 0.0,
+    this.noiseLevel = 0.0,
+    this.limiterEnabled = false,
+    this.compressorRatio = 4.0,
+    this.trackerEnabled = false,
+    this.sharingEnabled = false,
+    this.nightMode = false,
+    this.effectsEnabled = true,
+    this.micEnabled = true,
+    this.micNoiseSuppression = true,
+    this.echoCancellation = true,
+    this.microphoneGain = 0.5,
+    this.surroundVariation = 'Surround',
   });
 
   factory SoundState.initial() {
@@ -49,6 +75,18 @@ class SoundState extends Equatable {
       bassGain: 0.0,
       trebleGain: 0.0,
       voiceGain: 0.0,
+      noiseLevel: 0.0,
+      limiterEnabled: false,
+      compressorRatio: 4.0,
+      trackerEnabled: false,
+      sharingEnabled: false,
+      nightMode: false,
+      effectsEnabled: true,
+      micEnabled: true,
+      micNoiseSuppression: true,
+      echoCancellation: true,
+      microphoneGain: 0.5,
+      surroundVariation: 'Surround',
     );
   }
 
@@ -67,6 +105,18 @@ class SoundState extends Equatable {
     double? bassGain,
     double? trebleGain,
     double? voiceGain,
+    double? noiseLevel,
+    bool? limiterEnabled,
+    double? compressorRatio,
+    bool? trackerEnabled,
+    bool? sharingEnabled,
+    bool? nightMode,
+    bool? effectsEnabled,
+    bool? micEnabled,
+    bool? micNoiseSuppression,
+    bool? echoCancellation,
+    double? microphoneGain,
+    String? surroundVariation,
   }) {
     return SoundState(
       profile: profile ?? this.profile,
@@ -83,6 +133,18 @@ class SoundState extends Equatable {
       bassGain: bassGain ?? this.bassGain,
       trebleGain: trebleGain ?? this.trebleGain,
       voiceGain: voiceGain ?? this.voiceGain,
+      noiseLevel: noiseLevel ?? this.noiseLevel,
+      limiterEnabled: limiterEnabled ?? this.limiterEnabled,
+      compressorRatio: compressorRatio ?? this.compressorRatio,
+      trackerEnabled: trackerEnabled ?? this.trackerEnabled,
+      sharingEnabled: sharingEnabled ?? this.sharingEnabled,
+      nightMode: nightMode ?? this.nightMode,
+      effectsEnabled: effectsEnabled ?? this.effectsEnabled,
+      micEnabled: micEnabled ?? this.micEnabled,
+      micNoiseSuppression: micNoiseSuppression ?? this.micNoiseSuppression,
+      echoCancellation: echoCancellation ?? this.echoCancellation,
+      microphoneGain: microphoneGain ?? this.microphoneGain,
+      surroundVariation: surroundVariation ?? this.surroundVariation,
     );
   }
 
@@ -102,5 +164,17 @@ class SoundState extends Equatable {
     bassGain,
     trebleGain,
     voiceGain,
+    noiseLevel,
+    limiterEnabled,
+    compressorRatio,
+    trackerEnabled,
+    sharingEnabled,
+    nightMode,
+    effectsEnabled,
+    micEnabled,
+    micNoiseSuppression,
+    echoCancellation,
+    microphoneGain,
+    surroundVariation,
   ];
 }

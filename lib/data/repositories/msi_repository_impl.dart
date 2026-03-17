@@ -32,22 +32,122 @@ class MsiRepositoryImpl implements MsiRepository {
   double get currentVolume => _currentVolume;
 
   Timer? _pollingTimer;
-  Timer? _volumePollTimer;
+  Timer? _fanPollingTimer;
   Process? _pactlSubscribe;
   bool _isSystemPolling = false;
   bool _isFanPolling = false;
   bool _hasMsiEc = false;
   bool _isDspUpdating = false;
+  Timer? _dspUpdateTimer;
+  Socket? _dspSocket;
+  
+  // Sound Settings State
+  String _soundProfileName = 'Music';
+  double _bass = 0.0;
+  double _treble = 0.0;
+  double _voice = 0.0;
+  List<double> _eqGains = List.filled(10, 0.0);
+  bool _compressor = false;
+  bool _surround = false;
+  double _stereoWidth = 0.0;
+  double _noiseLevel = 0.0;
+  bool _limiterEnabled = false;
+  double _compressorRatio = 4.0;
+  String _surroundVariation = 'Surround';
+  bool _nightMode = false;
+  bool _effectsEnabled = true;
+  bool _micEnabled = true;
+  double _micGain = 1.0;
+  bool _micNoiseSuppression = false;
+  bool _bassBoost = false;
+  bool _trebleEnhancer = false;
+  bool _voiceClarity = false;
+  bool _echoCancellation = false;
+  bool _trackerEnabled = false;
+  bool _sharingEnabled = false;
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       _pollSystemInfo();
+    });
+    
+    _fanPollingTimer?.cancel();
+    _fanPollingTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _pollFanInfo();
     });
+    
     _pollSystemInfo();
     _pollFanInfo();
     _startVolumeListener();
+    _connectDspSocket();
+  }
+
+  Future<void>? _connectionFuture;
+
+  Future<void> _connectDspSocket() async {
+    if (_dspSocket != null) return;
+    if (_connectionFuture != null) return _connectionFuture;
+
+    _connectionFuture = _doConnect();
+    try {
+      await _connectionFuture;
+    } finally {
+      _connectionFuture = null;
+    }
+  }
+
+  Future<void> _doConnect() async {
+    try {
+      debugPrint('Repository: Attempting to connect to DSP socket...');
+      _dspSocket = await Socket.connect(
+        InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
+        0,
+      ).timeout(const Duration(seconds: 2));
+      
+      debugPrint('Repository: Persistent DSP socket connected');
+      
+      _dspSocket!.listen(
+        (data) {
+          final msg = utf8.decode(data).trim();
+          debugPrint('Repository: DSP response: $msg');
+        },
+        onDone: () {
+          debugPrint('Repository: DSP socket closed');
+          _dspSocket = null;
+          // Try to reconnect after a delay
+          Timer(const Duration(seconds: 5), _connectDspSocket);
+        },
+        onError: (e) {
+          debugPrint('Repository: DSP socket error: $e');
+          _dspSocket = null;
+        },
+      );
+    } catch (e) {
+      debugPrint('Repository: Failed to connect to DSP socket: $e');
+      _dspSocket = null;
+      // Retry
+      Timer(const Duration(seconds: 5), _connectDspSocket);
+    }
+  }
+
+  Future<void> _sendDspCommand(String command) async {
+    try {
+      if (_dspSocket == null) {
+        await _connectDspSocket();
+      }
+      
+      final socket = _dspSocket;
+      if (socket != null) {
+        socket.write('$command\n');
+        await socket.flush();
+      } else {
+        debugPrint('Repository: Cannot send command, socket null: $command');
+      }
+    } catch (e) {
+      debugPrint('Repository: Error sending DSP command: $e');
+      _dspSocket = null;
+    }
   }
 
   void _startVolumeListener() async {
@@ -56,7 +156,7 @@ class MsiRepositoryImpl implements MsiRepository {
       _pactlSubscribe = await Process.start('pactl', [
         'subscribe',
       ], runInShell: true);
-      _pactlSubscribe!.stderr.transform(const SystemEncoding().decoder).listen((
+      _pactlSubscribe!.stdout.transform(const SystemEncoding().decoder).listen((
         data,
       ) {
         if (data.contains('sink') || data.contains('volume')) {
@@ -284,97 +384,21 @@ class MsiRepositoryImpl implements MsiRepository {
 
   PerformanceMode _currentMode = PerformanceMode.balanced;
 
-  // Audio state for DSP
-  String _soundProfileName = 'Default';
-  List<double> _eqGains = List.filled(10, 0.0);
-  double _bassGain = 0.0;
-  double _trebleGain = 0.0;
-  double _voiceGain = 0.0;
-  bool _compressor = false;
-  bool _surround = false;
-  double _volume = 1.0;
-
-  Future<void> _updateDsp() async {
-    final profile = AudioProfile(
-      name: _soundProfileName,
-      bass: _bassGain,
-      treble: _trebleGain,
-      voice: _voiceGain,
-      eqGains: _eqGains,
-      compressor: _compressor,
-      surround: _surround,
-      volume: _volume,
-    );
-    await setDspProfile(profile);
-  }
-
-  Future<void> _updateDspRealtime() async {
-    if (_isDspUpdating) {
-      debugPrint('Repository: DSP update already in progress, skipping');
-      return;
-    }
-
-    debugPrint('Repository: Starting DSP realtime update');
-    _isDspUpdating = true;
-
-    try {
-      final socket = await Socket.connect(
-        InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
-        0,
-      );
-      debugPrint('Repository: Connected to DSP socket');
-
-      final profile = AudioProfile(
-        name: _soundProfileName,
-        bass: _bassGain,
-        treble: _trebleGain,
-        voice: _voiceGain,
-        eqGains: _eqGains,
-        compressor: _compressor,
-        surround: _surround,
-        volume: _volume,
-      );
-      final json = profile.toJson();
-      debugPrint(
-        'DSP update: profile=${profile.name}, bass=${profile.bass}, treble=${profile.treble}, voice=${profile.voice}',
-      );
-
-      final command = 'UPDATE:${jsonEncode(json)}';
-      debugPrint('Repository: Sending command: $command');
-
-      socket.write(command);
-      await socket.flush();
-      debugPrint('Repository: Command flushed, waiting for response');
-
-      final response = await socket.first.timeout(const Duration(seconds: 5));
-      final responseStr = utf8.decode(response).trim();
-      debugPrint('Repository: Received response: $responseStr');
-
-      if (responseStr == 'OK') {
-        debugPrint('Real-time DSP update applied successfully');
-      } else {
-        debugPrint('Realtime DSP update unexpected response: $responseStr');
-      }
-
-      await socket.close();
-      debugPrint('Repository: Socket closed');
-    } catch (e) {
-      debugPrint('Failed to send realtime update: $e');
-    } finally {
-      _isDspUpdating = false;
-    }
-  }
-
+  // Internal helper for buffer size based on mode
   int _getBufferSizeForMode(PerformanceMode mode) {
     if (mode == PerformanceMode.extreme ||
         mode == PerformanceMode.highPerformance) {
-      return 128; // Gaming
+      return 256; // Low latency
     } else if (mode == PerformanceMode.silent ||
         mode == PerformanceMode.superBattery) {
       return 512; // Power-saving
     }
     return 256; // Balanced
   }
+
+  // Removed duplicate _updateDspRealtime
+
+  // Consolidated into _getBufferSizeForMode above
 
   @override
   Future<bool> setPerformanceMode(PerformanceMode mode) async {
@@ -623,82 +647,20 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   @override
+  void setActiveProfileName(String profile) {
+    _soundProfileName = profile;
+  }
+
+  @override
   Future<bool> setSoundProfile(String profile) async {
     _soundProfileName = profile;
     try {
       debugPrint('Loading sound profile: $profile');
-
-      const int maxConnectAttempts = 3;
-      Socket? socket;
-      for (var attempt = 1; attempt <= maxConnectAttempts; attempt++) {
-        try {
-          socket = await Socket.connect(
-            InternetAddress(
-              '/tmp/msi_dsp.sock',
-              type: InternetAddressType.unix,
-            ),
-            0,
-          ).timeout(const Duration(seconds: 3));
-          break;
-        } catch (e) {
-          debugPrint('Socket connect attempt $attempt failed: $e');
-          if (attempt == maxConnectAttempts) rethrow;
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-      }
-
-      if (socket == null) {
-        throw SocketException('Could not connect to DSP socket');
-      }
-
-      socket.write('LOAD:$profile');
-      await socket.flush();
-
-      final completer = Completer<List<int>>();
-      final bytes = <int>[];
-
-      socket.listen(
-        (data) {
-          bytes.addAll(data);
-          try {
-            final s = utf8.decode(bytes);
-            if (s.trim().startsWith('{') && s.trim().endsWith('}')) {
-              if (!completer.isCompleted) completer.complete(bytes);
-            }
-          } catch (_) {
-            // ignore decode errors until we have a full payload
-          }
-        },
-        onDone: () {
-          if (!completer.isCompleted) completer.complete(bytes);
-        },
-        onError: (err) {
-          if (!completer.isCompleted) completer.completeError(err);
-        },
-      );
-
-      final response = await completer.future.timeout(
-        const Duration(seconds: 8),
-      );
-      socket.close();
-
-      if (response.isNotEmpty) {
-        final jsonStr = utf8.decode(response);
-        if (jsonStr.startsWith('{')) {
-          final map = json.decode(jsonStr);
-          // Only update internal tracking state; bloc owns the authoritative values.
-          _compressor = map['compressor'] ?? false;
-          _surround = map['surround'] ?? false;
-          debugPrint(
-            'Loaded profile $profile: bass=${map['bass']}, treble=${map['treble']}, voice=${map['voice']}',
-          );
-        }
-      }
-      // DSP already applied settings via LOAD command on its side — no _updateDsp() needed.
+      await _sendDspCommand('LOAD:$profile');
       return true;
     } catch (e) {
       debugPrint('Failed to load sound profile: $e');
-      await _updateDsp();
+      await _updateDspRealtime();
       return false;
     }
   }
@@ -711,9 +673,123 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   @override
+  Future<bool> setSoundEnhancement(String enhancement, bool enable) async {
+    if (enhancement == 'smartVolume' || enhancement == 'compressor') _compressor = enable;
+    if (enhancement == 'virtualSurround' || enhancement == 'surround') _surround = enable;
+    if (enhancement == 'bassBoost') _bassBoost = enable;
+    if (enhancement == 'trebleEnhancer') _trebleEnhancer = enable;
+    if (enhancement == 'voiceClarity') _voiceClarity = enable;
+    if (enhancement == 'tracker') _trackerEnabled = enable;
+    if (enhancement == 'sharing') _sharingEnabled = enable;
+    await _updateDspRealtime();
+    return true;
+  }
+
+  @override
+  Future<void> setSoundSampleRate(int hertz) async {
+    debugPrint('Repository: Sample rate change requested: $hertz Hz');
+  }
+
+  @override
+  Future<void> setSoundStereoWidth(double width) async {
+    _stereoWidth = width;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundVolumeBoost(double boost) async {
+    await setSoundVolume(boost);
+  }
+
+  @override
+  Future<bool> setSoundEffectGain(String effect, double gain) async {
+    if (effect == 'bass') _bass = gain;
+    if (effect == 'treble') _treble = gain;
+    if (effect == 'voice') _voice = gain;
+    await _updateDspRealtime();
+    return true;
+  }
+
+  @override
+  Future<void> setSoundNoiseLevel(double level) async {
+    _noiseLevel = level;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundLimiterEnabled(bool enabled) async {
+    _limiterEnabled = enabled;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundCompressorRatio(double ratio) async {
+    _compressorRatio = ratio;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundSurroundVariation(String variation) async {
+    _surroundVariation = variation;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundNightMode(bool enabled) async {
+    _nightMode = enabled;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundEffectsEnabled(bool enabled) async {
+    _effectsEnabled = enabled;
+    if (enabled) {
+      await _sendDspCommand('ENABLE');
+    } else {
+      await _sendDspCommand('DISABLE');
+    }
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundMicEnabled(bool enabled) async {
+    _micEnabled = enabled;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundMicGain(double gain) async {
+    _micGain = gain;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundMicNoiseSuppression(bool enabled) async {
+    _micNoiseSuppression = enabled;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundEchoCancellation(bool enabled) async {
+    _echoCancellation = enabled;
+    await _updateDspRealtime();
+  }
+
+  @override
+  Future<void> setSoundVolume(double volume) async {
+    _currentVolume = volume;
+    _volumeController.add(volume);
+    await _sendDspCommand('VOLUME:$volume');
+  }
+
+  @override
+  Future<void> applyCurrentProfile() async {
+    await _updateDspRealtime();
+  }
+
+  @override
   Future<bool> setAiLanPriority(bool enable) async {
     try {
-      debugPrint('Setting AI LAN priority: $enable');
       final result = await _channel.invokeMethod<bool>('setAiLanPriority', {
         'enable': enable,
       });
@@ -725,205 +801,8 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   @override
-  Future<bool> setSoundEnhancement(String enhancement, bool enable) async {
-    if (enhancement == 'smartVolume') _compressor = enable;
-    if (enhancement == 'virtualSurround') _surround = enable;
-    await _updateDsp();
-    try {
-      debugPrint('Setting sound enhancement $enhancement: $enable');
-      final result = await _channel.invokeMethod<bool>('setSoundEnhancement', {
-        'enhancement': enhancement,
-        'enable': enable,
-      });
-      return result ?? false;
-    } on PlatformException catch (e) {
-      debugPrint('Failed to set sound enhancement: ${e.message}');
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> setDspProfile(AudioProfile profile) async {
-    try {
-      final socket = await Socket.connect(
-        InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
-        0,
-      );
-
-      // Override buffer size based on current system performance mode
-      final bufferSize = _getBufferSizeForMode(_currentMode);
-      final profileWithBuffer = AudioProfile(
-        name: profile.name,
-        bass: profile.bass,
-        treble: profile.treble,
-        voice: profile.voice,
-        eqGains: profile.eqGains,
-        compressor: profile.compressor,
-        surround: profile.surround,
-        volume: profile.volume,
-        bufferSize: bufferSize,
-      );
-
-      final json = profileWithBuffer.toJson();
-      socket.write(jsonEncode(json));
-      await socket.flush();
-      final response = await socket.first;
-      socket.close();
-      return utf8.decode(response) == 'OK';
-    } catch (e) {
-      debugPrint('Failed to set DSP profile via Unix socket: $e');
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> enableDsp() async {
-    try {
-      final socket = await Socket.connect(
-        InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
-        0,
-      );
-      socket.write('ENABLE');
-      await socket.flush();
-      final response = await socket.first;
-      socket.close();
-      return utf8.decode(response) == 'OK';
-    } catch (e) {
-      debugPrint('Failed to enable DSP via Unix socket: $e');
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> disableDsp() async {
-    try {
-      final socket = await Socket.connect(
-        InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
-        0,
-      );
-      socket.write('DISABLE');
-      await socket.flush();
-      final response = await socket.first;
-      socket.close();
-      return utf8.decode(response) == 'OK';
-    } catch (e) {
-      debugPrint('Failed to disable DSP via Unix socket: $e');
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> getDspStatus() async {
-    try {
-      final socket = await Socket.connect(
-        InternetAddress('/tmp/msi_dsp.sock', type: InternetAddressType.unix),
-        0,
-      );
-      socket.write('STATUS');
-      await socket.flush();
-      final response = await socket.first;
-      socket.close();
-      return utf8.decode(response).trim() == 'enabled';
-    } catch (e) {
-      debugPrint('Failed to get DSP status via Unix socket: $e');
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> setDspBass(double gain) async {
-    return setSoundEffectGain('bass', gain);
-  }
-
-  @override
-  Future<bool> setDspTreble(double gain) async {
-    return setSoundEffectGain('treble', gain);
-  }
-
-  @override
-  Future<bool> setDspCompressor(bool enable) async {
-    return setSoundEnhancement('smartVolume', enable);
-  }
-
-  @override
-  Future<void> setSoundSampleRate(int hertz) async {
-    try {
-      debugPrint('Setting sound sample rate: $hertz Hz');
-      await _channel.invokeMethod('setSoundSampleRate', {'hertz': hertz});
-    } on PlatformException catch (e) {
-      debugPrint('Failed to set sound sample rate: ${e.message}');
-    }
-  }
-
-  @override
-  Future<void> setSoundStereoWidth(double width) async {
-    try {
-      debugPrint('Setting sound stereo width: $width');
-      await _channel.invokeMethod('setSoundStereoWidth', {'width': width});
-    } on PlatformException catch (e) {
-      debugPrint('Failed to set sound stereo width: ${e.message}');
-    }
-  }
-
-  @override
-  Future<void> setSoundVolumeBoost(double boost) async {
-    _volume = boost;
-    try {
-      final percent = (boost * 100).round();
-      final result = await Process.run('pactl', [
-        'set-volume',
-        '@DEFAULT_SINK@',
-        '$percent%',
-      ], runInShell: true);
-      debugPrint('Volume set to $percent%: ${result.stdout}');
-
-      await _updateDspRealtime();
-    } catch (e) {
-      debugPrint('Failed to set volume: $e');
-    }
-  }
-
-  Future<double> getSystemVolume() async {
-    try {
-      final result = await Process.run('pactl', [
-        'get-volume',
-        '@DEFAULT_SINK@',
-      ], runInShell: true);
-      final output = result.stdout.toString();
-      final match = RegExp(r'(\d+)%').firstMatch(output);
-      if (match != null) {
-        return int.parse(match.group(1)!) / 100.0;
-      }
-    } catch (e) {
-      debugPrint('Failed to get volume: $e');
-    }
-    return 1.0;
-  }
-
-  @override
-  void setActiveProfileName(String profile) {
-    _soundProfileName = profile;
-  }
-
-  @override
-  Future<bool> setSoundEffectGain(String effect, double gain) async {
-    if (effect == 'bass') _bassGain = gain;
-    if (effect == 'treble') _trebleGain = gain;
-    if (effect == 'voice') _voiceGain = gain;
-    await _updateDspRealtime();
-    return true;
-  }
-
-  @override
-  Future<void> applyCurrentProfile() async {
-    debugPrint('Repository: Applying current profile settings');
-    await _updateDspRealtime();
-  }
-
-  @override
   Future<bool> setGpuMode(GpuMode mode) async {
     try {
-      debugPrint('Setting GPU mode: ${mode.displayName}');
       final result = await _channel.invokeMethod<bool>('setGpuMode', {
         'mode': mode.name,
       });
@@ -935,7 +814,131 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   @override
+  Future<void> ensureDspSocketConnected() async {
+    if (_dspSocket == null) {
+      await _connectDspSocket();
+    }
+  }
+
+  @override
+  Socket? get dspSocket => _dspSocket;
+
+  // DSP Control methods (mapping to unified sound methods)
+  @override
+  Future<bool> setDspProfile(AudioProfile profile) async {
+    _soundProfileName = profile.name;
+    _bass = profile.bass;
+    _treble = profile.treble;
+    _voice = profile.voice;
+    _eqGains = profile.eqGains;
+    _compressor = profile.compressor;
+    _surround = profile.surround;
+    _stereoWidth = profile.stereoWidth;
+    _noiseLevel = profile.noiseLevel;
+    _limiterEnabled = profile.limiterEnabled;
+    _compressorRatio = profile.compressorRatio;
+    _surroundVariation = profile.surroundVariation;
+    _nightMode = profile.nightMode;
+    _effectsEnabled = profile.effectsEnabled;
+    _micEnabled = profile.micEnabled;
+    _micGain = profile.micGain;
+    _micNoiseSuppression = profile.micNoiseSuppression;
+    _echoCancellation = profile.echoCancellation;
+    
+    await _updateDspRealtime();
+    return true;
+  }
+
+  @override
+  Future<bool> setDspBass(double gain) async {
+    _bass = gain;
+    await _updateDspRealtime();
+    return true;
+  }
+
+  @override
+  Future<bool> setDspTreble(double gain) async {
+    _treble = gain;
+    await _updateDspRealtime();
+    return true;
+  }
+
+  @override
+  Future<bool> setDspCompressor(bool enable) async {
+    _compressor = enable;
+    await _updateDspRealtime();
+    return true;
+  }
+
+  @override
+  Future<bool> enableDsp() async {
+    await setSoundEffectsEnabled(true);
+    return true;
+  }
+
+  @override
+  Future<bool> disableDsp() async {
+    await setSoundEffectsEnabled(false);
+    return true;
+  }
+
+  @override
+  Future<bool> getDspStatus() async {
+    await _sendDspCommand('STATUS');
+    return true;
+  }
+
+  @override
   void dispose() {
     _pollingTimer?.cancel();
+    _fanPollingTimer?.cancel();
+    _dspUpdateTimer?.cancel();
+    _pactlSubscribe?.kill();
+    _dspSocket?.close();
+    _dspSocket = null;
+  }
+
+  Future<void> _updateDspRealtime() async {
+    _dspUpdateTimer?.cancel();
+    _dspUpdateTimer = Timer(const Duration(milliseconds: 120), () async {
+      if (_isDspUpdating) return;
+      _isDspUpdating = true;
+      try {
+        final profile = AudioProfile(
+          name: _soundProfileName,
+          bass: _bass,
+          treble: _treble,
+          voice: _voice,
+          eqGains: _eqGains,
+          compressor: _compressor,
+          surround: _surround,
+          volume: _currentVolume,
+          surroundVariation: _surroundVariation,
+          nightMode: _nightMode,
+          effectsEnabled: _effectsEnabled,
+          micEnabled: _micEnabled,
+          micGain: _micGain,
+          micNoiseSuppression: _micNoiseSuppression,
+          echoCancellation: _echoCancellation,
+          voiceClarity: _voiceClarity,
+          trebleEnhancer: _trebleEnhancer,
+          bassBoost: _bassBoost,
+          trackerEnabled: _trackerEnabled,
+          sharingEnabled: _sharingEnabled,
+          stereoWidth: _stereoWidth,
+          noiseLevel: _noiseLevel,
+          limiterEnabled: _limiterEnabled,
+          compressorRatio: _compressorRatio,
+          bufferSize: _getBufferSizeForMode(_currentMode),
+        );
+
+        final jsonStr = json.encode(profile.toJson());
+        await _sendDspCommand('UPDATE:$jsonStr');
+      } catch (e) {
+        debugPrint('Failed to update DSP: $e');
+      } finally {
+        _isDspUpdating = false;
+      }
+    });
   }
 }

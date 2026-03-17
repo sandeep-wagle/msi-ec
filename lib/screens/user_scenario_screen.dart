@@ -92,7 +92,7 @@ class _UserScenarioScreenState extends State<UserScenarioScreen> {
                             onChanged: (value) {
                               setState(() => _cpuSoftwareControl = value);
                             },
-                            activeColor: const Color(0xFFE53935),
+                            activeThumbColor: const Color(0xFFE53935),
                           ),
                         ),
                         const SizedBox(width: 4),
@@ -112,7 +112,7 @@ class _UserScenarioScreenState extends State<UserScenarioScreen> {
                             onChanged: (value) {
                               setState(() => _fanSoftwareControl = value);
                             },
-                            activeColor: const Color(0xFFE53935),
+                            activeThumbColor: const Color(0xFFE53935),
                           ),
                         ),
                       ],
@@ -639,7 +639,7 @@ class _StyledDropdown<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
-      value: value,
+      initialValue: value,
       dropdownColor: const Color(0xFF1D2026),
       style: const TextStyle(color: Color(0xFFE8E8E8), fontSize: 15),
       iconEnabledColor: const Color(0xFFCFCFCF),

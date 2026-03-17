@@ -666,36 +666,14 @@ static std::recursive_mutex g_pw_mutex;
 static FILE* g_pw_cli_pipe = nullptr;
 
 bool setSoundSampleRate(int hertz) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("setSoundSampleRate(%d)", hertz);
-  // Forcing rate without quantum sync often leads to segfaults.
-  // We pair it with a stable quantum (1024) to ensure graph stability.
-  std::string cmd =
-      "pw-metadata -n settings 0 clock.force-rate " + std::to_string(hertz) +
-      " 2>/dev/null; " +
-      "pw-metadata -n settings 0 clock.force-quantum 1024 2>/dev/null";
-  int res = system(cmd.c_str());
-  if (res != 0) {
-    KLOG("setSoundSampleRate failed with code %d", res);
-  }
-  return res == 0;
+  KLOG("setSoundSampleRate(%d) - [STUBBED, handled by Rust]", hertz);
+  return true;
 }
 
 bool applyPipeWireChanges() {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("applyPipeWireChanges() starting");
-
-  // The Rust msi_dsp_service is the primary DSP engine.
-  // It handles the virtual sink 'msi_nahimic_input'.
-  // We just ensure it's the default sink and set the volume.
-
-  int boost_pct = static_cast<int>(g_volume_boost * 100.0);
-  std::string vol_cmd = "env -u LD_LIBRARY_PATH -u LD_PRELOAD sh -c '"
-                        "pactl set-default-sink msi_nahimic_input 2>/dev/null; "
-                        "pactl set-sink-volume msi_nahimic_input " + std::to_string(boost_pct) + "% 2>/dev/null' &";
-  system(vol_cmd.c_str());
-
-  KLOG("applyPipeWireChanges() done (msi_nahimic_input)");
+  // DO NOTHING. The Rust msi_dsp_service handles all PipeWire routing and DSP.
+  // Native code should not interfere to avoid race conditions.
+  KLOG("applyPipeWireChanges() - [STUBBED, handled by Rust]");
   return true;
 }
 
@@ -847,18 +825,24 @@ bool setAiLanPriority(bool enable) {
 }
 
 bool setGpuMode(const std::string &mode) {
-  // Using common Linux tools for GPU switching (e.g. system76-power,
-  // prime-select, optimus-manager) This requires root/sudo, so in a real app
-  // would need a pkexec helper.
-  std::string cmd;
-  if (mode == "discrete")
-    cmd = "pkexec prime-select nvidia";
-  else if (mode == "integrated")
-    cmd = "pkexec prime-select intel";
-  else
-    cmd = "pkexec prime-select on-demand";
+  // Check current mode first to avoid redundant slow initramfs updates
+  std::string current_mode = exec("prime-select query 2>/dev/null");
+  // Clean up whitespace/newlines
+  current_mode.erase(std::remove(current_mode.begin(), current_mode.end(), '\n'), current_mode.end());
+  current_mode.erase(std::remove(current_mode.begin(), current_mode.end(), ' '), current_mode.end());
 
-  // Actually execute the command
+  std::string target;
+  if (mode == "discrete") target = "nvidia";
+  else if (mode == "integrated") target = "intel";
+  else target = "on-demand";
+
+  if (current_mode == target) {
+    KLOG("setGpuMode: already in %s mode, skipping.", target.c_str());
+    return true;
+  }
+
+  KLOG("setGpuMode: switching from %s to %s", current_mode.c_str(), target.c_str());
+  std::string cmd = "pkexec prime-select " + target;
   system(cmd.c_str());
 
   return true;

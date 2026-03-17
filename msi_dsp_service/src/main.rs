@@ -4,7 +4,7 @@
 //! It saves/loads profiles and manages PipeWire filter chain for audio DSP.
 
 use anyhow::Result;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
@@ -40,6 +40,23 @@ pub struct AudioProfile {
     pub volume: f64,
     #[serde(alias = "bufferSize", alias = "buffer_size")]
     pub buffer_size: usize,
+    // Nahimic-style enhancements
+    pub noise_level: f64,
+    pub stereo_width: f64,
+    pub limiter_enabled: bool,
+    pub compressor_ratio: f64,
+    pub surround_variation: String,
+    pub night_mode: bool,
+    pub effects_enabled: bool,
+    pub mic_enabled: bool,
+    pub mic_gain: f64,
+    pub mic_noise_suppression: bool,
+    pub echo_cancellation: bool,
+    pub voice_clarity: bool,
+    pub treble_enhancer: bool,
+    pub bass_boost: bool,
+    pub tracker_enabled: bool,
+    pub sharing_enabled: bool,
 }
 
 impl Default for AudioProfile {
@@ -54,6 +71,22 @@ impl Default for AudioProfile {
             surround: false,
             volume: 1.0,
             buffer_size: 256,
+            noise_level: 0.0,
+            stereo_width: 0.0,
+            limiter_enabled: false,
+            compressor_ratio: 4.0,
+            surround_variation: "Surround".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.0,
+            mic_noise_suppression: false,
+            echo_cancellation: false,
+            voice_clarity: false,
+            treble_enhancer: false,
+            bass_boost: false,
+            tracker_enabled: false,
+            sharing_enabled: false,
         }
     }
 }
@@ -70,6 +103,22 @@ fn get_default_profile(name: &str) -> AudioProfile {
             surround: true,
             volume: 1.0,
             buffer_size: 256,
+            noise_level: 2.0,
+            stereo_width: 1.5,
+            limiter_enabled: false,
+            compressor_ratio: 3.0,
+            surround_variation: "Surround".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.0,
+            mic_noise_suppression: false,
+            echo_cancellation: false,
+            voice_clarity: true,
+            treble_enhancer: false,
+            bass_boost: true,
+            tracker_enabled: false,
+            sharing_enabled: false,
         },
         "Gaming" => AudioProfile {
             name: "Gaming".into(),
@@ -81,6 +130,22 @@ fn get_default_profile(name: &str) -> AudioProfile {
             surround: true,
             volume: 1.0,
             buffer_size: 128,
+            noise_level: 1.0,
+            stereo_width: 2.0,
+            limiter_enabled: true,
+            compressor_ratio: 2.0,
+            surround_variation: "Surround".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.0,
+            mic_noise_suppression: true,
+            echo_cancellation: false,
+            voice_clarity: true,
+            treble_enhancer: true,
+            bass_boost: true,
+            tracker_enabled: false,
+            sharing_enabled: false,
         },
         "Movie" => AudioProfile {
             name: "Movie".into(),
@@ -92,6 +157,22 @@ fn get_default_profile(name: &str) -> AudioProfile {
             surround: true,
             volume: 1.0,
             buffer_size: 256,
+            noise_level: 3.0,
+            stereo_width: 1.0,
+            limiter_enabled: true,
+            compressor_ratio: 6.0,
+            surround_variation: "Headset".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.0,
+            mic_noise_suppression: false,
+            echo_cancellation: false,
+            voice_clarity: true,
+            treble_enhancer: false,
+            bass_boost: true,
+            tracker_enabled: false,
+            sharing_enabled: false,
         },
         "Voice" | "Communication" => AudioProfile {
             name: name.into(),
@@ -103,6 +184,22 @@ fn get_default_profile(name: &str) -> AudioProfile {
             surround: false,
             volume: 1.0,
             buffer_size: 256,
+            noise_level: 5.0,
+            stereo_width: 0.5,
+            limiter_enabled: true,
+            compressor_ratio: 8.0,
+            surround_variation: "Surround".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.2,
+            mic_noise_suppression: true,
+            echo_cancellation: true,
+            voice_clarity: true,
+            treble_enhancer: true,
+            bass_boost: true,
+            tracker_enabled: false,
+            sharing_enabled: false,
         },
         "Smart" => AudioProfile {
             name: "Smart".into(),
@@ -114,6 +211,22 @@ fn get_default_profile(name: &str) -> AudioProfile {
             surround: true,
             volume: 1.0,
             buffer_size: 256,
+            noise_level: 2.5,
+            stereo_width: 1.5,
+            limiter_enabled: true,
+            compressor_ratio: 4.0,
+            surround_variation: "Surround".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.0,
+            mic_noise_suppression: true,
+            echo_cancellation: false,
+            voice_clarity: true,
+            treble_enhancer: true,
+            bass_boost: true,
+            tracker_enabled: false,
+            sharing_enabled: false,
         },
         "Custom" => AudioProfile {
             name: "Custom".into(),
@@ -125,6 +238,22 @@ fn get_default_profile(name: &str) -> AudioProfile {
             surround: false,
             volume: 1.0,
             buffer_size: 256,
+            noise_level: 0.0,
+            stereo_width: 0.0,
+            limiter_enabled: false,
+            compressor_ratio: 4.0,
+            surround_variation: "Surround".into(),
+            night_mode: false,
+            effects_enabled: true,
+            mic_enabled: true,
+            mic_gain: 1.0,
+            mic_noise_suppression: false,
+            echo_cancellation: false,
+            voice_clarity: false,
+            treble_enhancer: false,
+            bass_boost: false,
+            tracker_enabled: false,
+            sharing_enabled: false,
         },
         _ => AudioProfile::default(),
     }
@@ -249,38 +378,101 @@ fn start_filter_chain() -> bool {
 }
 
 fn link_filter_chain() {
-    info!("Linking filter chain to default audio sink...");
+    info!("Relinking filter chain output to physical audio sink...");
     
-    let output = Command::new("pw-link")
-        .args(["-l"])
+    // 1. Find the default physical sink (actual hardware)
+    let output = Command::new("pactl")
+        .args(["get-default-sink"])
         .output();
     
     if let Ok(out) = output {
-        let links = String::from_utf8_lossy(&out.stdout);
+        let default_sink = String::from_utf8_lossy(&out.stdout).trim().to_string();
         
-        if !links.contains("msi_dsp_output") || !links.contains("msi_dsp_input") {
-            let _ = Command::new("pw-link")
-                .args(["msi_dsp_output:output_FL", "msi_dsp_input:playback_FL"])
+        // If the default sink is ALREADY our DSP input, we need to find the REAL fallback sink
+        // to avoid a loop. Usually, this means we look at 'pactl list sinks' and find the first
+        // sink that isn't ours.
+        let mut target_sink = default_sink.clone();
+        if target_sink == "msi_dsp_input" {
+             let sink_list = Command::new("pactl")
+                .args(["list", "short", "sinks"])
                 .output();
-            let _ = Command::new("pw-link")
-                .args(["msi_dsp_output:output_FR", "msi_dsp_input:playback_FR"])
-                .output();
-            
-            let output = Command::new("pactl")
-                .args(["get-default-sink"])
-                .output();
-            
-            if let Ok(out) = output {
-                let sink_name = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                let _ = Command::new("pw-link")
-                    .args(["msi_dsp_input:monitor_FL", &format!("{}:playback_FL", sink_name)])
-                    .output();
-                let _ = Command::new("pw-link")
-                    .args(["msi_dsp_input:monitor_FR", &format!("{}:playback_FR", sink_name)])
-                    .output();
-            }
+             if let Ok(sl_out) = sink_list {
+                 let sl_str = String::from_utf8_lossy(&sl_out.stdout);
+                 for line in sl_str.lines() {
+                     let parts: Vec<&str> = line.split(char::is_whitespace).filter(|s| !s.is_empty()).collect();
+                     if parts.len() > 1 {
+                         let name = parts[1];
+                         if name != "msi_dsp_input" && !name.contains("monitor") {
+                             target_sink = name.to_string();
+                             break;
+                         }
+                     }
+                 }
+             }
+        }
+
+        info!("Targeting physical sink: {}", target_sink);
+
+        // 2. Link msi_dsp_output (our chain's exit) to the physical sink
+        // Note: pw-link handles node:port syntax
+        // Use -d to disconnect existing links first for robustness
+        let _ = Command::new("pw-link")
+            .args(["-d", "msi_dsp_output:output_FL", "msi_dsp_output:output_FR"])
+            .output();
+
+        let l1 = Command::new("pw-link")
+            .args(["msi_dsp_output:output_FL", &format!("{}:playback_FL", target_sink)])
+            .output();
+        let l2 = Command::new("pw-link")
+            .args(["msi_dsp_output:output_FR", &format!("{}:playback_FR", target_sink)])
+            .output();
+        
+        if l1.is_ok() && l2.is_ok() {
+            info!("Links established to {}", target_sink);
+        } else {
+            warn!("Failed to establish links to {}", target_sink);
         }
     }
+}
+
+fn start_device_monitor() {
+    info!("Starting PipeWire device monitor...");
+    tokio::spawn(async move {
+        use tokio::process::Command as TokioCommand;
+        use std::process::Stdio;
+        use tokio::io::{AsyncBufReadExt, BufReader};
+
+        loop {
+            let mut child = TokioCommand::new("pactl")
+                .arg("subscribe")
+                .stdout(Stdio::piped())
+                .spawn();
+
+            if let Ok(mut child) = child {
+                if let Some(stdout) = child.stdout.take() {
+                    let mut reader = BufReader::new(stdout).lines();
+                    info!("Device monitor connected to PulseAudio events");
+                    
+                    while let Ok(Some(line)) = reader.next_line().await {
+                        // Look for 'change' events on 'server' (default sink changes) 
+                        // or 'sink' (device properties/availability changes)
+                        if line.contains("Event 'change' on server") || line.contains("Event 'change' on sink") {
+                            debug!("Audio device change detected, debouncing...");
+                            // Debounce to allow PipeWire to settle
+                            tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
+                            
+                            info!("Device change detected, triggering re-link...");
+                            link_filter_chain();
+                        }
+                    }
+                }
+                let _ = child.kill().await;
+            }
+            
+            warn!("pactl subscribe failed or exited, restarting in 5s...");
+            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+        }
+    });
 }
 
 fn set_default_sink_to_dsp() {
@@ -363,10 +555,47 @@ fn generate_filter_chain_config(profile: &AudioProfile) -> Result<()> {
             name, freq, gain, name, freq, gain
         ));
     }
-    
+    // Base gains from profile
     let bass_gain = profile.bass;
     let treble_gain = profile.treble;
     let voice_gain = profile.voice;
+
+    // Advanced Logic
+    let mut stereo_width = profile.stereo_width;
+    
+    // Surround Variations
+    if profile.surround {
+        match profile.surround_variation.as_str() {
+            "Headset" => {
+                stereo_width *= 0.8; // Tighter for headphones
+            }
+            "Virtual" | "Surround" => {
+                stereo_width *= 1.4; // Wider for virtual speakers
+            }
+            "3D" => {
+                stereo_width *= 2.0; // Very wide for cinematic feel
+            }
+            "Wide" => {
+                stereo_width *= 2.8; // Maximum expansion
+            }
+            _ => {}
+        }
+    } else {
+        stereo_width = 1.0; // Neutral
+    }
+
+    // Night Mode & Volume Stabilizer (Dynamic Range Compression)
+    // We use dysonCompress for Night Mode (soft compression)
+    // and fastLookaheadLimiter for Volume Stabilizer (hard limiting)
+    let night_mode_active = profile.night_mode && profile.effects_enabled;
+    let _volume_stabilizer_active = profile.limiter_enabled && profile.effects_enabled;
+    
+    let limiter_threshold = if night_mode_active { -12.0 } else { -1.0 };
+    let compress_ratio = if night_mode_active { 8.0 } else { profile.compressor_ratio.max(1.0) };
+
+    // Effects Toggle
+    let _global_effects_enabled = profile.effects_enabled;
+
     
     let config = format!(r#"context.properties = {{
     log.level = 3
@@ -380,13 +609,14 @@ context.modules = [
     {{ name = libpipewire-module-protocol-native }}
     {{ name = libpipewire-module-client-node }}
     {{ name = libpipewire-module-adapter }}
+    
     {{ name = libpipewire-module-filter-chain
         args = {{
             node.name        = "msi_dsp_filter"
-            node.description = "MSI DSP Engine"
+            node.description = "MSI DSP Playback"
             media.name       = "MSI DSP Engine"
             audio.channels   = 2
-            audio.position   = [ FL FR ]
+            audio.position   = [ "FL" "FR" ]
             filter.graph = {{
                 nodes = [
 {eq_nodes}            {{ type = builtin label = bq_lowshelf name = "bassL" control = {{ "Freq" = 100 "Gain" = {bass_gain} "Q" = 0.707 }} }}
@@ -395,70 +625,118 @@ context.modules = [
             {{ type = builtin label = bq_highshelf name = "trebleR" control = {{ "Freq" = 5000 "Gain" = {treble_gain} "Q" = 0.707 }} }}
             {{ type = builtin label = bq_peaking name = "voiceL" control = {{ "Freq" = 2000 "Gain" = {voice_gain} "Q" = 0.5 }} }}
             {{ type = builtin label = bq_peaking name = "voiceR" control = {{ "Freq" = 2000 "Gain" = {voice_gain} "Q" = 0.5 }} }}
+            {{
+                type = ladspa
+                name = "spatializer"
+                plugin = "/usr/lib/ladspa/matrix_spatialiser_1422.so"
+                label = "matrixSpatialiser"
+                control = {{ "Width" = {stereo_width} }}
+            }}
+            {{
+                type = ladspa
+                name = "compressorL"
+                plugin = "/usr/lib/ladspa/dyson_compress_1403.so"
+                label = "dysonCompress"
+                control = {{ "Peak limit (dB)" = {limiter_threshold} "Release time (s)" = 0.5 "Compression ratio" = {compress_ratio} }}
+            }}
+            {{
+                type = ladspa
+                name = "compressorR"
+                plugin = "/usr/lib/ladspa/dyson_compress_1403.so"
+                label = "dysonCompress"
+                control = {{ "Peak limit (dB)" = {limiter_threshold} "Release time (s)" = 0.5 "Compression ratio" = {compress_ratio} }}
+            }}
+            {{
+                type = ladspa
+                name = "limiter"
+                plugin = "/usr/lib/ladspa/fast_lookahead_limiter_1913.so"
+                label = "fastLookaheadLimiter"
+                control = {{ "Input gain (dB)" = 0 "Limit (dB)" = -0.1 "Release time (s)" = 0.1 }}
+            }}
                 ]
                 links = [
-            {{ output = "eq0L:Out" input = "eq1L:In" }}
-            {{ output = "eq0R:Out" input = "eq1R:In" }}
-            {{ output = "eq1L:Out" input = "eq2L:In" }}
-            {{ output = "eq1R:Out" input = "eq2R:In" }}
-            {{ output = "eq2L:Out" input = "eq3L:In" }}
-            {{ output = "eq2R:Out" input = "eq3R:In" }}
-            {{ output = "eq3L:Out" input = "eq4L:In" }}
-            {{ output = "eq3R:Out" input = "eq4R:In" }}
-            {{ output = "eq4L:Out" input = "eq5L:In" }}
-            {{ output = "eq4R:Out" input = "eq5R:In" }}
-            {{ output = "eq5L:Out" input = "eq6L:In" }}
-            {{ output = "eq5R:Out" input = "eq6R:In" }}
-            {{ output = "eq6L:Out" input = "eq7L:In" }}
-            {{ output = "eq6R:Out" input = "eq7R:In" }}
-            {{ output = "eq7L:Out" input = "eq8L:In" }}
-            {{ output = "eq7R:Out" input = "eq8R:In" }}
-            {{ output = "eq8L:Out" input = "eq9L:In" }}
-            {{ output = "eq8R:Out" input = "eq9R:In" }}
-            {{ output = "eq9L:Out" input = "bassL:In" }}
-            {{ output = "eq9R:Out" input = "bassR:In" }}
-            {{ output = "bassL:Out" input = "trebleL:In" }}
-            {{ output = "bassR:Out" input = "trebleR:In" }}
-            {{ output = "trebleL:Out" input = "voiceL:In" }}
-            {{ output = "trebleR:Out" input = "voiceR:In" }}
+                    {{ output = "eq0L:Out" input = "eq1L:In" }}
+                    {{ output = "eq0R:Out" input = "eq1R:In" }}
+                    {{ output = "eq1L:Out" input = "eq2L:In" }}
+                    {{ output = "eq1R:Out" input = "eq2R:In" }}
+                    {{ output = "eq2L:Out" input = "eq3L:In" }}
+                    {{ output = "eq2R:Out" input = "eq3R:In" }}
+                    {{ output = "eq3L:Out" input = "eq4L:In" }}
+                    {{ output = "eq3R:Out" input = "eq4R:In" }}
+                    {{ output = "eq4L:Out" input = "eq5L:In" }}
+                    {{ output = "eq4R:Out" input = "eq5R:In" }}
+                    {{ output = "eq5L:Out" input = "eq6L:In" }}
+                    {{ output = "eq5R:Out" input = "eq6R:In" }}
+                    {{ output = "eq6L:Out" input = "eq7L:In" }}
+                    {{ output = "eq6R:Out" input = "eq7R:In" }}
+                    {{ output = "eq7L:Out" input = "eq8L:In" }}
+                    {{ output = "eq7R:Out" input = "eq8R:In" }}
+                    {{ output = "eq8L:Out" input = "eq9L:In" }}
+                    {{ output = "eq8R:Out" input = "eq9R:In" }}
+                    {{ output = "eq9L:Out" input = "bassL:In" }}
+                    {{ output = "eq9R:Out" input = "bassR:In" }}
+                    {{ output = "bassL:Out" input = "trebleL:In" }}
+                    {{ output = "bassR:Out" input = "trebleR:In" }}
+                    {{ output = "trebleL:Out" input = "voiceL:In" }}
+                    {{ output = "trebleR:Out" input = "voiceR:In" }}
+                    {{ output = "voiceL:Out" input = "spatializer:Input L" }}
+                    {{ output = "voiceR:Out" input = "spatializer:Input R" }}
+                    {{ output = "spatializer:Output L" input = "compressorL:Input" }}
+                    {{ output = "spatializer:Output R" input = "compressorR:Input" }}
+                    {{ output = "compressorL:Output" input = "limiter:Input 1" }}
+                    {{ output = "compressorR:Output" input = "limiter:Input 2" }}
                 ]
                 inputs  = [ "eq0L:In" "eq0R:In" ]
-                outputs = [ "voiceL:Out" "voiceR:Out" ]
+                outputs = [ "limiter:Output 1" "limiter:Output 2" ]
             }}
             capture.props = {{
                 node.name      = "msi_dsp_input"
-                media.class    = Audio/Sink
+                media.class    = "Audio/Sink"
                 audio.channels = 2
-                audio.position = [ FL FR ]
+                audio.position = [ "FL" "FR" ]
             }}
             playback.props = {{
                 node.name      = "msi_dsp_output"
                 audio.channels = 2
-                audio.position = [ FL FR ]
+                audio.position = [ "FL" "FR" ]
             }}
         }}
     }}
+
 ]
 "#);
     
     fs::write(FILTER_CHAIN_CONFIG_PATH, config)?;
-    info!("Filter chain config written to {}", FILTER_CHAIN_CONFIG_PATH);
+    info!("Filter chain config written: Name={}, Mode={}, Width={:.2}", 
+        profile.name, profile.surround_variation, stereo_width);
     Ok(())
 }
 
+
 fn get_filter_node_id() -> Option<u32> {
     let output = Command::new("pw-cli")
-        .args(["info", "msi_dsp_input"])
+        .args(["ls", "Node"])
         .output()
         .ok()?;
     
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let mut current_id = None;
     
     for line in stdout.lines() {
-        let trimmed = line.trim().to_string();
-        if trimmed.starts_with("id:") {
-            let id_str = trimmed.replace("id:", "").trim().to_string();
-            return id_str.parse().ok();
+        if line.contains("id ") && line.contains("type PipeWire:Interface:Node") {
+            // Extract ID: "        id 118, type PipeWire:Interface:Node/3"
+            if let Some(id_part) = line.split("id ").nth(1) {
+                if let Some(id_val) = id_part.split(',').next() {
+                    current_id = id_val.trim().parse::<u32>().ok();
+                }
+            }
+        }
+        
+        if line.contains("node.name = \"msi_dsp_input\"") {
+            if let Some(id) = current_id {
+                info!("Found msi_dsp_input at node id {}", id);
+                return Some(id);
+            }
         }
     }
     None
@@ -468,46 +746,83 @@ fn update_filter_params(profile: &AudioProfile) {
     if let Some(node_id) = get_filter_node_id() {
         info!("Updating filter params for node {}", node_id);
         
+        let mut updates = Vec::new();
+        
+        // Effects Bypass check
+        let (bass, treble, voice, eq_gains, spatializer_width, _limiter_active) = if profile.effects_enabled {
+            let b = if profile.bass_boost { profile.bass } else { 0.0 };
+            let t = if profile.treble_enhancer { profile.treble } else { 0.0 };
+            let v = if profile.voice_clarity { profile.voice } else { 0.0 };
+            (b, t, v, profile.eq_gains.clone(), profile.stereo_width, true)
+        } else {
+            (0.0, 0.0, 0.0, vec![0.0; 10], 1.0, false)
+        };
+
+        // EQ Bands
         let eq_bands = ["eq0", "eq1", "eq2", "eq3", "eq4", "eq5", "eq6", "eq7", "eq8", "eq9"];
         for (i, band) in eq_bands.iter().enumerate() {
-            if let Some(gain) = profile.eq_gains.get(i) {
-                for ch in ['L', 'R'] {
-                    let param = format!("{}{}:Gain", band, ch);
-                    let cmd = format!(
-                        "pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'",
-                        node_id, param, gain
-                    );
-                    let _ = Command::new("sh")
-                        .args(["-c", &cmd])
-                        .output();
-                }
-            }
+            let gain = eq_gains.get(i).unwrap_or(&0.0);
+            updates.push((format!("{}L:Gain", band), *gain));
+            updates.push((format!("{}R:Gain", band), *gain));
         }
         
-        for ch in ['L', 'R'] {
+        // Common Gains
+        updates.push(("bassL:Gain".into(), bass));
+        updates.push(("bassR:Gain".into(), bass));
+        updates.push(("trebleL:Gain".into(), treble));
+        updates.push(("trebleR:Gain".into(), treble));
+        updates.push(("voiceL:Gain".into(), voice));
+        updates.push(("voiceR:Gain".into(), voice));
+        
+        // Advanced Controls (Spatializer)
+        let mut width = spatializer_width;
+        if profile.surround {
+            match profile.surround_variation.as_str() {
+                "Headset" => width *= 0.8,
+                "Virtual" | "Surround" => width *= 1.4,
+                "3D" => width *= 1.8,
+                "Wide" => width *= 2.5,
+                _ => {}
+            }
+        } else {
+            width = 1.0;
+        }
+        // Matrix Spatializer uses "Width"
+        updates.push(("spatializer:Width".into(), width));
+        
+        // Limiter & Night Mode logic
+        let night_mode_active = profile.night_mode && profile.effects_enabled;
+        let volume_stabilizer_active = profile.limiter_enabled && profile.effects_enabled;
+        
+        let limiter_threshold = if night_mode_active { -12.0 } else if volume_stabilizer_active { -1.0 } else { -0.1 };
+        let compress_ratio = if night_mode_active { 8.0 } else { profile.compressor_ratio.max(1.0) };
+        
+        // Dyson Compress uses these names
+        updates.push(("compressorL:Peak limit (dB)".into(), limiter_threshold));
+        updates.push(("compressorR:Peak limit (dB)".into(), limiter_threshold));
+        updates.push(("compressorL:Compression ratio".into(), compress_ratio));
+        updates.push(("compressorR:Compression ratio".into(), compress_ratio));
+        
+        // Global Limiter safety
+        updates.push(("limiter:Limit (dB)".into(), -0.1));
+
+        for (param, value) in updates {
+            // Note: pw-cli set-param requires the param name in double quotes like "node:param"
             let cmd = format!(
-                "pw-cli set-param {} Props '{{ params = [ \"bass{}:Gain\" {} ] }}'",
-                node_id, ch, profile.bass
+                "pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'",
+                node_id, param, value
             );
-            let _ = Command::new("sh")
+            debug!("DSP: Executing {}", cmd);
+            let output = Command::new("sh")
                 .args(["-c", &cmd])
                 .output();
             
-            let cmd = format!(
-                "pw-cli set-param {} Props '{{ params = [ \"treble{}:Gain\" {} ] }}'",
-                node_id, ch, profile.treble
-            );
-            let _ = Command::new("sh")
-                .args(["-c", &cmd])
-                .output();
-            
-            let cmd = format!(
-                "pw-cli set-param {} Props '{{ params = [ \"voice{}:Gain\" {} ] }}'",
-                node_id, ch, profile.voice
-            );
-            let _ = Command::new("sh")
-                .args(["-c", &cmd])
-                .output();
+            if let Ok(out) = output {
+                if !out.status.success() {
+                    let err = String::from_utf8_lossy(&out.stderr);
+                    warn!("DSP: Failed to update param {}: {}", param, err);
+                }
+            }
         }
         
         info!("Filter parameters updated successfully");
@@ -516,7 +831,8 @@ fn update_filter_params(profile: &AudioProfile) {
     }
 }
 
-fn apply_dsp_settings(profile: &AudioProfile) {
+
+fn apply_dsp_settings(profile: &AudioProfile, update_volume: bool) {
     if !DSP_ENABLED.load(Ordering::SeqCst) {
         info!("DSP is disabled, skipping settings application");
         return;
@@ -535,28 +851,13 @@ fn apply_dsp_settings(profile: &AudioProfile) {
         let _ = save_profile_to_file(profile);
     }
     
-    let profile_changed = {
-        let mut last = LAST_PROFILE_NAME.lock().unwrap();
-        if *last != profile.name {
-            info!("Profile changed from {} to {}", *last, profile.name);
-            *last = profile.name.clone();
-            true
-        } else {
-            false
-        }
-    };
-    
-    if !check_filter_chain_running() || profile_changed {
-        info!("Filter chain not running or profile changed, starting/restarting...");
+    // EasyEffects-style: Always use persistent filter chain, never restart
+    // Only update parameters dynamically
+    if !check_filter_chain_running() {
+        info!("Filter chain not running, starting persistent chain...");
         if let Err(e) = generate_filter_chain_config(profile) {
             error!("Failed to generate filter chain config: {}", e);
             return;
-        }
-        
-        info!("Starting/restarting filter chain...");
-        if check_filter_chain_running() {
-            kill_filter_chain();
-            std::thread::sleep(std::time::Duration::from_millis(100));
         }
         
         if !start_filter_chain() {
@@ -565,25 +866,33 @@ fn apply_dsp_settings(profile: &AudioProfile) {
         }
         
         std::thread::sleep(std::time::Duration::from_millis(300));
-        
         link_filter_chain();
-        set_default_sink_to_dsp();
         
         std::thread::sleep(std::time::Duration::from_millis(100));
-    } else if check_filter_chain_running() {
-        // Dynamically update parameters without restarting the filter chain
-        info!("Updating filter parameters dynamically...");
+    } else {
+        // Filter chain is already running - just update parameters
+        info!("Updating filter parameters dynamically (persistent chain)...");
         update_filter_params(profile);
     }
     
-    let new_volume = profile.volume.max(0.01);
-    set_sink_volume(new_volume);
-    info!("Volume set to {}%", (new_volume * 100.0) as i32);
+    // Global Effects Toggle (Sink Switching)
+    if profile.effects_enabled {
+        set_default_sink_to_dsp();
+    } else {
+        disable_dsp_switch_to_direct();
+    }
+    
+    if update_volume {
+        let new_volume = profile.volume.max(0.01);
+        set_sink_volume(new_volume);
+        info!("Volume set to {}%", (new_volume * 100.0) as i32);
+    }
     
     let _ = save_profile(profile);
     
     FILTER_CHAIN_RUNNING.store(true, Ordering::SeqCst);
-    info!("DSP settings applied successfully");
+    info!("COMMITTING full DSP state: Profile={}, Effects={}", profile.name, profile.effects_enabled);
+    info!("DSP settings applied successfully (persistent architecture)");
 }
 
 #[tokio::main]
@@ -599,16 +908,29 @@ async fn main() -> Result<()> {
     initialize_profiles();
     
     let saved_profile = load_saved_profile();
-    info!("Initial profile: {}", saved_profile.name);
+    info!("Initial profile loaded: {}", saved_profile.name);
     info!("  bass: {}, treble: {}, voice: {}", 
         saved_profile.bass, saved_profile.treble, saved_profile.voice);
+    info!("  EQ gains: {:?}", saved_profile.eq_gains);
+    info!("  Volume: {}%", (saved_profile.volume * 100.0) as i32);
 
     {
         let mut last = LAST_PROFILE_NAME.lock().unwrap();
         *last = saved_profile.name.clone();
     }
     
-    apply_dsp_settings(&saved_profile);
+    // Auto-apply saved profile on startup
+    info!("Auto-applying saved DSP profile on service startup...");
+    apply_dsp_settings(&saved_profile, true);
+
+    // Start background device monitor for seamless switching
+    start_device_monitor();
+    
+    // Auto-set default sink to DSP if DSP is enabled
+    if DSP_ENABLED.load(Ordering::SeqCst) && check_filter_chain_running() {
+        set_default_sink_to_dsp();
+        info!("Auto-set default sink to MSI DSP");
+    }
 
     let _ = fs::remove_file(SOCKET_PATH);
 
@@ -618,136 +940,136 @@ async fn main() -> Result<()> {
     loop {
         match listener.accept().await {
             Ok((mut socket, _)) => {
-                let mut buf = vec![0u8; 8192];
-                let n = socket.read(&mut buf).await.unwrap_or(0);
-                if n > 0 {
-                    let message = String::from_utf8_lossy(&buf[..n]).trim().to_string();
-                    
-                    if message == "ENABLE" {
-                        info!("Received ENABLE command");
-                        if !check_filter_chain_running() {
-                            let profile = load_saved_profile();
-                            apply_dsp_settings(&profile);
-                        } else {
-                            set_default_sink_to_dsp();
-                        }
-                        let _ = socket.write_all(b"OK\n").await;
-                    } else if message == "DISABLE" {
-                        info!("Received DISABLE command");
-                        disable_dsp_switch_to_direct();
-                        let _ = socket.write_all(b"OK\n").await;
-                    } else if message.starts_with("LOAD:") {
-                        let profile_name = message.replace("LOAD:", "").trim().to_string();
-                        info!("Received LOAD profile command: {}", profile_name);
+                tokio::spawn(async move {
+                    let mut buf = vec![0u8; 8192];
+                    info!("Client connected to DSP socket");
+                    loop {
+                        match socket.read(&mut buf).await {
+                            Ok(0) => {
+                                info!("Client disconnected");
+                                break;
+                            }
+                            Ok(n) => {
+                                let raw_msg = String::from_utf8_lossy(&buf[..n]);
+                                // Split multiple commands in one packet if they arrived together
+                                for message in raw_msg.split('\n').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                                    if message == "ENABLE" {
+                                        info!("Received ENABLE command");
+                                        if !check_filter_chain_running() {
+                                            let profile = load_saved_profile();
+                                            apply_dsp_settings(&profile, false); // Don't reset volume on enable
+                                        } else {
+                                            set_default_sink_to_dsp();
+                                        }
+                                        let _ = socket.write_all(b"OK\n").await;
+                                    } else if message == "DISABLE" {
+                                        info!("Received DISABLE command");
+                                        disable_dsp_switch_to_direct();
+                                        let _ = socket.write_all(b"OK\n").await;
+                                    } else if message.starts_with("LOAD:") {
+                                        let profile_name = message.replace("LOAD:", "").trim().to_string();
+                                        info!("Received LOAD profile command: {}", profile_name);
 
-                        let mut profile_opt = {
-                            let settings = PROFILE_SETTINGS.lock().unwrap();
-                            settings.get(&profile_name).cloned()
-                        };
+                                        let mut profile_opt = {
+                                            let settings = PROFILE_SETTINGS.lock().unwrap();
+                                            settings.get(&profile_name).cloned()
+                                        };
 
-                        if profile_opt.is_none() {
-                            let profile_path = format!("{}/{}.json", PROFILES_DIR, profile_name);
-                            if let Ok(content) = fs::read_to_string(&profile_path) {
-                                if let Ok(profile) = serde_json::from_str::<AudioProfile>(&content) {
-                                    info!("Loaded profile {} from disk on demand", profile_name);
-                                    {
-                                        let mut settings = PROFILE_SETTINGS.lock().unwrap();
-                                        settings.insert(profile_name.clone(), profile.clone());
+                                        if profile_opt.is_none() {
+                                            let profile_path = format!("{}/{}.json", PROFILES_DIR, profile_name);
+                                            if let Ok(content) = fs::read_to_string(&profile_path) {
+                                                if let Ok(profile) = serde_json::from_str::<AudioProfile>(&content) {
+                                                    info!("Loaded profile {} from disk on demand", profile_name);
+                                                    {
+                                                        let mut settings = PROFILE_SETTINGS.lock().unwrap();
+                                                        settings.insert(profile_name.clone(), profile.clone());
+                                                    }
+                                                    profile_opt = Some(profile);
+                                                }
+                                            }
+                                        }
+
+                                        if profile_opt.is_none() {
+                                            let mut fallback = get_default_profile(&profile_name);
+                                            fallback.name = profile_name.clone();
+                                            info!("Using default profile fallback for {}", profile_name);
+                                            {
+                                                let mut settings = PROFILE_SETTINGS.lock().unwrap();
+                                                settings.insert(profile_name.clone(), fallback.clone());
+                                                let _ = save_profile_to_file(&fallback);
+                                            }
+                                            profile_opt = Some(fallback);
+                                        }
+                                        
+                                        if let Some(profile) = profile_opt {
+                                            let json = serde_json::to_string(&profile).unwrap_or_default();
+                                            let _ = socket.write_all(json.as_bytes()).await;
+                                            let _ = socket.write_all(b"\n").await;
+                                            apply_dsp_settings(&profile, false); // Don't reset volume on profile load
+                                        } else {
+                                            let _ = socket.write_all(b"ERROR: profile not found\n").await;
+                                        }
+                                    } else if message.starts_with("SAVE:") {
+                                        let json_str = message.replace("SAVE:", "").trim().to_string();
+                                        if let Ok(mut profile) = serde_json::from_str::<AudioProfile>(&json_str) {
+                                            clamp_profile(&mut profile);
+                                            {
+                                                let mut settings = PROFILE_SETTINGS.lock().unwrap();
+                                                settings.insert(profile.name.clone(), profile.clone());
+                                                let _ = save_profile_to_file(&profile);
+                                            }
+                                            let _ = socket.write_all(b"OK\n").await;
+                                        } else {
+                                            let _ = socket.write_all(b"ERROR: invalid JSON\n").await;
+                                        }
+                                    } else if message == "STATUS" {
+                                        let status = if DSP_ENABLED.load(Ordering::SeqCst) && check_filter_chain_running() { "enabled" } else { "disabled" };
+                                        let response = format!("{}\n", status);
+                                        let _ = socket.write_all(response.as_bytes()).await;
+                                    } else if message.starts_with("VOLUME") {
+                                        info!("Received VOLUME command: {}", message);
+                                        let vol_str = message.replace("VOLUME:", "").replace("VOLUME", "");
+                                        if let Ok(vol) = vol_str.trim().parse::<f64>() {
+                                            let new_vol: f64 = vol.clamp(0.01, 1.5);
+                                            set_sink_volume(new_vol);
+                                            let _ = socket.write_all(b"OK\n").await;
+                                        } else {
+                                            let _ = socket.write_all(b"ERROR: invalid volume\n").await;
+                                        }
+                                    } else if message.starts_with("UPDATE") {
+                                        let json_str = message.replace("UPDATE:", "").replace("UPDATE", "");
+                                        if let Ok(mut profile) = serde_json::from_str::<AudioProfile>(&json_str) {
+                                            clamp_profile(&mut profile);
+                                            apply_dsp_settings(&profile, false); // UPDATE command should not change volume unless explicitly requested
+                                            let _ = socket.write_all(b"OK\n").await;
+                                        } else {
+                                            let _ = socket.write_all(b"ERROR: invalid JSON\n").await;
+                                        }
                                     }
-                                    profile_opt = Some(profile);
                                 }
-                            }
-                        }
-
-                        if profile_opt.is_none() {
-                            let mut fallback = get_default_profile(&profile_name);
-                            fallback.name = profile_name.clone();
-                            info!("Using default profile fallback for {}", profile_name);
-                            {
-                                let mut settings = PROFILE_SETTINGS.lock().unwrap();
-                                settings.insert(profile_name.clone(), fallback.clone());
-                                let _ = save_profile_to_file(&fallback);
-                            }
-                            profile_opt = Some(fallback);
-                        }
-                        
-                        if let Some(profile) = profile_opt {
-                            // Send response immediately
-                            let json = serde_json::to_string(&profile).unwrap_or_default();
-                            let _ = socket.write_all(json.as_bytes()).await;
-                            
-                            // Then apply settings asynchronously
-                            tokio::spawn(async move {
-                                apply_dsp_settings(&profile);
-                            });
-                        } else {
-                            let _ = socket.write_all(b"ERROR: profile not found\n").await;
-                        }
-                    } else if message.starts_with("SAVE:") {
-                        let json_str = message.replace("SAVE:", "").trim().to_string();
-                        if let Ok(profile) = serde_json::from_str::<AudioProfile>(&json_str) {
-                            {
-                                let mut settings = PROFILE_SETTINGS.lock().unwrap();
-                                settings.insert(profile.name.clone(), profile.clone());
-                                let _ = save_profile_to_file(&profile);
-                            }
-                            let _ = socket.write_all(b"OK\n").await;
-                        } else {
-                            let _ = socket.write_all(b"ERROR: invalid JSON\n").await;
-                        }
-                    } else if message == "STATUS" {
-                        let status = if DSP_ENABLED.load(Ordering::SeqCst) && check_filter_chain_running() { "enabled" } else { "disabled" };
-                        let response = format!("{}\n", status);
-                        let _ = socket.write_all(response.as_bytes()).await;
-                    } else if message.starts_with("VOLUME") {
-                        info!("Received VOLUME command: {}", message);
-                        let vol_str = message.replace("VOLUME:", "").replace("VOLUME", "");
-                        if let Ok(vol) = vol_str.trim().parse::<f64>() {
-                            let new_vol: f64 = vol.max(0.01);
-                            set_sink_volume(new_vol);
-                            info!("Volume updated to {}%", (new_vol * 100.0) as i32);
-                            let _ = socket.write_all(b"OK\n").await;
-                        } else {
-                            let _ = socket.write_all(b"ERROR: invalid volume\n").await;
-                        }
-                    } else if message.starts_with("UPDATE") {
-                        info!("Received UPDATE command");
-                        let json_str = message.replace("UPDATE:", "").replace("UPDATE", "");
-                        if let Ok(profile) = serde_json::from_str::<AudioProfile>(&json_str) {
-                            apply_dsp_settings(&profile);
-                            info!("Update applied with profile settings");
-                            let _ = socket.write_all(b"OK\n").await;
-                        } else {
-                            let _ = socket.write_all(b"ERROR: invalid JSON\n").await;
-                        }
-                    } else {
-                        match serde_json::from_slice::<AudioProfile>(&buf[..n]) {
-                            Ok(profile) => {
-                                info!("Received: {}", profile.name);
-                                info!("  bass: {}, treble: {}, voice: {}", 
-                                    profile.bass, profile.treble, profile.voice);
-                                info!("  EQ: {:?}", profile.eq_gains);
-                                
-                                if let Err(e) = save_profile(&profile) {
-                                    error!("Failed to save profile: {}", e);
-                                }
-                                
-                                apply_dsp_settings(&profile);
-                                
-                                let _ = socket.write_all(b"OK\n").await;
-                                info!("Profile applied and saved");
                             }
                             Err(e) => {
-                                error!("Failed to parse profile: {}", e);
-                                let _ = socket.write_all(b"ERROR: invalid JSON\n").await;
+                                error!("Socket read error: {}", e);
+                                break;
                             }
                         }
                     }
-                }
+                });
             }
             Err(e) => {
                 error!("Accept error: {}", e);
             }
         }
     }
+}
+
+fn clamp_profile(profile: &mut AudioProfile) {
+    profile.bass = profile.bass.clamp(-12.0, 12.0);
+    profile.treble = profile.treble.clamp(-12.0, 12.0);
+    profile.voice = profile.voice.clamp(-12.0, 12.0);
+    for gain in profile.eq_gains.iter_mut() {
+        *gain = gain.clamp(-15.0, 15.0);
+    }
+    profile.volume = profile.volume.clamp(0.0, 1.5);
+    profile.stereo_width = profile.stereo_width.clamp(0.0, 2.0);
 }

@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
+import 'sound_tune/widgets/shared_widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../logic/blocs/sound/sound_bloc.dart';
 import '../logic/blocs/sound/sound_event.dart';
-import '../logic/blocs/sound/sound_state.dart';
 import '../services/toast_service.dart';
 import '../core/di/injection.dart';
 
-// MSI Nahimic Color Palette
-const _bg = Color(0xFF0F1115); // MSI Dark Black
-const _panel = Color(0xFF181B21); // MSI Dark Panel
-const _panelBorder = Color(0xFF252932); // Subtle border
-const _accent = Color(0xFFD32F2F); // MSI Red (standardized)
-const _accentGlow = Color(0x33D32F2F);
-const _textPrimary = Color(0xFFFFFFFF);
-const _textSub = Color(0xFF9E9E9E);
+// Nahimic Premium Palette
+const _bg = Color(0xFF0A0C10);
+const _panel = Color(0xFF14171C);
+const _panelBorder = Color(0xFF1F2228);
+const _accent = Color(0xFFE53935); // Nahimic Red
+const _textPrimary = Color(0xFFF0F0F0);
+const _textSub = Color(0xFF8E9196);
+
 
 class SoundTuneScreen extends StatefulWidget {
   const SoundTuneScreen({super.key});
@@ -34,18 +34,12 @@ class _SoundTuneScreenState extends State<SoundTuneScreen>
       backgroundColor: _bg,
       body: Column(
         children: [
-          // Header
           const _AudioHeader(),
-          // Mode Tabs
           const _ModeTabs(),
-          // Main Grid
           Expanded(
             child: Row(
               children: [
-                // Left volume bar
-                const _LeftVolumeBar(),
-                const SizedBox(width: 1),
-                // Content panels
+                const _LeftSidebar(),
                 const Expanded(child: _ContentLayout()),
               ],
             ),
@@ -61,72 +55,100 @@ class _AudioHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectsOn = context.select((SoundBloc b) => b.state.effectsEnabled);
+
     return Container(
-      height: 50,
+      height: 54,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: _panel,
-        border: Border(bottom: BorderSide(color: _panelBorder)),
+        border: Border(bottom: BorderSide(color: _panelBorder, width: 1)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.power_settings_new, color: _accent, size: 20),
-          const SizedBox(width: 8),
-          const Text(
-            'Effects ON',
-            style: TextStyle(color: _accent, fontSize: 12, letterSpacing: 1.2),
+          Icon(
+            Icons.power_settings_new_rounded,
+            color: effectsOn ? _accent : _textSub,
+            size: 20,
           ),
+          const SizedBox(width: 8),
+          Text(
+            effectsOn ? 'EFFECTS ON' : 'EFFECTS OFF',
+            style: TextStyle(
+              color: effectsOn ? _accent : _textSub,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(width: 32),
+          const _NightModeToggle(),
           const Spacer(),
           const Text(
             'AUDIO',
             style: TextStyle(
               color: _textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 4,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 8.0,
             ),
           ),
           const Spacer(),
-          // Try button
-          TextButton.icon(
-            onPressed: () async {
-              // Open a short test tone with paplay
-              _showSnackbar(context, '▶ Playing test tone...');
-            },
-            icon: const Icon(
-              Icons.play_circle_outline,
-              color: _accent,
-              size: 20,
-            ),
-            label: const Text('Try', style: TextStyle(color: _accent)),
+          _HeaderAction(
+            onPressed: () => getIt<ToastService>().showInfo('▶ Playing test tone...'),
+            icon: Icons.play_circle_outline_rounded,
+            label: 'Try',
+            color: _accent,
           ),
-          // Reset button
-          TextButton.icon(
-            onPressed: () {
-              context.read<SoundBloc>().add(
-                UpdateEQGains(List.generate(10, (_) => 0.0)),
-              );
-              context.read<SoundBloc>().add(
-                const ChangeEffectGain('bass', 0.0),
-              );
-              context.read<SoundBloc>().add(
-                const ChangeEffectGain('treble', 0.0),
-              );
-              context.read<SoundBloc>().add(
-                const ChangeEffectGain('voice', 0.0),
-              );
-              _showSnackbar(context, 'Audio settings reset to flat.');
-            },
-            icon: const Icon(Icons.refresh, color: _textSub, size: 18),
-            label: const Text('Reset', style: TextStyle(color: _textSub)),
+          const SizedBox(width: 16),
+          _HeaderAction(
+            onPressed: () => context.read<SoundBloc>().add(ResetSoundSettings()),
+            icon: Icons.refresh_rounded,
+            label: 'Reset',
+            color: _textSub,
           ),
         ],
       ),
     );
   }
+}
 
-  void _showSnackbar(BuildContext context, String msg) {
-    getIt<ToastService>().showInfo(msg);
+class _HeaderAction extends StatelessWidget {
+  final VoidCallback onPressed;
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _HeaderAction({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Tap to $label',
+      preferBelow: true,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          child: Row(
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -138,56 +160,59 @@ class _ModeTabs extends StatelessWidget {
     final profile = context.select((SoundBloc b) => b.state.profile);
 
     const tabs = [
-      ('MUSIC', 'Music', Icons.music_note),
-      ('GAMING', 'Gaming', Icons.sports_esports),
-      ('MOVIE', 'Movie', Icons.movie_creation_outlined),
-      ('COMMUNICATION', 'Voice', Icons.headset_mic_outlined),
-      ('SMART', 'Custom', Icons.auto_awesome_outlined),
+      ('MUSIC', 'Music', Icons.music_note_rounded, 'Optimized for critical listening'),
+      ('GAMING', 'Gaming', Icons.sports_esports_rounded, 'Enhanced spatial awareness'),
+      ('MOVIE', 'Movie', Icons.movie_filter_rounded, 'Cinematic dialogue and bass'),
+      ('COMMUNICATION', 'Voice', Icons.headset_mic_rounded, 'Perfect clarity for chat'),
+      ('SMART', 'Custom', Icons.auto_awesome_rounded, 'Adaptive intelligence'),
     ];
 
     return Container(
-      height: 72,
+      height: 76,
       color: _panel,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: tabs.map((t) {
-          final (label, profileKey, icon) = t;
+          final (label, profileKey, icon, tooltip) = t;
           final isSelected = profile == profileKey;
 
           return Expanded(
-            child: GestureDetector(
-              onTap: () =>
-                  context.read<SoundBloc>().add(SetSoundProfile(profileKey)),
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isSelected ? _accent : Colors.transparent,
-                      width: 3,
+            child: Tooltip(
+              message: tooltip,
+              child: GestureDetector(
+                onTap: () => context.read<SoundBloc>().add(SetSoundProfile(profileKey)),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: isSelected ? _accent : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      gradient: isSelected ? LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [_accent.withOpacity(0.05), Colors.transparent],
+                      ) : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, color: isSelected ? _accent : _textSub, size: 22),
+                        const SizedBox(height: 6),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            color: isSelected ? _textPrimary : _textSub,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 22,
-                      color: isSelected ? _accent : _textSub,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        color: isSelected ? _textPrimary : _textSub,
-                        fontSize: 11,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),
@@ -198,67 +223,120 @@ class _ModeTabs extends StatelessWidget {
   }
 }
 
-class _LeftVolumeBar extends StatelessWidget {
-  const _LeftVolumeBar();
+class _LeftSidebar extends StatelessWidget {
+  const _LeftSidebar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 72,
+      decoration: const BoxDecoration(
+        color: _panel,
+        border: Border(right: BorderSide(color: _panelBorder, width: 1)),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 20),
+          _VerticalTabText(
+            label: 'EQUALIZER',
+            tooltip: 'Fine-tune audio frequencies',
+            onTap: () {
+              showGeneralDialog(
+                context: context,
+                barrierDismissible: true,
+                barrierLabel: 'EQ',
+                barrierColor: Colors.black.withOpacity(0.8),
+                pageBuilder: (c, a, s) => const _EqualizerPopup(),
+              );
+            },
+          ),
+          const Spacer(),
+          const _VerticalVolumeBar(),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+}
+
+class _VerticalTabText extends StatelessWidget {
+  final String label;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  const _VerticalTabText({required this.label, required this.tooltip, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        child: RotatedBox(
+          quarterTurns: 3,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.tune_rounded, color: _accent, size: 18),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: _textSub,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VerticalVolumeBar extends StatelessWidget {
+  const _VerticalVolumeBar();
 
   @override
   Widget build(BuildContext context) {
     final boost = context.select((SoundBloc b) => b.state.volumeBoost);
-    final pct = ((boost) * 100).round();
 
-    return Container(
-      width: 72,
-      color: _panel,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.headphones, color: _textPrimary, size: 24),
-          const SizedBox(height: 4),
-          const Text(
-            'Headphones',
-            style: TextStyle(color: _textSub, fontSize: 9),
-            textAlign: TextAlign.center,
+    return Column(
+      children: [
+        const Icon(Icons.headphones_rounded, color: _textPrimary, size: 22),
+        const SizedBox(height: 4),
+        const Text(
+          'OUTPUT',
+          style: TextStyle(color: _textSub, fontSize: 8, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 180,
+          child: NahimicSlider(
+            value: boost,
+            min: 0.0,
+            max: 1.0,
+            isVertical: true,
+            onChanged: (v) {
+              context.read<SoundBloc>().add(ChangeVolumeBoost(v));
+            },
           ),
-          const SizedBox(height: 16),
-          Text(
-            boost >= 1.0 ? '+$pct%' : '$pct%',
-            style: const TextStyle(
-              color: _accent,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: RotatedBox(
-                quarterTurns: 3,
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: _accent,
-                    inactiveTrackColor: Colors.white10,
-                    thumbColor: Colors.white,
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 7,
-                    ),
-                  ),
-                  child: Slider(
-                    value: boost,
-                    min: 0.0,
-                    max: 1.2,
-                    onChanged: (v) =>
-                        context.read<SoundBloc>().add(ChangeVolumeBoost(v)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const Icon(Icons.volume_off, color: _textSub, size: 18),
-          const Text('Mute', style: TextStyle(color: _textSub, fontSize: 9)),
-          const SizedBox(height: 16),
-        ],
-      ),
+        ),
+        const SizedBox(height: 16),
+        IconButton(
+          onPressed: () => context.read<SoundBloc>().add(const ChangeVolumeBoost(0.0)),
+          icon: const Icon(Icons.volume_off_rounded, color: _textSub, size: 20),
+        ),
+        const Text(
+          'MUTE',
+          style: TextStyle(color: _textSub, fontSize: 8, fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
 }
@@ -270,210 +348,41 @@ class _ContentLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Top row: Surround Sound + Volume Stabilizer
         Expanded(
           flex: 5,
           child: Row(
             children: [
-              // Surround Sound panel
-              Expanded(
-                flex: 3,
-                child: _Panel(
-                  child: Row(
-                    children: [
-                      // Equalizer sidebar button
-                      Container(
-                        width: 70,
-                        color: _bg.withOpacity(0.5),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              icon: const Icon(
-                                Icons.tune,
-                                color: _accent,
-                                size: 28,
-                              ),
-                              onPressed: () {
-                                showGeneralDialog(
-                                  context: context,
-                                  barrierDismissible: true,
-                                  barrierLabel: 'EQ',
-                                  barrierColor: Colors.black.withOpacity(0.7),
-                                  pageBuilder: (c, a, s) =>
-                                      const _EqualizerPopup(),
-                                );
-                              },
-                            ),
-                            const Text(
-                              'Equalizer',
-                              style: TextStyle(color: _textSub, fontSize: 10),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // 3D head illustration
-                      Expanded(
-                        child: Center(
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Container(
-                                width: 90,
-                                height: 90,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: _accent, width: 1),
-                                  gradient: RadialGradient(
-                                    colors: [
-                                      _accent.withOpacity(0.12),
-                                      Colors.transparent,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const Icon(
-                                Icons.person_outline,
-                                color: _textSub,
-                                size: 60,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Text panel
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'SURROUND SOUND',
-                                    style: TextStyle(
-                                      color: _textPrimary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.5,
-                                    ),
-                                  ),
-                                  _PowerToggle(field: 'virtualSurround'),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Make Sound come from all around you for a better immersion.',
-                                style: TextStyle(
-                                  color: _textSub,
-                                  fontSize: 12,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Volume Stabilizer panel
-              Expanded(
-                flex: 2,
-                child: _Panel(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'VOLUME\nSTABILIZER',
-                              style: TextStyle(
-                                color: _textPrimary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            _PowerToggle(field: 'smartVolume'),
-                          ],
-                        ),
-                        const Spacer(),
-                        // Waveform animation placeholder
-                        const Center(
-                          child: Icon(
-                            Icons.graphic_eq,
-                            size: 52,
-                            color: _accent,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'QUIET OFF',
-                          style: TextStyle(
-                            color: _textSub,
-                            fontSize: 10,
-                            letterSpacing: 1.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const Spacer(),
-                        const Text(
-                          'Volume is never inaudible or too loud.',
-                          style: TextStyle(color: _textSub, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              const Expanded(flex: 3, child: _SurroundPanel()),
+              const Expanded(flex: 2, child: _StabilizerPanel()),
             ],
           ),
         ),
-        // Bottom row: Voices, Bass, Treble
         Expanded(
           flex: 4,
           child: Row(
             children: [
               Expanded(
-                child: _Panel(
-                  child: _EffectSliderPanel(
-                    title: 'VOICES',
-                    field: 'voice',
-                    enableField: 'voiceClarity',
-                    desc:
-                        'Make them faraway or present\n(dialogs, choirs, chat, etc.)',
-                  ),
+                child: _EffectBox(
+                  title: 'VOICES',
+                  field: 'voice',
+                  enableField: 'voiceClarity',
+                  desc: 'Make them faraway or present\n(dialogs, choirs, chat, etc.)',
                 ),
               ),
               Expanded(
-                child: _Panel(
-                  child: _EffectSliderPanel(
-                    title: 'BASS',
-                    field: 'bass',
-                    enableField: 'bassBoost',
-                    desc:
-                        'Make them punchy or lighter\n(explosions, beats, bass guitars)',
-                  ),
+                child: _EffectBox(
+                  title: 'BASS',
+                  field: 'bass',
+                  enableField: 'bassBoost',
+                  desc: 'Make them punchy or lighter\n(explosions, beats, bass guitars)',
                 ),
               ),
               Expanded(
-                child: _Panel(
-                  child: _EffectSliderPanel(
-                    title: 'TREBLE',
-                    field: 'treble',
-                    enableField: 'trebleEnhancer',
-                    desc:
-                        'Make them faded or clearer\n(footsteps, whistles, cymbals)',
-                  ),
+                child: _EffectBox(
+                  title: 'TREBLE',
+                  field: 'treble',
+                  enableField: 'trebleEnhancer',
+                  desc: 'Make them faded or clearer\n(footsteps, whistles, cymbals)',
                 ),
               ),
             ],
@@ -484,105 +393,83 @@ class _ContentLayout extends StatelessWidget {
   }
 }
 
-class _Panel extends StatelessWidget {
-  final Widget child;
-  const _Panel({required this.child});
+class _SurroundPanel extends StatelessWidget {
+  const _SurroundPanel();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(1),
-      decoration: BoxDecoration(
-        color: _panel,
-        border: Border.all(color: _panelBorder, width: 0.5),
-      ),
-      child: child,
-    );
-  }
-}
+    final active = context.select((SoundBloc b) => b.state.virtualSurround);
 
-/// A vertical dB slider panel for Voices/Bass/Treble
-class _EffectSliderPanel extends StatelessWidget {
-  final String title;
-  final String field; // 'bass' | 'treble' | 'voice'
-  final String enableField;
-  final String desc;
-
-  const _EffectSliderPanel({
-    required this.title,
-    required this.field,
-    required this.enableField,
-    required this.desc,
-  });
-
-  double _getGain(SoundState s) {
-    if (field == 'bass') return s.bassGain;
-    if (field == 'treble') return s.trebleGain;
-    return s.voiceGain;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final gain = context.select((SoundBloc b) => _getGain(b.state));
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Column(
+    return _PanelBox(
+      enableField: 'virtualSurround',
+      tooltip: 'Create a virtual 7.1 listening experience',
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: _textPrimary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                ),
-              ),
-              _PowerToggle(field: enableField),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${gain.toStringAsFixed(1)} dB',
-            style: const TextStyle(
-              color: _accent,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          // Vertical slider container
           Expanded(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: _accent,
-                  inactiveTrackColor: Colors.white10,
-                  thumbColor: Colors.white,
-                  trackHeight: 14,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 8,
+            child: Center(
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: active ? _accent.withOpacity(0.5) : _textSub.withOpacity(0.3), width: 1),
+                      boxShadow: active ? [
+                        BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 20, spreadRadius: 5)
+                      ] : null,
+                      gradient: active
+                          ? RadialGradient(
+                              colors: [
+                                _accent.withOpacity(0.3),
+                                _accent.withOpacity(0.1),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.6, 1.0],
+                            )
+                          : null,
+                    ),
                   ),
-                  overlayShape: SliderComponentShape.noOverlay,
-                ),
-                child: Slider(
-                  value: gain,
-                  min: 0.0,
-                  max: 12.0,
-                  divisions: 24,
-                  onChanged: (v) =>
-                      context.read<SoundBloc>().add(ChangeEffectGain(field, v)),
-                ),
+                  Icon(
+                    Icons.person_rounded,
+                    color: active ? _textPrimary : _textSub.withOpacity(0.5),
+                    size: 54,
+                  ),
+                  if (active) ...[
+                    _SurroundWave(delay: 0),
+                    _SurroundWave(delay: 1),
+                  ],
+                ],
               ),
             ),
           ),
-          Text(
-            desc,
-            style: const TextStyle(color: _textSub, fontSize: 10, height: 1.4),
-            textAlign: TextAlign.center,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'SURROUND SOUND',
+                    style: TextStyle(
+                      color: _textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Make Sound come from all around you for a better immersion.',
+                    style: TextStyle(color: _textSub, fontSize: 11, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  const _SurroundVariationSelector(),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -590,41 +477,301 @@ class _EffectSliderPanel extends StatelessWidget {
   }
 }
 
-class _PowerToggle extends StatelessWidget {
-  final String field;
-  const _PowerToggle({required this.field});
+class _StabilizerPanel extends StatelessWidget {
+  const _StabilizerPanel();
 
   @override
   Widget build(BuildContext context) {
-    final isActive = context.select((SoundBloc b) {
+    final active = context.select((SoundBloc b) => b.state.smartVolume);
+
+    return _PanelBox(
+      enableField: 'smartVolume',
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'VOLUME\nSTABILIZER',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+                height: 1.2,
+              ),
+            ),
+            const Spacer(),
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.graphic_eq_rounded,
+                    size: 48,
+                    color: active ? _accent : _textSub.withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'QUIET OFF',
+                    style: TextStyle(
+                      color: active ? _textPrimary : _textSub,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            const Text(
+              'Volume is never inaudible or too loud.',
+              style: TextStyle(color: _textSub, fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EffectBox extends StatelessWidget {
+  final String title;
+  final String field;
+  final String enableField;
+  final String desc;
+
+  const _EffectBox({
+    required this.title,
+    required this.field,
+    required this.enableField,
+    required this.desc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final active = context.select((SoundBloc b) => b.state.effectsEnabled);
+    final innerActive = context.select((SoundBloc b) {
+      if (field == 'bass') return b.state.bassBoost;
+      if (field == 'treble') return b.state.trebleEnhancer;
+      return b.state.voiceClarity;
+    });
+    final gain = context.select((SoundBloc b) {
+      if (field == 'bass') return b.state.bassGain;
+      if (field == 'treble') return b.state.trebleGain;
+      return b.state.voiceGain;
+    });
+
+    final isFullyActive = active && innerActive;
+
+    return _PanelBox(
+      enableField: enableField,
+      child: Opacity(
+        opacity: isFullyActive ? 1.0 : 0.4,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title.toUpperCase(),
+                style: const TextStyle(
+                  color: _textPrimary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.0,
+                ),
+              ),
+              const Expanded(child: SizedBox()),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 50,
+                    child: Text(
+                      '${gain.toInt()} dB',
+                      style: const TextStyle(
+                        color: _textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: NahimicSlider(
+                      value: gain,
+                      isVertical: false,
+                      min: -12,
+                      max: 12,
+                      onChanged: isFullyActive
+                          ? (v) => context.read<SoundBloc>().add(ChangeEffectGain(field, v))
+                          : null,
+                      onChangedEnd: isFullyActive
+                          ? (v) => context.read<SoundBloc>().add(ChangeEffectGain(field, v))
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  SizedBox(
+                    width: 140,
+                    child: Text(
+                      desc,
+                      style: const TextStyle(
+                        color: _textSub,
+                        fontSize: 10,
+                        height: 1.2,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PanelBox extends StatelessWidget {
+  final Widget child;
+  final String enableField;
+  final String? tooltip;
+
+  const _PanelBox({required this.child, required this.enableField, this.tooltip});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip ?? '',
+      child: Container(
+        margin: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _panel,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: _panelBorder, width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(4, 4),
+            )
+          ],
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_panel, _panel.withOpacity(0.8)],
+          ),
+        ),
+        child: Stack(
+          children: [
+            child,
+            Positioned(
+              top: 12,
+              right: 12,
+              child: _SmallPowerToggle(field: enableField),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallPowerToggle extends StatelessWidget {
+  final String field;
+  const _SmallPowerToggle({required this.field});
+
+  @override
+  Widget build(BuildContext context) {
+    final active = context.select((SoundBloc b) {
+      if (field == 'virtualSurround') return b.state.virtualSurround;
+      if (field == 'smartVolume') return b.state.smartVolume;
       if (field == 'bassBoost') return b.state.bassBoost;
       if (field == 'trebleEnhancer') return b.state.trebleEnhancer;
       if (field == 'voiceClarity') return b.state.voiceClarity;
-      if (field == 'virtualSurround') return b.state.virtualSurround;
-      if (field == 'smartVolume') return b.state.smartVolume;
       return false;
     });
 
     return GestureDetector(
-      onTap: () =>
-          context.read<SoundBloc>().add(ToggleEnhancement(field, !isActive)),
+      onTap: () => context.read<SoundBloc>().add(ToggleEnhancement(field, !active)),
       child: Container(
-        width: 30,
-        height: 30,
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isActive ? _accent.withOpacity(0.15) : Colors.transparent,
-          border: Border.all(color: isActive ? _accent : _textSub, width: 1.5),
-          boxShadow: isActive
-              ? [BoxShadow(color: _accentGlow, blurRadius: 8, spreadRadius: 1)]
-              : null,
+          color: active ? _accent : Colors.transparent,
+          border: Border.all(color: active ? _accent : _textSub, width: 1.5),
         ),
         child: Icon(
-          Icons.power_settings_new,
+          Icons.power_settings_new_rounded,
           size: 14,
-          color: isActive ? _accent : _textSub,
+          color: active ? Colors.white : _textSub,
         ),
       ),
+    );
+  }
+}
+
+
+class _NightModeToggle extends StatelessWidget {
+  const _NightModeToggle();
+  @override
+  Widget build(BuildContext context) {
+    final nightMode = context.select((SoundBloc b) => b.state.nightMode);
+    return InkWell(
+      onTap: () => context.read<SoundBloc>().add(ToggleEnhancement('nightMode', !nightMode)),
+      child: Row(
+        children: [
+          Icon(Icons.nightlight_round, size: 14, color: nightMode ? _accent : _textSub),
+          const SizedBox(width: 6),
+          Text(
+            'NIGHT MODE',
+            style: TextStyle(color: nightMode ? _accent : _textSub, fontSize: 10, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SurroundVariationSelector extends StatelessWidget {
+  const _SurroundVariationSelector();
+  @override
+  Widget build(BuildContext context) {
+    final current = context.select((SoundBloc b) => b.state.surroundVariation);
+    const variations = ['Surround', '3D', 'Wide'];
+
+    return Row(
+      children: variations.map((v) {
+        final isSelected = v == current;
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InkWell(
+            onTap: () => context.read<SoundBloc>().add(ChangeSurroundVariation(v)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected ? _accent : Colors.transparent,
+                borderRadius: BorderRadius.circular(2),
+                border: Border.all(color: isSelected ? _accent : _panelBorder),
+              ),
+              child: Text(
+                v.toUpperCase(),
+                style: TextStyle(
+                  color: isSelected ? Colors.white : _textSub,
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }
@@ -640,19 +787,17 @@ class _EqualizerPopup extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: Container(
-          width: 520,
-          height: 360,
-          padding: const EdgeInsets.all(24),
+          width: 600,
+          height: 480,
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: _panel,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _panelBorder),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _panelBorder, width: 2),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.6),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.8), blurRadius: 40),
+              if (profile != 'Custom') 
+                BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 20, spreadRadius: -5),
             ],
           ),
           child: Column(
@@ -662,66 +807,40 @@ class _EqualizerPopup extends StatelessWidget {
                 children: [
                   const Text(
                     'EQUALIZER',
-                    style: TextStyle(
-                      color: _textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
+                    style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 4.0),
                   ),
                   Row(
                     children: [
-                      Text(
-                        profile.toUpperCase(),
-                        style: const TextStyle(
-                          color: _accent,
-                          fontSize: 11,
-                          letterSpacing: 2,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _bg,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: _accent.withOpacity(0.4)),
+                        ),
+                        child: Text(
+                          profile.toUpperCase(),
+                          style: const TextStyle(color: _accent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 2.0),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: const Icon(Icons.close, color: _textSub),
+                      const SizedBox(width: 20),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded, color: _textSub),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 40),
               Expanded(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(10, (i) {
-                    final labels = [
-                      '32Hz',
-                      '64Hz',
-                      '125Hz',
-                      '250Hz',
-                      '500Hz',
-                      '1kHz',
-                      '2kHz',
-                      '4kHz',
-                      '8kHz',
-                      '16kHz',
-                    ];
+                    final labels = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
                     return _EqBand(index: i, label: labels[i]);
                   }),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'From lowest notes (basses)',
-                    style: TextStyle(color: _textSub, fontSize: 10),
-                  ),
-                  Text(
-                    'To highest notes (trebles)',
-                    style: TextStyle(color: _textSub, fontSize: 10),
-                  ),
-                ],
               ),
             ],
           ),
@@ -740,50 +859,114 @@ class _EqBand extends StatelessWidget {
   Widget build(BuildContext context) {
     final gain = context.select((SoundBloc b) => b.state.eqGains[index]);
 
-    return SizedBox(
-      width: 40,
-      child: Column(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: _textSub, fontSize: 9),
-            textAlign: TextAlign.center,
+    return Column(
+      children: [
+        Text(
+          gain.toStringAsFixed(0),
+          style: const TextStyle(color: _accent, fontSize: 10, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _NahimicSliderEq(
+            value: gain,
+            onChanged: (v) {
+              final bloc = context.read<SoundBloc>();
+              final newGains = List<double>.from(bloc.state.eqGains);
+              newGains[index] = v;
+              bloc.add(UpdateEQGains(newGains));
+            },
+            onChangedEnd: (v) {
+              final bloc = context.read<SoundBloc>();
+              final newGains = List<double>.from(bloc.state.eqGains);
+              newGains[index] = v;
+              bloc.add(UpdateEQGains(newGains));
+            },
           ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: RotatedBox(
-              quarterTurns: 3,
-              child: SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: _accent,
-                  inactiveTrackColor: Colors.white10,
-                  thumbColor: Colors.white,
-                  trackHeight: 16,
-                  thumbShape: const RoundSliderThumbShape(
-                    enabledThumbRadius: 0,
-                  ),
-                  overlayShape: SliderComponentShape.noOverlay,
-                ),
-                child: Slider(
-                  value: gain,
-                  min: -12,
-                  max: 12,
-                  onChanged: (v) {
-                    final bloc = context.read<SoundBloc>();
-                    final newGains = List<double>.from(bloc.state.eqGains);
-                    newGains[index] = v;
-                    bloc.add(UpdateEQGains(newGains));
-                  },
-                ),
-              ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          label,
+          style: const TextStyle(color: _textSub, fontSize: 9, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+}
+
+class _NahimicSliderEq extends StatelessWidget {
+  final double value;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangedEnd;
+
+  const _NahimicSliderEq({
+    required this.value, 
+    required this.onChanged,
+    required this.onChangedEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return NahimicSlider(
+      value: value,
+      min: -12,
+      max: 12,
+      isVertical: true,
+      onChanged: onChanged,
+      onChangedEnd: onChangedEnd,
+    );
+  }
+}
+
+class _SurroundWave extends StatefulWidget {
+  final int delay;
+  const _SurroundWave({required this.delay});
+
+  @override
+  State<_SurroundWave> createState() => _SurroundWaveState();
+}
+
+class _SurroundWaveState extends State<_SurroundWave> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    Future.delayed(Duration(milliseconds: widget.delay * 1000), () {
+      if (mounted) _controller.repeat();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 100 + (_controller.value * 120),
+          height: 100 + (_controller.value * 120),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: _accent.withOpacity((1.0 - _controller.value) * 0.5),
+              width: 1.5 - (_controller.value * 0.5),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: _accent.withOpacity((1.0 - _controller.value) * 0.1),
+                blurRadius: 10,
+                spreadRadius: 2,
+              )
+            ],
           ),
-          Text(
-            gain.toStringAsFixed(0),
-            style: const TextStyle(color: _accent, fontSize: 10),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

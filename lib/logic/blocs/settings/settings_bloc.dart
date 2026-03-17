@@ -64,12 +64,17 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   }
 
   Future<void> _applyAllSettings(SettingsState settings) async {
-    await _repository.setGpuMode(settings.gpuMode);
-    await _repository.setBatteryLimit(settings.batteryLimit);
-    await _repository.setPerformanceMode(settings.performanceMode);
-    await _repository.setFanMode(settings.fanMode);
-    await _repository.setDeviceSetting('webcam', settings.webcamEnabled);
-    await _repository.setSuperBattery(settings.superBatteryEnabled);
+    const timeout = Duration(seconds: 2);
+    try {
+      await _repository.setGpuMode(settings.gpuMode).timeout(timeout);
+      await _repository.setBatteryLimit(settings.batteryLimit).timeout(timeout);
+      await _repository.setPerformanceMode(settings.performanceMode).timeout(timeout);
+      await _repository.setFanMode(settings.fanMode).timeout(timeout);
+      await _repository.setDeviceSetting('webcam', settings.webcamEnabled).timeout(timeout);
+      await _repository.setSuperBattery(settings.superBatteryEnabled).timeout(timeout);
+    } catch (e) {
+      debugPrint('SettingsBloc: Timeout or error applying hardware settings: $e');
+    }
   }
 
   Future<void> _onSetGpuMode(

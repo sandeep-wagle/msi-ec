@@ -25,6 +25,14 @@ class UpdateEQGains extends SoundEvent {
   List<Object?> get props => [gains];
 }
 
+class UpdateEQGainsPreview extends SoundEvent {
+  final List<double> gains;
+  const UpdateEQGainsPreview(this.gains);
+
+  @override
+  List<Object?> get props => [gains];
+}
+
 class ToggleEnhancement extends SoundEvent {
   final String enhancement;
   final bool value;
@@ -50,9 +58,41 @@ class ChangeStereoWidth extends SoundEvent {
   List<Object?> get props => [width];
 }
 
+class ChangeNoiseLevel extends SoundEvent {
+  final double level;
+  const ChangeNoiseLevel(this.level);
+
+  @override
+  List<Object?> get props => [level];
+}
+
+class ToggleLimiter extends SoundEvent {
+  final bool enabled;
+  const ToggleLimiter(this.enabled);
+
+  @override
+  List<Object?> get props => [enabled];
+}
+
+class ChangeCompressorRatio extends SoundEvent {
+  final double ratio;
+  const ChangeCompressorRatio(this.ratio);
+
+  @override
+  List<Object?> get props => [ratio];
+}
+
 class ChangeVolumeBoost extends SoundEvent {
   final double boost;
   const ChangeVolumeBoost(this.boost);
+
+  @override
+  List<Object?> get props => [boost];
+}
+
+class ChangeVolumeBoostPreview extends SoundEvent {
+  final double boost;
+  const ChangeVolumeBoostPreview(this.boost);
 
   @override
   List<Object?> get props => [boost];
@@ -67,6 +107,15 @@ class ChangeEffectGain extends SoundEvent {
   List<Object?> get props => [effect, gain];
 }
 
+class ChangeEffectGainPreview extends SoundEvent {
+  final String effect;
+  final double gain;
+  const ChangeEffectGainPreview(this.effect, this.gain);
+
+  @override
+  List<Object?> get props => [effect, gain];
+}
+
 class SyncVolume extends SoundEvent {
   final double volume;
   const SyncVolume(this.volume);
@@ -74,3 +123,21 @@ class SyncVolume extends SoundEvent {
   @override
   List<Object?> get props => [volume];
 }
+
+class ChangeSurroundVariation extends SoundEvent {
+  final String variation;
+  const ChangeSurroundVariation(this.variation);
+
+  @override
+  List<Object?> get props => [variation];
+}
+
+class ChangeMicrophoneGain extends SoundEvent {
+  final double gain;
+  const ChangeMicrophoneGain(this.gain);
+
+  @override
+  List<Object?> get props => [gain];
+}
+
+class ResetSoundSettings extends SoundEvent {}

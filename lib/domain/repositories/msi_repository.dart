@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:msi_controller/domain/entities/system_info.dart';
 import 'package:msi_controller/domain/entities/audio_profile.dart';
 
@@ -51,6 +52,16 @@ abstract class MsiRepository {
   Future<void> setSoundStereoWidth(double width);
   Future<void> setSoundVolumeBoost(double boost);
   Future<bool> setSoundEffectGain(String effect, double gain);
+  Future<void> setSoundNoiseLevel(double level);
+  Future<void> setSoundLimiterEnabled(bool enabled);
+  Future<void> setSoundCompressorRatio(double ratio);
+  Future<void> setSoundSurroundVariation(String variation);
+  Future<void> setSoundNightMode(bool enabled);
+  Future<void> setSoundEffectsEnabled(bool enabled);
+  Future<void> setSoundMicEnabled(bool enabled);
+  Future<void> setSoundMicGain(double gain);
+  Future<void> setSoundMicNoiseSuppression(bool enabled);
+  Future<void> setSoundEchoCancellation(bool enabled);
   Future<void> applyCurrentProfile();
   Stream<double> get volumeStream;
   double get currentVolume;
@@ -66,6 +77,10 @@ abstract class MsiRepository {
   Future<bool> enableDsp();
   Future<bool> disableDsp();
   Future<bool> getDspStatus();
+
+  // DSP Socket Access for AudioBloc
+  Future<void> ensureDspSocketConnected();
+  Socket? get dspSocket;
 
   void dispose();
 }
