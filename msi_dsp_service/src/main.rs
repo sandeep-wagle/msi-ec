@@ -360,7 +360,7 @@ fn kill_filter_chain() {
 fn start_filter_chain() -> bool {
     info!("Starting pw-filter-chain with config...");
     
-    let child = Command::new("pw-filter-chain")
+    let     ld = Command::new("pw-filter-chain")
         .args(["-c", FILTER_CHAIN_CONFIG_PATH])
         .spawn();
     
@@ -702,6 +702,47 @@ context.modules = [
             }}
         }}
     }}
+    {{ name = libpipewire-module-filter-chain
+        args = {{
+            node.name        = "msi_dsp_mic_filter"
+            node.description = "MSI DSP Microphone"
+            media.name       = "MSI DSP Microphone Engine"
+            audio.channels   = 1
+            audio.position   = [ "MONO" ]
+            filter.graph = {{
+                nodes = [
+                    {{
+                        type = builtin
+                        label = bq_highpass
+                        name = "mic_hp"
+                        control = {{ "Freq" = 100 "Q" = 0.707 }}
+                    }}
+                ]
+                inputs  = [ "mic_hp:In" ]
+                outputs = [ "mic_hp:Out" ]
+            }}
+            capture.props = {{
+                node.name      = "msi_dsp_mic_input"
+                media.class    = "Audio/Source"
+                audio.channels = 1
+                audio.position = [ "MONO" ]
+            }}
+            playback.props = {{
+                node.name      = "msi_dsp_mic_output"
+                audio.channels = 1
+                audio.position = [ "MONO" ]
+            }}
+        }}
+    }}
+    {{ name = libpipewire-module-echo-cancel
+        args = {{
+            monitor.mode = true
+            capture.props = {{
+                node.name = "msi_dsp_echo_cancel"
+                node.description = "MSI DSP Echo Cancel & Noise Suppression"
+            }}
+        }}
+    }}
 
 ]
 "#);
@@ -713,7 +754,7 @@ context.modules = [
 }
 
 
-fn get_filter_node_id() -> Option<u32> {
+fn get_node_id_by_name(name: &str) -> Option<u32> {
     let output = Command::new("pw-cli")
         .args(["ls", "Node"])
         .output()
@@ -724,7 +765,6 @@ fn get_filter_node_id() -> Option<u32> {
     
     for line in stdout.lines() {
         if line.contains("id ") && line.contains("type PipeWire:Interface:Node") {
-            // Extract ID: "        id 118, type PipeWire:Interface:Node/3"
             if let Some(id_part) = line.split("id ").nth(1) {
                 if let Some(id_val) = id_part.split(',').next() {
                     current_id = id_val.trim().parse::<u32>().ok();
@@ -732,9 +772,9 @@ fn get_filter_node_id() -> Option<u32> {
             }
         }
         
-        if line.contains("node.name = \"msi_dsp_input\"") {
+        if line.contains(&format!("node.name = \"{}\"", name)) {
             if let Some(id) = current_id {
-                info!("Found msi_dsp_input at node id {}", id);
+                info!("Found node {} at id {}", name, id);
                 return Some(id);
             }
         }
@@ -743,22 +783,25 @@ fn get_filter_node_id() -> Option<u32> {
 }
 
 fn update_filter_params(profile: &AudioProfile) {
-    if let Some(node_id) = get_filter_node_id() {
-        info!("Updating filter params for node {}", node_id);
-        
+    // 1. Playback Node Updates
+    if let Some(playback_id) = get_node_id_by_name("msi_dsp_input") {
+        info!("Updating playback filter params for node {}", playback_id);
         let mut updates = Vec::new();
         
-        // Effects Bypass check
-        let (bass, treble, voice, eq_gains, spatializer_width, _limiter_active) = if profile.effects_enabled {
-            let b = if profile.bass_boost { profile.bass } else { 0.0 };
-            let t = if profile.treble_enhancer { profile.treble } else { 0.0 };
-            let v = if profile.voice_clarity { profile.voice } else { 0.0 };
-            (b, t, v, profile.eq_gains.clone(), profile.stereo_width, true)
+        // Bypass logic
+        let (bass, treble, voice, eq_gains, spatializer_width) = if profile.effects_enabled {
+            (
+                if profile.bass_boost { profile.bass } else { 0.0 },
+                if profile.treble_enhancer { profile.treble } else { 0.0 },
+                if profile.voice_clarity { profile.voice } else { 0.0 },
+                profile.eq_gains.clone(),
+                profile.stereo_width
+            )
         } else {
-            (0.0, 0.0, 0.0, vec![0.0; 10], 1.0, false)
+            (0.0, 0.0, 0.0, vec![0.0; 10], 1.0)
         };
 
-        // EQ Bands
+        // EQ
         let eq_bands = ["eq0", "eq1", "eq2", "eq3", "eq4", "eq5", "eq6", "eq7", "eq8", "eq9"];
         for (i, band) in eq_bands.iter().enumerate() {
             let gain = eq_gains.get(i).unwrap_or(&0.0);
@@ -766,7 +809,7 @@ fn update_filter_params(profile: &AudioProfile) {
             updates.push((format!("{}R:Gain", band), *gain));
         }
         
-        // Common Gains
+        // Basic Gains
         updates.push(("bassL:Gain".into(), bass));
         updates.push(("bassR:Gain".into(), bass));
         updates.push(("trebleL:Gain".into(), treble));
@@ -774,7 +817,7 @@ fn update_filter_params(profile: &AudioProfile) {
         updates.push(("voiceL:Gain".into(), voice));
         updates.push(("voiceR:Gain".into(), voice));
         
-        // Advanced Controls (Spatializer)
+        // Spatializer
         let mut width = spatializer_width;
         if profile.surround {
             match profile.surround_variation.as_str() {
@@ -787,47 +830,33 @@ fn update_filter_params(profile: &AudioProfile) {
         } else {
             width = 1.0;
         }
-        // Matrix Spatializer uses "Width"
         updates.push(("spatializer:Width".into(), width));
         
-        // Limiter & Night Mode logic
+        // Limiter & Night Mode
         let night_mode_active = profile.night_mode && profile.effects_enabled;
         let volume_stabilizer_active = profile.limiter_enabled && profile.effects_enabled;
-        
         let limiter_threshold = if night_mode_active { -12.0 } else if volume_stabilizer_active { -1.0 } else { -0.1 };
         let compress_ratio = if night_mode_active { 8.0 } else { profile.compressor_ratio.max(1.0) };
         
-        // Dyson Compress uses these names
         updates.push(("compressorL:Peak limit (dB)".into(), limiter_threshold));
         updates.push(("compressorR:Peak limit (dB)".into(), limiter_threshold));
         updates.push(("compressorL:Compression ratio".into(), compress_ratio));
         updates.push(("compressorR:Compression ratio".into(), compress_ratio));
-        
-        // Global Limiter safety
         updates.push(("limiter:Limit (dB)".into(), -0.1));
 
         for (param, value) in updates {
-            // Note: pw-cli set-param requires the param name in double quotes like "node:param"
-            let cmd = format!(
-                "pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'",
-                node_id, param, value
-            );
-            debug!("DSP: Executing {}", cmd);
-            let output = Command::new("sh")
-                .args(["-c", &cmd])
-                .output();
-            
-            if let Ok(out) = output {
-                if !out.status.success() {
-                    let err = String::from_utf8_lossy(&out.stderr);
-                    warn!("DSP: Failed to update param {}: {}", param, err);
-                }
-            }
+            let cmd = format!("pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'", playback_id, param, value);
+            let _ = Command::new("sh").args(["-c", &cmd]).output();
         }
-        
-        info!("Filter parameters updated successfully");
-    } else {
-        warn!("Could not find filter node ID");
+    }
+
+    // 2. Microphone Node Updates
+    if let Some(mic_id) = get_node_id_by_name("msi_dsp_mic_input") {
+        info!("Updating microphone filter params for node {}", mic_id);
+        let mic_gain = if profile.mic_enabled { profile.mic_gain } else { 0.0 };
+        // We can update the captured volume or nodes in the mic chain
+        let cmd = format!("pw-cli set-param {} Props '{{ params = [ \"mic_hp:Gain\" {} ] }}'", mic_id, mic_gain);
+        let _ = Command::new("sh").args(["-c", &cmd]).output();
     }
 }
 

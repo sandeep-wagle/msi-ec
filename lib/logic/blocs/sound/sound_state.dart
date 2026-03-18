@@ -60,34 +60,127 @@ class SoundState extends Equatable {
     this.surroundVariation = 'Surround',
   });
 
-  factory SoundState.initial() {
-    return SoundState(
-      profile: 'Gaming',
-      eqGains: List.generate(10, (index) => 0.0),
-      virtualSurround: true,
-      bassBoost: false,
-      voiceClarity: true,
-      trebleEnhancer: false,
-      smartVolume: false,
-      stereoWidth: 0.5,
-      volumeBoost: 1.0,
-      sampleRate: 48000,
-      bassGain: 0.0,
-      trebleGain: 0.0,
-      voiceGain: 0.0,
-      noiseLevel: 0.0,
-      limiterEnabled: false,
-      compressorRatio: 4.0,
-      trackerEnabled: false,
-      sharingEnabled: false,
-      nightMode: false,
-      effectsEnabled: true,
-      micEnabled: true,
-      micNoiseSuppression: true,
-      echoCancellation: true,
-      microphoneGain: 0.5,
-      surroundVariation: 'Surround',
-    );
+  factory SoundState.initial() => SoundState.defaultsFor('Gaming');
+
+  factory SoundState.defaultsFor(String profile) {
+    switch (profile) {
+      case 'Music':
+        return SoundState(
+          profile: 'Music',
+          eqGains: const [2.0, 1.5, 0.5, 0.0, 0.0, -1.0, -1.5, -2.0, -2.5, -3.0],
+          virtualSurround: true,
+          bassBoost: true,
+          voiceClarity: true,
+          trebleEnhancer: false,
+          smartVolume: false,
+          stereoWidth: 1.5,
+          bassGain: 8.0,
+          trebleGain: 2.0,
+          voiceGain: 4.0,
+          limiterEnabled: false,
+          compressorRatio: 3.0,
+          micNoiseSuppression: false,
+          echoCancellation: false,
+          microphoneGain: 1.0,
+        );
+      case 'Movie':
+        return SoundState(
+          profile: 'Movie',
+          eqGains: const [3.0, 2.0, 1.0, 0.5, 0.0, -0.5, -1.0, -1.5, -2.0, -2.5],
+          virtualSurround: true,
+          bassBoost: true,
+          voiceClarity: true,
+          trebleEnhancer: false,
+          smartVolume: true,
+          stereoWidth: 1.0,
+          bassGain: 6.0,
+          trebleGain: 3.0,
+          voiceGain: 8.0,
+          limiterEnabled: true,
+          compressorRatio: 6.0,
+          micNoiseSuppression: false,
+          echoCancellation: false,
+          microphoneGain: 1.0,
+        );
+      case 'Voice':
+      case 'Communication':
+        return SoundState(
+          profile: profile,
+          eqGains: const [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0, -1.0],
+          virtualSurround: false,
+          bassBoost: true,
+          voiceClarity: true,
+          trebleEnhancer: true,
+          smartVolume: true,
+          stereoWidth: 0.5,
+          bassGain: 2.0,
+          trebleGain: 6.0,
+          voiceGain: 10.0,
+          limiterEnabled: true,
+          compressorRatio: 8.0,
+          micNoiseSuppression: true,
+          echoCancellation: true,
+          microphoneGain: 1.2,
+        );
+      case 'Smart':
+        return SoundState(
+          profile: 'Smart',
+          eqGains: const [1.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+          virtualSurround: true,
+          bassBoost: true,
+          voiceClarity: true,
+          trebleEnhancer: true,
+          smartVolume: true,
+          stereoWidth: 1.5,
+          bassGain: 5.0,
+          trebleGain: 3.0,
+          voiceGain: 5.0,
+          limiterEnabled: true,
+          compressorRatio: 4.0,
+          micNoiseSuppression: true,
+          echoCancellation: false,
+          microphoneGain: 1.0,
+        );
+      case 'Custom':
+        return SoundState(
+          profile: 'Custom',
+          eqGains: List.generate(10, (_) => 0.0),
+          virtualSurround: false,
+          bassBoost: false,
+          voiceClarity: false,
+          trebleEnhancer: false,
+          smartVolume: false,
+          stereoWidth: 0.0,
+          bassGain: 0.0,
+          trebleGain: 0.0,
+          voiceGain: 0.0,
+          limiterEnabled: false,
+          compressorRatio: 4.0,
+          micNoiseSuppression: false,
+          echoCancellation: false,
+          microphoneGain: 1.0,
+        );
+      case 'Gaming':
+      default:
+        return SoundState(
+          profile: 'Gaming',
+          eqGains: List.generate(10, (_) => 0.0),
+          virtualSurround: true,
+          bassBoost: true,
+          voiceClarity: true,
+          trebleEnhancer: true,
+          smartVolume: true,
+          stereoWidth: 2.0,
+          bassGain: 4.0,
+          trebleGain: 4.0,
+          voiceGain: 6.0,
+          limiterEnabled: true,
+          compressorRatio: 4.0,
+          micNoiseSuppression: true,
+          echoCancellation: false,
+          microphoneGain: 1.0,
+        );
+    }
   }
 
   SoundState copyWith({

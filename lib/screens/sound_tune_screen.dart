@@ -319,9 +319,10 @@ class _VerticalVolumeBar extends StatelessWidget {
           height: 180,
           child: NahimicSlider(
             value: boost,
-            min: 0.0,
-            max: 1.0,
+            min: 0.2,
+            max: 1.3,
             isVertical: true,
+            labelTransformer: (v) => '${(v * 100).round()}%',
             onChanged: (v) {
               context.read<SoundBloc>().add(ChangeVolumeBoost(v));
             },
@@ -353,7 +354,15 @@ class _ContentLayout extends StatelessWidget {
           child: Row(
             children: [
               const Expanded(flex: 3, child: _SurroundPanel()),
-              const Expanded(flex: 2, child: _StabilizerPanel()),
+              Expanded(
+                flex: 4,
+                child: Row(
+                  children: [
+                    const Expanded(child: _StabilizerPanel()),
+                    const Expanded(child: _MicrophonePanel()),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -466,6 +475,20 @@ class _SurroundPanel extends StatelessWidget {
                     style: TextStyle(color: _textSub, fontSize: 11, height: 1.4),
                   ),
                   const SizedBox(height: 16),
+                  const Text(
+                    'SURROUND STRENGTH (WIDTH)',
+                    style: TextStyle(color: _textSub, fontSize: 8, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  NahimicSlider(
+                    value: context.select((SoundBloc b) => b.state.stereoWidth),
+                    min: 0.0,
+                    max: 4.0,
+                    onChanged: (v) => context.read<SoundBloc>().add(ChangeStereoWidth(v)),
+                    onChangedEnd: (v) => context.read<SoundBloc>().add(ChangeStereoWidth(v)),
+                    labelTransformer: (v) => '${(v * 100).round()}%',
+                  ),
+                  const SizedBox(height: 12),
                   const _SurroundVariationSelector(),
                 ],
               ),
@@ -501,21 +524,37 @@ class _StabilizerPanel extends StatelessWidget {
                 height: 1.2,
               ),
             ),
+            const SizedBox(height: 12),
+            if (active) ...[
+              const Text(
+                'COMPRESSION RATIO',
+                style: TextStyle(color: _textSub, fontSize: 8, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              NahimicSlider(
+                value: context.select((SoundBloc b) => b.state.compressorRatio),
+                min: 1.0,
+                max: 10.0,
+                onChanged: (v) => context.read<SoundBloc>().add(ChangeCompressorRatio(v)),
+                onChangedEnd: (v) => context.read<SoundBloc>().add(ChangeCompressorRatio(v)),
+                labelTransformer: (v) => '${v.toStringAsFixed(1)}:1',
+              ),
+            ],
             const Spacer(),
             Center(
               child: Column(
                 children: [
                   Icon(
                     Icons.graphic_eq_rounded,
-                    size: 48,
+                    size: 32,
                     color: active ? _accent : _textSub.withOpacity(0.5),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
-                    'QUIET OFF',
+                    active ? 'STABILIZER ON' : 'STABILIZER OFF',
                     style: TextStyle(
                       color: active ? _textPrimary : _textSub,
-                      fontSize: 10,
+                      fontSize: 8,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.0,
                     ),
@@ -695,6 +734,9 @@ class _SmallPowerToggle extends StatelessWidget {
       if (field == 'bassBoost') return b.state.bassBoost;
       if (field == 'trebleEnhancer') return b.state.trebleEnhancer;
       if (field == 'voiceClarity') return b.state.voiceClarity;
+      if (field == 'micNoiseSuppression') return b.state.micNoiseSuppression;
+      if (field == 'echoCancellation') return b.state.echoCancellation;
+      if (field == 'micEnabled') return b.state.micEnabled;
       return false;
     });
 
@@ -967,6 +1009,121 @@ class _SurroundWaveState extends State<_SurroundWave> with SingleTickerProviderS
           ),
         );
       },
+    );
+  }
+}
+
+class _MicrophonePanel extends StatelessWidget {
+  const _MicrophonePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final active = context.select((SoundBloc b) => b.state.micEnabled);
+    final noiseSuppression = context.select((SoundBloc b) => b.state.micNoiseSuppression);
+    final echoCancellation = context.select((SoundBloc b) => b.state.echoCancellation);
+    final gain = context.select((SoundBloc b) => b.state.microphoneGain);
+
+    return _PanelBox(
+      enableField: 'micEnabled',
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'MICROPHONE\nENHANCEMENT',
+              style: TextStyle(
+                color: _textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (active) ...[
+              _MicSettingsItem(
+                label: 'NOISE SUPPRESSION',
+                field: 'micNoiseSuppression',
+                isActive: noiseSuppression,
+                desc: 'Remove static background noises',
+              ),
+              const SizedBox(height: 12),
+              _MicSettingsItem(
+                label: 'ECHO CANCELLATION',
+                field: 'echoCancellation',
+                isActive: echoCancellation,
+                desc: 'Prevents voice being captured twice',
+              ),
+              const Spacer(),
+              const Text(
+                'MICROPHONE GAIN',
+                style: TextStyle(color: _textSub, fontSize: 8, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              NahimicSlider(
+                value: gain,
+                min: 0.0,
+                max: 1.5,
+                labelTransformer: (v) => '${(v * 100).round()}%',
+                onChanged: (v) => context.read<SoundBloc>().add(ChangeMicrophoneGain(v)),
+                onChangedEnd: (v) => context.read<SoundBloc>().add(ChangeMicrophoneGain(v)),
+              ),
+            ] else 
+              const Expanded(
+                child: Center(
+                  child: Text(
+                    'MICROPHONE IS OFF',
+                    style: TextStyle(color: _textSub, fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MicSettingsItem extends StatelessWidget {
+  final String label;
+  final String field;
+  final bool isActive;
+  final String desc;
+
+  const _MicSettingsItem({
+    required this.label,
+    required this.field,
+    required this.isActive,
+    required this.desc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _SmallPowerToggle(field: field),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: isActive ? _textPrimary : _textSub,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                desc,
+                style: const TextStyle(color: _textSub, fontSize: 8),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

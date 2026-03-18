@@ -127,6 +127,7 @@ class NahimicSlider extends StatefulWidget {
   final bool isVertical;
   final ValueChanged<double>? onChanged;
   final ValueChanged<double>? onChangedEnd;
+  final String Function(double)? labelTransformer;
 
   const NahimicSlider({
     required this.value,
@@ -135,6 +136,7 @@ class NahimicSlider extends StatefulWidget {
     this.isVertical = false,
     required this.onChanged,
     this.onChangedEnd,
+    this.labelTransformer,
     super.key,
   });
 
@@ -259,9 +261,10 @@ class _NahimicSliderState extends State<NahimicSlider> {
                               ],
                             ),
                             child: Text(
-                              widget.max <= 1.5 
+                              widget.labelTransformer?.call(widget.value) ??
+                              (widget.max <= 1.5 
                                 ? '${(widget.value * 100).toInt()}%'
-                                : '${widget.value.toInt()} dB',
+                                : '${widget.value.toInt()} dB'),
                               style: const TextStyle(
                                 color: Colors.white, 
                                 fontSize: 11, 

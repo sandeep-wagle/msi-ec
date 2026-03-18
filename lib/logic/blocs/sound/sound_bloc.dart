@@ -13,39 +13,6 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
   static const String _prefKey = 'sound_settings';
 
 
-  static final Map<String, Map<String, dynamic>> _profilePresets = {
-    'Music': {
-      'eqGains': [2.0, 1.5, 0.5, 0.0, 0.0, -1.0, -1.5, -2.0, -2.5, -3.0],
-      'bassGain': 8.0,
-      'trebleGain': 2.0,
-      'voiceGain': 4.0,
-    },
-    'Gaming': {
-      'eqGains': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-      'bassGain': 4.0,
-      'trebleGain': 4.0,
-      'voiceGain': 6.0,
-    },
-    'Movie': {
-      'eqGains': [3.0, 2.0, 1.0, 0.5, 0.0, -0.5, -1.0, -1.5, -2.0, -2.5],
-      'bassGain': 6.0,
-      'trebleGain': 3.0,
-      'voiceGain': 8.0,
-    },
-    'Voice': {
-      'eqGains': [-2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 2.0, 1.0, 0.0, -1.0],
-      'bassGain': 2.0,
-      'trebleGain': 6.0,
-      'voiceGain': 10.0,
-    },
-    'Custom': {
-      'eqGains': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-      'bassGain': 0.0,
-      'trebleGain': 0.0,
-      'voiceGain': 0.0,
-    },
-  };
-
   SoundBloc(this._repository) : super(SoundState.initial()) {
     on<LoadSoundSettings>(_onLoadSoundSettings);
     on<SetSoundProfile>(_onSetSoundProfile, transformer: restartable());
@@ -166,76 +133,74 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
   ) async {
     debugPrint('SoundBloc: Setting sound profile to ${event.profile}');
 
-    // FIX 1: Update profile name in the repository FIRST.
-    // setSoundEffectGain calls _updateDspRealtime which builds
-    // UPDATE:{name:_soundProfileName, ...}. Without this, the UPDATE would
-    // carry the OLD profile name every time and save gains to the wrong file.
+    // Update profile name in the repository first.
     _repository.setActiveProfileName(event.profile);
 
-    // Build initial state from hardcoded presets.
-    final preset = _profilePresets[event.profile];
-    SoundState newState;
-    if (preset != null && event.profile != 'Custom') {
-      newState = state.copyWith(
-        profile: event.profile,
-        eqGains: List<double>.from(preset['eqGains']),
-        bassGain: preset['bassGain'],
-        trebleGain: preset['trebleGain'],
-        voiceGain: preset['voiceGain'],
-      );
-    } else {
-      newState = state.copyWith(profile: event.profile);
-    }
+    // Build base state from new unified defaults.
+    final defaults = SoundState.defaultsFor(event.profile);
+    SoundState newState = state.copyWith(
+      profile: event.profile,
+      eqGains: defaults.eqGains,
+      bassGain: defaults.bassGain,
+      trebleGain: defaults.trebleGain,
+      voiceGain: defaults.voiceGain,
+      virtualSurround: defaults.virtualSurround,
+      smartVolume: defaults.smartVolume,
+      stereoWidth: defaults.stereoWidth,
+      limiterEnabled: defaults.limiterEnabled,
+      compressorRatio: defaults.compressorRatio,
+      micNoiseSuppression: defaults.micNoiseSuppression,
+      echoCancellation: defaults.echoCancellation,
+      microphoneGain: defaults.microphoneGain,
+      surroundVariation: defaults.surroundVariation,
+      nightMode: defaults.nightMode,
+      effectsEnabled: defaults.effectsEnabled,
+    );
 
     // Override with any previously-saved per-profile customisations.
     final profilePrefs = await SharedPreferences.getInstance();
-    final profileBass = profilePrefs.getString('${event.profile}_bassGain');
-    final profileTreble = profilePrefs.getString('${event.profile}_trebleGain');
-    final profileVoice = profilePrefs.getString('${event.profile}_voiceGain');
-    final profileEqGains = profilePrefs.getString('${event.profile}_eqGains');
+    final profileBassContent = profilePrefs.getString('${event.profile}_bassGain');
+    final profileTrebleContent = profilePrefs.getString('${event.profile}_trebleGain');
+    final profileVoiceContent = profilePrefs.getString('${event.profile}_voiceGain');
+    final profileEqGainsContent = profilePrefs.getString('${event.profile}_eqGains');
 
-    if (profileBass != null) {
-      newState = newState.copyWith(
-        bassGain: double.tryParse(profileBass) ?? newState.bassGain,
-      );
+    if (profileBassContent != null) {
+      newState = newState.copyWith(bassGain: double.tryParse(profileBassContent) ?? newState.bassGain);
     }
-    if (profileTreble != null) {
-      newState = newState.copyWith(
-        trebleGain: double.tryParse(profileTreble) ?? newState.trebleGain,
-      );
+    if (profileTrebleContent != null) {
+      newState = newState.copyWith(trebleGain: double.tryParse(profileTrebleContent) ?? newState.trebleGain);
     }
-    if (profileVoice != null) {
-      newState = newState.copyWith(
-        voiceGain: double.tryParse(profileVoice) ?? newState.voiceGain,
-      );
+    if (profileVoiceContent != null) {
+      newState = newState.copyWith(voiceGain: double.tryParse(profileVoiceContent) ?? newState.voiceGain);
     }
-    if (profileEqGains != null) {
+    if (profileEqGainsContent != null) {
       try {
-        newState = newState.copyWith(
-          eqGains: List<double>.from(json.decode(profileEqGains)),
-        );
-      } catch (_) {
-        // Keep resolved preset values if persisted EQ data is malformed.
-      }
+        newState = newState.copyWith(eqGains: List<double>.from(json.decode(profileEqGainsContent)));
+      } catch (_) {}
     }
 
     emit(newState);
     debugPrint('SoundBloc: Emitted new state for profile ${event.profile}');
 
-    // Push all resolved values to the DSP engine with the CORRECT profile name.
+    // Committing full state for the new profile to DSP
     await _repository.setSoundEQ(newState.eqGains);
     await _repository.setSoundEffectGain('bass', newState.bassGain);
     await _repository.setSoundEffectGain('treble', newState.trebleGain);
     await _repository.setSoundEffectGain('voice', newState.voiceGain);
-
-    // FIX 2: setSoundProfile is fire-and-forget here — we only call it so the
-    // DSP service updates its internal bookkeeping / LOAD response cache.
-    // We no longer read back its response values (which previously overwrote
-    // Flutter's saved customisations with DSP defaults).
-    unawaited(_repository.setSoundProfile(event.profile));
-
+    await _repository.setSoundEnhancement('virtualSurround', newState.virtualSurround);
+    await _repository.setSoundEnhancement('smartVolume', newState.smartVolume);
+    await _repository.setSoundStereoWidth(newState.stereoWidth);
+    await _repository.setSoundLimiterEnabled(newState.limiterEnabled);
+    await _repository.setSoundCompressorRatio(newState.compressorRatio);
+    await _repository.setSoundMicNoiseSuppression(newState.micNoiseSuppression);
+    await _repository.setSoundEchoCancellation(newState.echoCancellation);
+    await _repository.setSoundMicGain(newState.microphoneGain);
+    await _repository.setSoundSurroundVariation(newState.surroundVariation);
+    await _repository.setSoundNightMode(newState.nightMode);
+    await _repository.setSoundEffectsEnabled(newState.effectsEnabled);
+    
+    await _repository.setSoundProfile(event.profile);
     await _saveSettings();
-    debugPrint('SoundBloc: Profile ${event.profile} setup complete');
   }
 
   Future<void> _onUpdateEQGains(
@@ -453,8 +418,8 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoost event,
     Emitter<SoundState> emit,
   ) async {
-    // FIX 2: Clamp volume to 1.0 safely
-    final clampedBoost = event.boost.clamp(0.0, 1.0);
+    // FIX 2: Clamp volume to 1.3 (30% boost)
+    final clampedBoost = event.boost.clamp(0.0, 1.3);
     
     if ((clampedBoost - state.volumeBoost).abs() < 0.01) return;
 
@@ -467,7 +432,7 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoostPreview event,
     Emitter<SoundState> emit,
   ) async {
-    emit(state.copyWith(volumeBoost: event.boost.clamp(0.0, 1.0)));
+    emit(state.copyWith(volumeBoost: event.boost.clamp(0.0, 1.3)));
   }
 
   Future<void> _onChangeNoiseLevel(
@@ -519,7 +484,7 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ResetSoundSettings event,
     Emitter<SoundState> emit,
   ) async {
-    final newState = SoundState.initial();
+    final newState = SoundState.defaultsFor(state.profile);
     emit(newState);
     await _repository.setSoundProfile(newState.profile);
     await _repository.setSoundEQ(newState.eqGains);

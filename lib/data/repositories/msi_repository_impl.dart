@@ -674,7 +674,10 @@ class MsiRepositoryImpl implements MsiRepository {
 
   @override
   Future<bool> setSoundEnhancement(String enhancement, bool enable) async {
-    if (enhancement == 'smartVolume' || enhancement == 'compressor') _compressor = enable;
+    if (enhancement == 'smartVolume' || enhancement == 'compressor') {
+      _compressor = enable;
+      _limiterEnabled = enable; // Sync for Rust logic
+    }
     if (enhancement == 'virtualSurround' || enhancement == 'surround') _surround = enable;
     if (enhancement == 'bassBoost') _bassBoost = enable;
     if (enhancement == 'trebleEnhancer') _trebleEnhancer = enable;
@@ -779,7 +782,13 @@ class MsiRepositoryImpl implements MsiRepository {
   Future<void> setSoundVolume(double volume) async {
     _currentVolume = volume;
     _volumeController.add(volume);
-    await _sendDspCommand('VOLUME:$volume');
+    
+    // Remap: 0.2 (20%) is silence, 1.0 (100%) is unity.
+    // Formula: (vol - 0.2) / 0.8
+    double mappedVolume = (volume - 0.2) / 0.8;
+    if (mappedVolume < 0) mappedVolume = 0;
+    
+    await _sendDspCommand('VOLUME:$mappedVolume');
   }
 
   @override
