@@ -10,6 +10,8 @@ import 'hardware_monitoring_screen.dart';
 import 'features_screen.dart';
 import 'user_scenario_screen.dart';
 import 'system_diagnosis_screen.dart';
+import 'notification_screen.dart';
+import 'settings_screen.dart';
 import '../widgets/sdk_initialization_loader.dart';
 
 class MainScreen extends StatefulWidget {
@@ -19,37 +21,33 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen>
-    with SingleTickerProviderStateMixin {
+class _MainScreenState extends State<MainScreen> {
   bool _isInitialized = false;
   String? _initError;
-  late TabController _tabController;
   bool _isTabLoading = false;
   double _loadProgress = 0.0;
   Timer? _progressTimer;
+  int _selectedIndex = 0;
+
+  static const _screens = <Widget>[
+    HardwareMonitoringScreen(),
+    UserScenarioScreen(),
+    NotificationScreen(),
+    SystemDiagnosisScreen(),
+    FeaturesScreen(),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(_onTabChanged);
     _initializeService();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
     _progressTimer?.cancel();
     super.dispose();
   }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    setState(() {});
-  }
-
-
 
   Future<void> _initializeService() async {
     setState(() {
@@ -71,14 +69,11 @@ class _MainScreenState extends State<MainScreen>
       });
     }
 
-    // Wait for Blocs to finish loading (hardware sync)
     final settingsBloc = context.read<SettingsBloc>();
     final soundBloc = context.read<SoundBloc>();
 
-    // Small delay to let Blocs start if they haven't
     await Future.delayed(const Duration(milliseconds: 100));
 
-    // Wait until both are not loading (with emergency 10s timeout)
     var waitTime = 0;
     while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) && waitTime < 10000 && mounted) {
       setState(() {
@@ -127,64 +122,10 @@ class _MainScreenState extends State<MainScreen>
             const Text('Center', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: isDark ? Colors.white : Colors.black87,
-          unselectedLabelColor: isDark ? Colors.white54 : Colors.black54,
-          indicatorColor: Theme.of(context).colorScheme.primary,
-          indicatorWeight: 3,
-          tabs: [
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.speed, size: 20),
-                  SizedBox(width: 8),
-                  Text('Monitor'),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.psychology, size: 20),
-                  SizedBox(width: 8),
-                  Text('User Scenario'),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.analytics_outlined, size: 20),
-                  SizedBox(width: 8),
-                  Text('System Diagnosis'),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(Icons.grid_view, size: 20),
-                  SizedBox(width: 8),
-                  Text('Features'),
-                ],
-              ),
-            ),
-          ],
-        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.dashboard_outlined),
-            onPressed: () {},
-            tooltip: 'Dashboard',
-          ),
-          IconButton(
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
+            onPressed: () => _navigateToSettings(context),
             tooltip: 'Settings',
           ),
           IconButton(
@@ -226,14 +167,9 @@ class _MainScreenState extends State<MainScreen>
           Expanded(
             child: Stack(
               children: [
-                TabBarView(
-                  controller: _tabController,
-                  children: [
-                    HardwareMonitoringScreen(),
-                    UserScenarioScreen(),
-                    SystemDiagnosisScreen(),
-                    FeaturesScreen(),
-                  ],
+                IndexedStack(
+                  index: _selectedIndex,
+                  children: _screens,
                 ),
                 if (_isTabLoading)
                   Container(
@@ -250,6 +186,71 @@ class _MainScreenState extends State<MainScreen>
           ),
         ],
       ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.speed_outlined),
+            selectedIcon: Icon(Icons.speed),
+            label: 'Monitor',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.psychology_outlined),
+            selectedIcon: Icon(Icons.psychology),
+            label: 'Scenarios',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.notifications_outlined),
+            selectedIcon: Icon(Icons.notifications),
+            label: 'Notifications',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'Diagnosis',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'Features',
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigateToSettings(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+            ),
+            body: const _SettingsScreenWrapper(),
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+}
+
+class _SettingsScreenWrapper extends StatelessWidget {
+  const _SettingsScreenWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SettingsScreen();
   }
 }
