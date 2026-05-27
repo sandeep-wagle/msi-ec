@@ -8,9 +8,13 @@ Read in order:
 | # | File | What |
 |---|------|------|
 | 1 | `.rules/HCR.md` | App-specific HCR config |
-| 2 | `/home/sandy/development/flutter/.rules/HCR.md` | Shared HCR protocol |
-| 3 | `/home/sandy/development/flutter/.rules/AGENT_EXECUTION.md` | Task classification, workflows |
-| 4 | `/home/sandy/development/flutter/.rules/flutter_antigravity/` | Flutter patterns |
+| 2 | `/home/sandy/development/flutter/.rules/HCR.md` | Shared HCR protocol (behavior, exclusions, Golden Architect) |
+| 3 | `/home/sandy/development/flutter/.rules/AGENT_EXECUTION.md` | Task classification, agent roles, workflows |
+| 4 | `/home/sandy/development/flutter/.rules/flutter_antigravity/.agent/rules/project-rules.md` | Flutter architecture, widget rules, theming, DI, testing (551 lines) |
+| 5 | `/home/sandy/development/flutter/.rules/antigravity-kit/.agent/rules/global-rules.md` | Cold Architect, zero-trust mandate, forensic integrity |
+| 6 | `/home/sandy/development/flutter/.rules/antigravity-kit/.agent/rules/flutter-rules.md` | File length limits, context extensions, state management |
+| 7 | `/home/sandy/development/flutter/.rules/antigravity-kit/.agent/rules/git-rules.md` | Branch strategy, conventional commits, PR rules |
+| 8 | `/home/sandy/development/flutter/.rules/PRODUCTION_RULES.md` | 40MB APK, permissions, CI/CD gates, pre-flight checklist |
 
 ## App Identity
 
