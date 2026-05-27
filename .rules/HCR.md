@@ -1,6 +1,6 @@
 # MSI Controller — HCR (Hard-Coded Reality)
 
-**Read first: `/home/sandy/development/flutter/.rules/HCR.md`** — shared HCR protocol.
+**Read first: `/home/sandy/development/flutter/.rules/HCR.md`** — shared HCR protocol (has full rule kit index with flutter_antigravity, antigravity-kit, PRODUCTION_RULES).
 **Read next: `/home/sandy/development/flutter/.rules/AGENT_EXECUTION.md`** — task classification.
 
 ## App Identity
