@@ -108,7 +108,7 @@ class ModeTabs extends StatelessWidget {
                       ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [kAccent.withOpacity(0.05), Colors.transparent],
+                          colors: [kAccent.withValues(alpha: 0.05), Colors.transparent],
                         )
                       : null,
                 ),
@@ -201,7 +201,7 @@ class EasySurroundView extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.gps_fixed, color: kAccent.withOpacity(0.3), size: 120),
+                Icon(Icons.gps_fixed, color: kAccent.withValues(alpha: 0.3), size: 120),
                 const SizedBox(height: 24),
                 const Text('OPTIMIZE YOUR HEADSET', style: SoundTuneTheme.h1),
                 const SizedBox(height: 12),
@@ -277,7 +277,7 @@ class SoundSharingView extends StatelessWidget {
                       children: [
                         Icon(Icons.headset, color: state.sharingEnabled ? kAccent : kTextSub, size: 60),
                         const SizedBox(width: 16),
-                        Icon(Icons.wifi, color: state.sharingEnabled ? kAccent.withOpacity(0.5) : kTextSub.withOpacity(0.2), size: 40),
+                        Icon(Icons.wifi, color: state.sharingEnabled ? kAccent.withValues(alpha: 0.5) : kTextSub.withValues(alpha: 0.2), size: 40),
                         const SizedBox(width: 16),
                         Icon(Icons.headset, color: state.sharingEnabled ? kAccent : kTextSub, size: 60),
                       ],
@@ -293,7 +293,7 @@ class SoundSharingView extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: kBg.withOpacity(0.3),
+                        color: kBg.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: kPanelBorder),
                       ),
@@ -533,7 +533,7 @@ class SoundTrackerView extends StatelessWidget {
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        Icon(Icons.gps_fixed, color: state.trackerEnabled ? kAccent.withOpacity(0.2) : kTextSub.withOpacity(0.1), size: 200),
+                        Icon(Icons.gps_fixed, color: state.trackerEnabled ? kAccent.withValues(alpha: 0.2) : kTextSub.withValues(alpha: 0.1), size: 200),
                         if (state.trackerEnabled)
                           const Icon(Icons.navigation, color: kAccent, size: 60),
                       ],

@@ -20,7 +20,7 @@ class SurroundPanel extends StatelessWidget {
         Container(
           width: 70,
           decoration: BoxDecoration(
-            color: kBg.withOpacity(0.5),
+            color: kBg.withValues(alpha: 0.5),
             border: const Border(right: BorderSide(color: kPanelBorder)),
           ),
           child: Column(
@@ -33,7 +33,7 @@ class SurroundPanel extends StatelessWidget {
                     context: context,
                     barrierDismissible: true,
                     barrierLabel: 'EQ',
-                    barrierColor: Colors.black.withOpacity(0.7),
+                    barrierColor: Colors.black.withValues(alpha: 0.7),
                     pageBuilder: (c, a, s) => const EqualizerPopup(),
                   );
                 },

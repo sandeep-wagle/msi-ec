@@ -167,7 +167,7 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.04)
+                        ? Colors.white.withValues(alpha: 0.04)
                         : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
@@ -195,10 +195,10 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.1),
+                                color: Colors.orange.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                  color: Colors.orange.withOpacity(0.4),
+                                  color: Colors.orange.withValues(alpha: 0.4),
                                 ),
                               ),
                               child: Row(
@@ -272,7 +272,7 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: _globalGamingMode
-            ? Colors.red.shade700.withOpacity(0.15)
+            ? Colors.red.shade700.withValues(alpha: 0.15)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(

@@ -57,7 +57,7 @@ class _CustomToastState extends State<CustomToast>
 
     final (backgroundColor, icon, iconColor) = switch (widget.type) {
       ToastType.success => (
-        colorScheme.surface.withOpacity(0.95),
+        colorScheme.surface.withValues(alpha: 0.95),
         Icons.check_circle,
         colorScheme.primary,
       ),
@@ -72,7 +72,7 @@ class _CustomToastState extends State<CustomToast>
         const Color(0xFFFF8C00),
       ),
       ToastType.info => (
-        colorScheme.surface.withOpacity(0.95),
+        colorScheme.surface.withValues(alpha: 0.95),
         Icons.info,
         colorScheme.secondary,
       ),
@@ -90,12 +90,12 @@ class _CustomToastState extends State<CustomToast>
             color: backgroundColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: colorScheme.outline.withOpacity(0.2),
+              color: colorScheme.outline.withValues(alpha: 0.2),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -121,7 +121,7 @@ class _CustomToastState extends State<CustomToast>
                   icon: Icon(
                     Icons.close,
                     size: 20,
-                    color: colorScheme.onSurface.withOpacity(0.6),
+                    color: colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   tooltip: 'Dismiss',
                   visualDensity: VisualDensity.compact,

@@ -27,12 +27,12 @@ class _NahimicPanelState extends State<NahimicPanel> {
         decoration: BoxDecoration(
           color: _isHovered ? const Color(0xFF10141C) : kPanel,
           border: Border.all(
-            color: _isHovered ? kAccent.withOpacity(0.5) : kPanelBorder, 
+            color: _isHovered ? kAccent.withValues(alpha: 0.5) : kPanelBorder, 
             width: 0.5
           ),
           boxShadow: _isHovered ? [
             BoxShadow(
-              color: kAccent.withOpacity(0.05),
+              color: kAccent.withValues(alpha: 0.05),
               blurRadius: 10,
               spreadRadius: 2,
             )
@@ -72,16 +72,16 @@ class PowerToggle extends StatelessWidget {
           height: 34,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive ? kAccent.withOpacity(0.15) : Colors.transparent,
-            border: Border.all(color: isActive ? kAccent : kTextSub.withOpacity(0.5), width: 1.5),
+            color: isActive ? kAccent.withValues(alpha: 0.15) : Colors.transparent,
+            border: Border.all(color: isActive ? kAccent : kTextSub.withValues(alpha: 0.5), width: 1.5),
             boxShadow: isActive
-                ? [BoxShadow(color: kAccentGlow.withOpacity(0.2), blurRadius: 10, spreadRadius: 2)]
+                ? [BoxShadow(color: kAccentGlow.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)]
                 : null,
           ),
           child: Icon(
             Icons.power_settings_new,
             size: 16,
-            color: isActive ? kAccent : kTextSub.withOpacity(0.5),
+            color: isActive ? kAccent : kTextSub.withValues(alpha: 0.5),
           ),
         ),
       ),
@@ -102,8 +102,8 @@ class SmallPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: active ? kAccent.withOpacity(0.1) : Colors.transparent,
-          border: Border.all(color: active ? kAccent : kTextSub.withOpacity(0.3)),
+          color: active ? kAccent.withValues(alpha: 0.1) : Colors.transparent,
+          border: Border.all(color: active ? kAccent : kTextSub.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(2),
         ),
         child: Text(
@@ -238,9 +238,9 @@ class _NahimicSliderState extends State<NahimicSlider> {
                             shape: BoxShape.circle,
                             border: Border.all(color: isActive ? kAccent : kTextSub, width: 2),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 4, offset: const Offset(0, 2)),
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2)),
                               if (isActive && _isInteracting)
-                                BoxShadow(color: kAccent.withOpacity(0.6), blurRadius: 12, spreadRadius: 4),
+                                BoxShadow(color: kAccent.withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 4),
                             ],
                           ),
                         ),

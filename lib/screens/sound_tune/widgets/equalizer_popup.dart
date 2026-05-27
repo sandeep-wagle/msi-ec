@@ -23,7 +23,7 @@ class EqualizerPopup extends StatelessWidget {
             color: kPanel,
             border: Border.all(color: kPanelBorder, width: 2),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 40, spreadRadius: 10),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 10),
             ],
           ),
           child: Column(
@@ -63,11 +63,11 @@ class EqualizerPopup extends StatelessWidget {
                 children: [
                   Text(
                     'LOWEST NOTES (BASS)',
-                    style: TextStyle(color: kTextSub.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(color: kTextSub.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                   Text(
                     'HIGHEST NOTES (TREBLE)',
-                    style: TextStyle(color: kTextSub.withOpacity(0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(color: kTextSub.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
                   ),
                 ],
               ),
@@ -114,7 +114,7 @@ class EqBand extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             label,
-            style: TextStyle(color: kTextSub.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(color: kTextSub.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
         ],

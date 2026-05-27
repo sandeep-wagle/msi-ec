@@ -193,7 +193,7 @@ class _ModeTabs extends StatelessWidget {
                       gradient: isSelected ? LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [_accent.withOpacity(0.05), Colors.transparent],
+                        colors: [_accent.withValues(alpha: 0.05), Colors.transparent],
                       ) : null,
                     ),
                     child: Column(
@@ -245,7 +245,7 @@ class _LeftSidebar extends StatelessWidget {
                 context: context,
                 barrierDismissible: true,
                 barrierLabel: 'EQ',
-                barrierColor: Colors.black.withOpacity(0.8),
+                barrierColor: Colors.black.withValues(alpha: 0.8),
                 pageBuilder: (c, a, s) => const _EqualizerPopup(),
               );
             },
@@ -424,15 +424,15 @@ class _SurroundPanel extends StatelessWidget {
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: active ? _accent.withOpacity(0.5) : _textSub.withOpacity(0.3), width: 1),
+                      border: Border.all(color: active ? _accent.withValues(alpha: 0.5) : _textSub.withValues(alpha: 0.3), width: 1),
                       boxShadow: active ? [
-                        BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 20, spreadRadius: 5)
+                        BoxShadow(color: _accent.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 5)
                       ] : null,
                       gradient: active
                           ? RadialGradient(
                               colors: [
-                                _accent.withOpacity(0.3),
-                                _accent.withOpacity(0.1),
+                                _accent.withValues(alpha: 0.3),
+                                _accent.withValues(alpha: 0.1),
                                 Colors.transparent,
                               ],
                               stops: const [0.0, 0.6, 1.0],
@@ -442,7 +442,7 @@ class _SurroundPanel extends StatelessWidget {
                   ),
                   Icon(
                     Icons.person_rounded,
-                    color: active ? _textPrimary : _textSub.withOpacity(0.5),
+                    color: active ? _textPrimary : _textSub.withValues(alpha: 0.5),
                     size: 54,
                   ),
                   if (active) ...[
@@ -547,7 +547,7 @@ class _StabilizerPanel extends StatelessWidget {
                   Icon(
                     Icons.graphic_eq_rounded,
                     size: 32,
-                    color: active ? _accent : _textSub.withOpacity(0.5),
+                    color: active ? _accent : _textSub.withValues(alpha: 0.5),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -696,7 +696,7 @@ class _PanelBox extends StatelessWidget {
           border: Border.all(color: _panelBorder, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 10,
               offset: const Offset(4, 4),
             )
@@ -704,7 +704,7 @@ class _PanelBox extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [_panel, _panel.withOpacity(0.8)],
+            colors: [_panel, _panel.withValues(alpha: 0.8)],
           ),
         ),
         child: Stack(
@@ -837,9 +837,9 @@ class _EqualizerPopup extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: _panelBorder, width: 2),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.8), blurRadius: 40),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.8), blurRadius: 40),
               if (profile != 'Custom') 
-                BoxShadow(color: _accent.withOpacity(0.1), blurRadius: 20, spreadRadius: -5),
+                BoxShadow(color: _accent.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: -5),
             ],
           ),
           child: Column(
@@ -858,7 +858,7 @@ class _EqualizerPopup extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: _bg,
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: _accent.withOpacity(0.4)),
+                          border: Border.all(color: _accent.withValues(alpha: 0.4)),
                         ),
                         child: Text(
                           profile.toUpperCase(),
@@ -996,12 +996,12 @@ class _SurroundWaveState extends State<_SurroundWave> with SingleTickerProviderS
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: _accent.withOpacity((1.0 - _controller.value) * 0.5),
+              color: _accent.withValues(alpha: (1.0 - _controller.value) * 0.5),
               width: 1.5 - (_controller.value * 0.5),
             ),
             boxShadow: [
               BoxShadow(
-                color: _accent.withOpacity((1.0 - _controller.value) * 0.1),
+                color: _accent.withValues(alpha: (1.0 - _controller.value) * 0.1),
                 blurRadius: 10,
                 spreadRadius: 2,
               )
