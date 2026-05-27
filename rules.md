@@ -15,6 +15,7 @@ Read in order:
 | 6 | `/home/sandy/development/flutter/.rules/antigravity-kit/.agent/rules/flutter-rules.md` | File length limits, context extensions, state management |
 | 7 | `/home/sandy/development/flutter/.rules/antigravity-kit/.agent/rules/git-rules.md` | Branch strategy, conventional commits, PR rules |
 | 8 | `/home/sandy/development/flutter/.rules/PRODUCTION_RULES.md` | 40MB APK, permissions, CI/CD gates, pre-flight checklist |
+| 8 | `/home/sandy/development/flutter/.rules/PRODUCTION_RULES.md` | 40MB APK, permissions, CI/CD gates, pre-flight checklist |
 
 ## App Identity
 
