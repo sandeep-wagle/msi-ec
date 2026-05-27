@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../widgets/msi_card.dart';
 import 'fan_screen.dart';
 import 'battery_screen.dart';
 import 'settings_screen.dart';
@@ -25,6 +24,8 @@ class _FeaturesScreenState extends State<FeaturesScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return SingleChildScrollView(
       child: Column(
@@ -33,60 +34,57 @@ class _FeaturesScreenState extends State<FeaturesScreen>
           // Banner Area
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? const Color(0x1AFFFFFF)
-                      : Colors.black.withValues(alpha: 0.06),
-                ),
-              ),
+              color: isDark
+                  ? Colors.grey.withValues(alpha: 0.1)
+                  : Colors.grey.shade100,
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const MsiSectionHeader(title: 'Feature Sets'),
-                        const SizedBox(width: 10),
+                        Text(
+                          'Feature Sets',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Icon(
                           Icons.play_circle_outline,
-                          color: context.extension<AppColors>()!.performance,
-                          size: 22,
+                          color: Colors.redAccent,
+                          size: 24,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Manage and open MSI exclusive features.\nFeel free to explore your Linux-powered MSI Center!',
-                      style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? const Color(0xFF64748B)
-                            : const Color(0xFF666666),
-                        fontSize: 14,
-                        height: 1.5,
-                      ),
+                    Row(
+                      children: [
+                        _buildBannerButton('Usage Scenarios', () {}),
+                        const SizedBox(width: 16),
+                        _buildBannerButton('Settings and History', () {}),
+                      ],
                     ),
                   ],
                 ),
-                Row(
-                  children: [
-                    _buildBannerButton('Usage Scenarios', () {}),
-                    const SizedBox(width: 12),
-                    _buildBannerButton('Settings and History', () {}),
-                  ],
+                const SizedBox(height: 24),
+                Text(
+                  'Manage and open MSI exclusive features in this page.\nFeel free to explore your Linux-powered MSI Center!',
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                    fontSize: 16,
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Features Grid
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -95,28 +93,29 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                   children: [
                     Text(
                       'Available items',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white
-                            : const Color(0xFF1A1A1A),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     OutlinedButton(
                       onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
                       child: const Text('Refresh All'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
                 GridView.count(
                   crossAxisCount: 4,
-                  crossAxisSpacing: 20,
-                  mainAxisSpacing: 20,
+                  crossAxisSpacing: 24,
+                  mainAxisSpacing: 24,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.15,
+                  childAspectRatio: 1.1,
                   children: [
                     _FeatureCard(
                       title: 'Smart Priority',
@@ -154,8 +153,7 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                           'Extend battery lifespan with charging limit configurations.',
                       icon: Icons.battery_charging_full,
                       isOpen: true,
-                      onTap: () =>
-                          _navigateTo(context, const BatteryScreen()),
+                      onTap: () => _navigateTo(context, const BatteryScreen()),
                     ),
                     _FeatureCard(
                       title: 'General Settings',
@@ -164,8 +162,7 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                           'Toggle webcam, microphone, and system keys.',
                       icon: Icons.settings_input_composite,
                       isOpen: true,
-                      onTap: () =>
-                          _navigateTo(context, const SettingsScreen()),
+                      onTap: () => _navigateTo(context, const SettingsScreen()),
                     ),
                     _FeatureCard(
                       title: 'Mystic Light',
@@ -208,20 +205,17 @@ class _FeaturesScreenState extends State<FeaturesScreen>
   }
 
   Widget _buildBannerButton(String label, VoidCallback onTap) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        side: BorderSide(
-          color: isDark
-              ? const Color(0x33EB1D24)
-              : Colors.black.withValues(alpha: 0.1),
-        ),
-        foregroundColor:
-            isDark ? const Color(0xFF64748B) : const Color(0xFF666666),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        side: const BorderSide(color: Colors.grey),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.grey, fontSize: 13),
+      ),
     );
   }
 
@@ -236,6 +230,7 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                 onPressed: () => Navigator.of(context).pop(),
               ),
               elevation: 0,
+              backgroundColor: Colors.transparent,
             ),
             body: screen,
           );
@@ -270,45 +265,39 @@ class _FeatureCard extends StatefulWidget {
 }
 
 class _FeatureCardState extends State<_FeatureCard> {
-  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colors = context.extension<AppColors>()!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+      onEnter: (_) => setState(() {}),
+      onExit: (_) => setState(() {}),
+      child: Container(
         decoration: BoxDecoration(
-          color: _isHovered
-              ? colors.surfaceElevated
-              : colors.cardBackground,
-          border: Border.all(
-            color: _isHovered
-                ? colors.performance.withValues(alpha: 0.3)
-                : colors.border,
-          ),
-          borderRadius: BorderRadius.circular(10),
+          color: isDark
+              ? Colors.grey.withValues(alpha: 0.05)
+              : Colors.grey.shade50,
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+          borderRadius: BorderRadius.circular(4),
         ),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: colors.performance.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: isDark ? Colors.white10 : Colors.black12,
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Icon(
                     widget.icon,
-                    size: 22,
-                    color: colors.performance,
+                    size: 24,
+                    color: isDark ? Colors.grey : Colors.grey.shade700,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -318,18 +307,17 @@ class _FeatureCardState extends State<_FeatureCard> {
                     children: [
                       Text(
                         widget.title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: isDark ? Colors.white : const Color(0xFF1A1A1A),
+                          color: Colors.redAccent,
                         ),
                       ),
                       Text(
                         widget.version,
                         style: const TextStyle(
                           fontSize: 10,
-                          color: Color(0xFF64748B),
-                          fontFamily: 'monospace',
+                          color: Colors.grey,
                         ),
                       ),
                     ],
@@ -337,39 +325,39 @@ class _FeatureCardState extends State<_FeatureCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Expanded(
               child: Text(
                 widget.description,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                  height: 1.4,
-                ),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: OutlinedButton(
                 onPressed: widget.isOpen ? widget.onTap : null,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  backgroundColor: widget.isOpen
-                      ? colors.performance.withValues(alpha: 0.1)
-                      : null,
-                  foregroundColor:
-                      widget.isOpen ? colors.performance : const Color(0xFF475569),
-                  elevation: 0,
+                style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                  backgroundColor: widget.isOpen
+                      ? (isDark ? Colors.white10 : Colors.grey.shade200)
+                      : null,
+                  side: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.black12,
                   ),
                 ),
                 child: Text(
                   widget.isOpen ? 'Open' : 'Install',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: widget.isOpen
+                        ? (isDark ? Colors.white70 : Colors.black87)
+                        : Colors.grey,
+                  ),
                 ),
               ),
             ),

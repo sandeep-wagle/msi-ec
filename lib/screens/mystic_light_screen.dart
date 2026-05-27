@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/di/injection.dart';
-import '../core/app_colors.dart';
 import '../services/toast_service.dart';
-import '../widgets/msi_card.dart';
 
 class MysticLightScreen extends StatefulWidget {
   const MysticLightScreen({super.key});
@@ -14,13 +12,18 @@ class MysticLightScreen extends StatefulWidget {
 class _MysticLightScreenState extends State<MysticLightScreen>
     with SingleTickerProviderStateMixin {
   String _effect = 'Static';
-  Color _color = const Color(0xFFEB1D24);
+  Color _color = Colors.red;
   double _brightness = 1.0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
   final List<String> _effects = [
-    'Static', 'Breathing', 'Color Cycle', 'Wave', 'Flashing', 'Random',
+    'Static',
+    'Breathing',
+    'Color Cycle',
+    'Wave',
+    'Flashing',
+    'Random',
   ];
 
   @override
@@ -44,68 +47,85 @@ class _MysticLightScreenState extends State<MysticLightScreen>
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.extension<AppColors>()!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text('Mystic Light', style: Theme.of(context).textTheme.headlineMedium),
-                const SizedBox(width: 12),
-                Icon(Icons.lightbulb, color: colors.performance, size: 26),
+                Text(
+                  'Mystic Light',
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Icon(Icons.lightbulb, color: Colors.redAccent, size: 28),
               ],
             ),
-            const SizedBox(height: 6),
-            const Text(
+            const SizedBox(height: 8),
+            Text(
               'Control RGB lighting effects on your MSI devices.',
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
 
-            MsiCard(
+            // Effect Selection
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black12,
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const MsiSectionHeader(title: 'Lighting Effect'),
+                  const Text(
+                    'Lighting Effect',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 16),
                   Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                    spacing: 12,
+                    runSpacing: 12,
                     children: _effects.map((effect) {
                       final isSelected = _effect == effect;
                       return GestureDetector(
                         onTap: () => setState(() => _effect = effect),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                        child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 9,
+                            horizontal: 16,
+                            vertical: 8,
                           ),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? colors.performance
-                                : colors.surfaceElevated,
+                                ? Colors.redAccent
+                                : (isDark
+                                      ? Colors.white10
+                                      : Colors.grey.shade200),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: isSelected
-                                  ? colors.performance
-                                  : colors.border,
-                            ),
                           ),
                           child: Text(
                             effect,
                             style: TextStyle(
                               color: isSelected
                                   ? Colors.white
-                                  : const Color(0xFF94A3B8),
-                              fontWeight:
-                                  isSelected ? FontWeight.w600 : FontWeight.normal,
-                              fontSize: 13,
+                                  : (isDark ? Colors.white70 : Colors.black87),
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                         ),
@@ -115,26 +135,41 @@ class _MysticLightScreenState extends State<MysticLightScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 20),
 
-            MsiCard(
+            const SizedBox(height: 32),
+
+            // Color Picker
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black12,
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const MsiSectionHeader(title: 'Color Selection'),
-                  const SizedBox(height: 20),
+                  const Text(
+                    'Color Selection',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: Container(
-                          height: 80,
+                          height: 60,
                           decoration: BoxDecoration(
                             color: _color,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
                                 color: _color.withValues(alpha: 0.3),
-                                blurRadius: 12,
+                                blurRadius: 8,
                                 spreadRadius: 2,
                               ),
                             ],
@@ -150,34 +185,48 @@ class _MysticLightScreenState extends State<MysticLightScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(width: 20),
+                      const SizedBox(width: 16),
                       Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildColorSlider('R', Colors.red, _color.red / 255.0, (v) {
-                            setState(() => _color = Color.fromARGB(
-                              _color.alpha,
-                              (v * 255).round(),
-                              _color.green,
-                              _color.blue,
-                            ));
-                          }),
-                          _buildColorSlider('G', Colors.green, _color.green / 255.0, (v) {
-                            setState(() => _color = Color.fromARGB(
-                              _color.alpha,
-                              _color.red,
-                              (v * 255).round(),
-                              _color.blue,
-                            ));
-                          }),
-                          _buildColorSlider('B', Colors.blue, _color.blue / 255.0, (v) {
-                            setState(() => _color = Color.fromARGB(
-                              _color.alpha,
-                              _color.red,
-                              _color.green,
-                              (v * 255).round(),
-                            ));
-                          }),
+                          const Text('Red'),
+                          Slider(
+                            value: _color.red / 255.0,
+                            onChanged: (value) => setState(
+                              () => _color = Color.fromARGB(
+                                _color.alpha,
+                                (value * 255).round(),
+                                _color.green,
+                                _color.blue,
+                              ),
+                            ),
+                            activeColor: Colors.red,
+                          ),
+                          const Text('Green'),
+                          Slider(
+                            value: _color.green / 255.0,
+                            onChanged: (value) => setState(
+                              () => _color = Color.fromARGB(
+                                _color.alpha,
+                                _color.red,
+                                (value * 255).round(),
+                                _color.blue,
+                              ),
+                            ),
+                            activeColor: Colors.green,
+                          ),
+                          const Text('Blue'),
+                          Slider(
+                            value: _color.blue / 255.0,
+                            onChanged: (value) => setState(
+                              () => _color = Color.fromARGB(
+                                _color.alpha,
+                                _color.red,
+                                _color.green,
+                                (value * 255).round(),
+                              ),
+                            ),
+                            activeColor: Colors.blue,
+                          ),
                         ],
                       ),
                     ],
@@ -185,90 +234,70 @@ class _MysticLightScreenState extends State<MysticLightScreen>
                 ],
               ),
             ),
-            const SizedBox(height: 20),
 
-            MsiCard(
+            const SizedBox(height: 32),
+
+            // Brightness
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.03)
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.black12,
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const MsiSectionHeader(title: 'Brightness'),
-                      Text(
-                        '${(_brightness * 100).round()}%',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontFamily: 'monospace',
-                          color: Color(0xFFEB1D24),
-                          fontSize: 16,
+                      const Text(
+                        'Brightness',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
+                      Text('${(_brightness * 100).round()}%'),
                     ],
                   ),
                   Slider(
                     value: _brightness,
                     onChanged: (value) => setState(() => _brightness = value),
+                    activeColor: Colors.redAccent,
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 28),
 
+            const SizedBox(height: 32),
+
+            // Apply Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () {
+                  // Apply RGB settings
                   getIt<ToastService>().showSuccess(
                     'Applied Mystic Light: $_effect effect with brightness ${(_brightness * 100).round()}%',
                   );
                 },
-                icon: const Icon(Icons.lightbulb, size: 18),
+                icon: const Icon(Icons.lightbulb),
                 label: const Text('Apply Settings'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.all(16),
+                  backgroundColor: Colors.redAccent,
+                  foregroundColor: Colors.white,
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildColorSlider(
-    String label,
-    Color color,
-    double value,
-    ValueChanged<double> onChanged,
-  ) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 12,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: color,
-              fontFamily: 'monospace',
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 120,
-          child: Slider(
-            value: value,
-            onChanged: onChanged,
-            activeColor: color,
-            min: 0,
-            max: 1,
-          ),
-        ),
-      ],
     );
   }
 }

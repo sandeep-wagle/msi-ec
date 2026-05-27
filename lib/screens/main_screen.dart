@@ -10,6 +10,8 @@ import 'hardware_monitoring_screen.dart';
 import 'features_screen.dart';
 import 'user_scenario_screen.dart';
 import 'system_diagnosis_screen.dart';
+import 'notification_screen.dart';
+import 'settings_screen.dart';
 import '../widgets/sdk_initialization_loader.dart';
 
 class MainScreen extends StatefulWidget {
@@ -19,34 +21,32 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen>
-    with SingleTickerProviderStateMixin {
+class _MainScreenState extends State<MainScreen> {
   bool _isInitialized = false;
   String? _initError;
-  late TabController _tabController;
   bool _isTabLoading = false;
   double _loadProgress = 0.0;
   Timer? _progressTimer;
+  int _selectedIndex = 0;
+
+  static const _screens = <Widget>[
+    HardwareMonitoringScreen(),
+    UserScenarioScreen(),
+    NotificationScreen(),
+    SystemDiagnosisScreen(),
+    FeaturesScreen(),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(_onTabChanged);
     _initializeService();
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
-    _tabController.dispose();
     _progressTimer?.cancel();
     super.dispose();
-  }
-
-  void _onTabChanged() {
-    if (_tabController.indexIsChanging) return;
-    setState(() {});
   }
 
   Future<void> _initializeService() async {
@@ -75,9 +75,7 @@ class _MainScreenState extends State<MainScreen>
     await Future.delayed(const Duration(milliseconds: 100));
 
     var waitTime = 0;
-    while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) &&
-        waitTime < 10000 &&
-        mounted) {
+    while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) && waitTime < 10000 && mounted) {
       setState(() {
         _loadProgress = (_loadProgress + 0.05).clamp(0.4, 0.9);
       });
@@ -86,9 +84,13 @@ class _MainScreenState extends State<MainScreen>
     }
 
     if (mounted) {
-      setState(() => _loadProgress = 1.0);
+      setState(() {
+        _loadProgress = 1.0;
+      });
       await Future.delayed(const Duration(milliseconds: 500));
-      setState(() => _isTabLoading = false);
+      setState(() {
+        _isTabLoading = false;
+      });
     }
   }
 
@@ -101,19 +103,10 @@ class _MainScreenState extends State<MainScreen>
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFEB1D24), Color(0xFFD31A20)],
-                ),
-                borderRadius: BorderRadius.circular(5),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFEB1D24).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                color: const Color(0xFFD32F2F),
+                borderRadius: BorderRadius.circular(4),
               ),
               child: const Text(
                 'MSI',
@@ -121,126 +114,34 @@ class _MainScreenState extends State<MainScreen>
                   color: Colors.white,
                   fontWeight: FontWeight.w900,
                   fontSize: 14,
-                  letterSpacing: 1.5,
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
             const SizedBox(width: 12),
-            Text(
-              'CENTER',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-                letterSpacing: 1.2,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
+            const Text('Center', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(44),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF0F0F2E)
-                  : Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: isDark ? const Color(0xFFEB1D24) : const Color(0xFFC41E24),
-              unselectedLabelColor: isDark
-                  ? const Color(0xFF475569)
-                  : Colors.grey.shade500,
-              indicator: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFFEB1D24).withValues(alpha: 0.12)
-                    : const Color(0xFFC41E24).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              labelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              tabs: const [
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.speed, size: 16),
-                      SizedBox(width: 6),
-                      Text('Monitor'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.psychology, size: 16),
-                      SizedBox(width: 6),
-                      Text('Scenarios'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.analytics_outlined, size: 16),
-                      SizedBox(width: 6),
-                      Text('Diagnosis'),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.grid_view, size: 16),
-                      SizedBox(width: 6),
-                      Text('Features'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined, size: 20),
-            onPressed: () {},
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => _navigateToSettings(context),
             tooltip: 'Settings',
           ),
           IconButton(
-            icon: Icon(
-              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-              size: 20,
-            ),
-            onPressed: () => getIt<ThemeProvider>().toggleTheme(),
+            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+            onPressed: () {
+              getIt<ThemeProvider>().toggleTheme();
+            },
             tooltip: 'Toggle Theme',
           ),
           const SizedBox(width: 8),
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEB1D24).withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const CircleAvatar(
-              backgroundColor: Colors.transparent,
-              radius: 16,
-              child: Icon(Icons.person, size: 18, color: Color(0xFFEB1D24)),
-            ),
+          const CircleAvatar(
+            backgroundColor: Colors.redAccent,
+            radius: 14,
+            child: Icon(Icons.person, size: 18, color: Colors.white),
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: Column(
@@ -249,15 +150,15 @@ class _MainScreenState extends State<MainScreen>
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
-              color: Colors.orange.shade900.withValues(alpha: 0.9),
+              color: Colors.orange.shade800,
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber, color: Colors.white, size: 18),
+                  const Icon(Icons.warning_amber, color: Colors.white),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _initError!,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: const TextStyle(color: Colors.white),
                     ),
                   ),
                 ],
@@ -266,27 +167,17 @@ class _MainScreenState extends State<MainScreen>
           Expanded(
             child: Stack(
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: const [
-                      HardwareMonitoringScreen(),
-                      UserScenarioScreen(),
-                      SystemDiagnosisScreen(),
-                      FeaturesScreen(),
-                    ],
-                  ),
+                IndexedStack(
+                  index: _selectedIndex,
+                  children: _screens,
                 ),
                 if (_isTabLoading)
                   Container(
-                    color: const Color(0xFF050510).withValues(alpha: 0.9),
+                    color: Colors.black.withValues(alpha: 0.7),
                     child: Center(
                       child: Material(
                         color: Colors.transparent,
-                        child: SdkInitializationLoader(
-                          progress: _loadProgress,
-                        ),
+                        child: SdkInitializationLoader(progress: _loadProgress),
                       ),
                     ),
                   ),
@@ -295,6 +186,71 @@ class _MainScreenState extends State<MainScreen>
           ),
         ],
       ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() => _selectedIndex = index);
+        },
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.speed_outlined),
+            selectedIcon: Icon(Icons.speed),
+            label: 'Monitor',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.psychology_outlined),
+            selectedIcon: Icon(Icons.psychology),
+            label: 'Scenarios',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.notifications_outlined),
+            selectedIcon: Icon(Icons.notifications),
+            label: 'Notifications',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.analytics_outlined),
+            selectedIcon: Icon(Icons.analytics),
+            label: 'Diagnosis',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.grid_view_outlined),
+            selectedIcon: Icon(Icons.grid_view),
+            label: 'Features',
+          ),
+        ],
+      ),
     );
+  }
+
+  void _navigateToSettings(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+            ),
+            body: const _SettingsScreenWrapper(),
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
+  }
+}
+
+class _SettingsScreenWrapper extends StatelessWidget {
+  const _SettingsScreenWrapper();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SettingsScreen();
   }
 }
