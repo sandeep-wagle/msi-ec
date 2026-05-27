@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import '../core/app_colors.dart';
 import '../domain/repositories/msi_repository.dart';
 import '../services/toast_service.dart';
+import '../widgets/msi_card.dart';
 
 class LanManagerScreen extends StatefulWidget {
   const LanManagerScreen({super.key});
@@ -30,7 +32,6 @@ class _LanManagerScreenState extends State<LanManagerScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
     );
     _animationController.forward();
-
     _refreshNetworkStats();
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       _refreshNetworkStats();
@@ -45,8 +46,6 @@ class _LanManagerScreenState extends State<LanManagerScreen>
   }
 
   Future<void> _refreshNetworkStats() async {
-    // In a real implementation, this would call system network monitoring
-    // For now, mock some stats
     if (mounted) {
       setState(() {
         _networkStats = {
@@ -66,104 +65,87 @@ class _LanManagerScreenState extends State<LanManagerScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = context.extension<AppColors>()!;
 
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
-                  'LAN Manager',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.network_check,
-                  color: theme.colorScheme.primary,
-                  size: 28,
-                ),
+                Text('LAN Manager', style: Theme.of(context).textTheme.headlineMedium),
+                const SizedBox(width: 12),
+                Icon(Icons.network_check, color: colors.performance, size: 26),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
+            const SizedBox(height: 6),
+            const Text(
               'Monitor network traffic and connection quality.',
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
-            // Real-time Stats
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
+            MsiCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Real-time Statistics',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      const MsiSectionHeader(title: 'Real-time Statistics'),
                       IconButton(
                         onPressed: _refreshNetworkStats,
-                        icon: const Icon(Icons.refresh),
+                        icon: const Icon(Icons.refresh, size: 18),
                         tooltip: 'Refresh',
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'AI LAN Priority',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'AI LAN Priority',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const Text(
+                                'Prioritize gaming and streaming traffic',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'Prioritize gaming and streaming traffic',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: _aiPriorityEnabled,
-                        onChanged: (value) async {
-                          setState(() => _aiPriorityEnabled = value);
-                          final repository = GetIt.I<MsiRepository>();
-                          await repository.setAiLanPriority(value);
-                        },
-                        activeThumbColor: theme.colorScheme.primary,
-                      ),
-                    ],
+                        ),
+                        Switch(
+                          value: _aiPriorityEnabled,
+                          onChanged: (value) async {
+                            setState(() => _aiPriorityEnabled = value);
+                            final repository = GetIt.I<MsiRepository>();
+                            await repository.setAiLanPriority(value);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   Row(
                     children: [
                       Expanded(
@@ -171,25 +153,25 @@ class _LanManagerScreenState extends State<LanManagerScreen>
                           'Download',
                           _networkStats['downloadSpeed'] ?? '0 Mbps',
                           Icons.download,
-                          theme.colorScheme.primary,
+                          colors.performance,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildStatCard(
                           'Upload',
                           _networkStats['uploadSpeed'] ?? '0 Mbps',
                           Icons.upload,
-                          Colors.white70,
+                          colors.tempCool,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildStatCard(
                           'Ping',
                           _networkStats['ping'] ?? '0 ms',
                           Icons.timer,
-                          Colors.grey.shade400,
+                          colors.tempWarm,
                         ),
                       ),
                     ],
@@ -197,70 +179,31 @@ class _LanManagerScreenState extends State<LanManagerScreen>
                 ],
               ),
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 32),
-
-            // Network Info
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
+            MsiCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Network Information',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  const MsiSectionHeader(title: 'Network Information'),
                   const SizedBox(height: 16),
-                  _buildInfoRow(
-                    'Connection Type',
-                    _networkStats['connectionType'] ?? 'Unknown',
-                  ),
-                  _buildInfoRow(
-                    'IP Address',
-                    _networkStats['ipAddress'] ?? 'Not available',
-                  ),
-                  _buildInfoRow(
-                    'Gateway',
-                    _networkStats['gateway'] ?? 'Not available',
-                  ),
-                  _buildInfoRow(
-                    'DNS Servers',
-                    _networkStats['dns'] ?? 'Not available',
-                  ),
+                  _buildInfoRow('Connection Type', _networkStats['connectionType'] ?? 'Unknown'),
+                  _buildDivider(colors),
+                  _buildInfoRow('IP Address', _networkStats['ipAddress'] ?? 'Not available'),
+                  _buildDivider(colors),
+                  _buildInfoRow('Gateway', _networkStats['gateway'] ?? 'Not available'),
+                  _buildDivider(colors),
+                  _buildInfoRow('DNS Servers', _networkStats['dns'] ?? 'Not available'),
                 ],
               ),
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 32),
-
-            // Traffic Stats
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
+            MsiCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Traffic Statistics',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  const MsiSectionHeader(title: 'Traffic Statistics'),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -269,16 +212,16 @@ class _LanManagerScreenState extends State<LanManagerScreen>
                           'Packets Sent',
                           _networkStats['packetsSent']?.toString() ?? '0',
                           Icons.send,
-                          theme.colorScheme.primary,
+                          colors.performance,
                         ),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildTrafficCard(
                           'Packets Received',
                           _networkStats['packetsReceived']?.toString() ?? '0',
                           Icons.inbox,
-                          Colors.grey.shade600,
+                          colors.superBattery,
                         ),
                       ),
                     ],
@@ -286,49 +229,26 @@ class _LanManagerScreenState extends State<LanManagerScreen>
                 ],
               ),
             ),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 32),
-
-            // Network Tools
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
+            MsiCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Network Tools',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  const MsiSectionHeader(title: 'Network Tools'),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
-                        child: _buildToolButton(
-                          'Ping Test',
-                          Icons.network_ping,
-                          () {
-                            GetIt.instance<ToastService>().showInfo(
-                              'Running ping test...',
-                            );
-                          },
-                        ),
+                        child: _buildToolButton('Ping Test', Icons.network_ping, () {
+                          GetIt.instance<ToastService>().showInfo('Running ping test...');
+                        }, colors),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: _buildToolButton('Speed Test', Icons.speed, () {
-                          GetIt.instance<ToastService>().showInfo(
-                            'Running speed test...',
-                          );
-                        }),
+                          GetIt.instance<ToastService>().showInfo('Running speed test...');
+                        }, colors),
                       ),
                     ],
                   ),
@@ -341,35 +261,31 @@ class _LanManagerScreenState extends State<LanManagerScreen>
     );
   }
 
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 32),
+          Icon(icon, color: color, size: 28),
           const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
               color: color,
+              fontFamily: 'monospace',
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             title,
-            style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7)),
+            style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.7)),
           ),
         ],
       ),
@@ -382,13 +298,13 @@ class _LanManagerScreenState extends State<LanManagerScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
           Text(
             value,
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xFFCBD5E1),
+              fontFamily: 'monospace',
             ),
           ),
         ],
@@ -396,35 +312,35 @@ class _LanManagerScreenState extends State<LanManagerScreen>
     );
   }
 
-  Widget _buildTrafficCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  Widget _buildDivider(AppColors colors) {
+    return Divider(height: 1, color: colors.border);
+  }
+
+  Widget _buildTrafficCard(String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
+          Icon(icon, color: color, size: 22),
           const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
               color: color,
+              fontFamily: 'monospace',
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             title,
-            style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7)),
+            style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.7)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -432,15 +348,16 @@ class _LanManagerScreenState extends State<LanManagerScreen>
     );
   }
 
-  Widget _buildToolButton(String label, IconData icon, VoidCallback onPressed) {
+  Widget _buildToolButton(String label, IconData icon, VoidCallback onPressed, AppColors colors) {
     return ElevatedButton.icon(
       onPressed: onPressed,
-      icon: Icon(icon),
+      icon: Icon(icon, size: 16),
       label: Text(label),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+        backgroundColor: colors.performance.withValues(alpha: 0.1),
+        foregroundColor: colors.performance,
+        elevation: 0,
       ),
     );
   }

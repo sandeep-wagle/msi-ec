@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/msi_card.dart';
 import 'fan_screen.dart';
 import 'battery_screen.dart';
 import 'settings_screen.dart';
@@ -24,8 +25,6 @@ class _FeaturesScreenState extends State<FeaturesScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return SingleChildScrollView(
       child: Column(
@@ -34,57 +33,60 @@ class _FeaturesScreenState extends State<FeaturesScreen>
           // Banner Area
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 48),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 36),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey.withValues(alpha: 0.1)
-                  : Colors.grey.shade100,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0x1AFFFFFF)
+                      : Colors.black.withValues(alpha: 0.06),
+                ),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
-                        Text(
-                          'Feature Sets',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
+                        const MsiSectionHeader(title: 'Feature Sets'),
+                        const SizedBox(width: 10),
                         Icon(
                           Icons.play_circle_outline,
-                          color: Colors.redAccent,
-                          size: 24,
+                          color: context.extension<AppColors>()!.performance,
+                          size: 22,
                         ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        _buildBannerButton('Usage Scenarios', () {}),
-                        const SizedBox(width: 16),
-                        _buildBannerButton('Settings and History', () {}),
-                      ],
+                    const SizedBox(height: 10),
+                    Text(
+                      'Manage and open MSI exclusive features.\nFeel free to explore your Linux-powered MSI Center!',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF64748B)
+                            : const Color(0xFF666666),
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Manage and open MSI exclusive features in this page.\nFeel free to explore your Linux-powered MSI Center!',
-                  style: TextStyle(
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    fontSize: 16,
-                  ),
+                Row(
+                  children: [
+                    _buildBannerButton('Usage Scenarios', () {}),
+                    const SizedBox(width: 12),
+                    _buildBannerButton('Settings and History', () {}),
+                  ],
                 ),
               ],
             ),
           ),
 
+          // Features Grid
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -93,29 +95,28 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                   children: [
                     Text(
                       'Available items',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : const Color(0xFF1A1A1A),
                       ),
                     ),
                     OutlinedButton(
                       onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
                       child: const Text('Refresh All'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 GridView.count(
                   crossAxisCount: 4,
-                  crossAxisSpacing: 24,
-                  mainAxisSpacing: 24,
+                  crossAxisSpacing: 20,
+                  mainAxisSpacing: 20,
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  childAspectRatio: 1.1,
+                  childAspectRatio: 1.15,
                   children: [
                     _FeatureCard(
                       title: 'Smart Priority',
@@ -153,7 +154,8 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                           'Extend battery lifespan with charging limit configurations.',
                       icon: Icons.battery_charging_full,
                       isOpen: true,
-                      onTap: () => _navigateTo(context, const BatteryScreen()),
+                      onTap: () =>
+                          _navigateTo(context, const BatteryScreen()),
                     ),
                     _FeatureCard(
                       title: 'General Settings',
@@ -162,7 +164,8 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                           'Toggle webcam, microphone, and system keys.',
                       icon: Icons.settings_input_composite,
                       isOpen: true,
-                      onTap: () => _navigateTo(context, const SettingsScreen()),
+                      onTap: () =>
+                          _navigateTo(context, const SettingsScreen()),
                     ),
                     _FeatureCard(
                       title: 'Mystic Light',
@@ -205,17 +208,20 @@ class _FeaturesScreenState extends State<FeaturesScreen>
   }
 
   Widget _buildBannerButton(String label, VoidCallback onTap) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        side: const BorderSide(color: Colors.grey),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        side: BorderSide(
+          color: isDark
+              ? const Color(0x33EB1D24)
+              : Colors.black.withValues(alpha: 0.1),
+        ),
+        foregroundColor:
+            isDark ? const Color(0xFF64748B) : const Color(0xFF666666),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Colors.grey, fontSize: 13),
-      ),
+      child: Text(label, style: const TextStyle(fontSize: 12)),
     );
   }
 
@@ -230,7 +236,6 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                 onPressed: () => Navigator.of(context).pop(),
               ),
               elevation: 0,
-              backgroundColor: Colors.transparent,
             ),
             body: screen,
           );
@@ -265,39 +270,45 @@ class _FeatureCard extends StatefulWidget {
 }
 
 class _FeatureCardState extends State<_FeatureCard> {
+  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colors = context.extension<AppColors>()!;
 
     return MouseRegion(
-      onEnter: (_) => setState(() {}),
-      onExit: (_) => setState(() {}),
-      child: Container(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: isDark
-              ? Colors.grey.withValues(alpha: 0.05)
-              : Colors.grey.shade50,
-          border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
-          borderRadius: BorderRadius.circular(4),
+          color: _isHovered
+              ? colors.surfaceElevated
+              : colors.cardBackground,
+          border: Border.all(
+            color: _isHovered
+                ? colors.performance.withValues(alpha: 0.3)
+                : colors.border,
+          ),
+          borderRadius: BorderRadius.circular(10),
         ),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white10 : Colors.black12,
-                    borderRadius: BorderRadius.circular(4),
+                    color: colors.performance.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     widget.icon,
-                    size: 24,
-                    color: isDark ? Colors.grey : Colors.grey.shade700,
+                    size: 22,
+                    color: colors.performance,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -307,17 +318,18 @@ class _FeatureCardState extends State<_FeatureCard> {
                     children: [
                       Text(
                         widget.title,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
                           fontSize: 14,
-                          color: Colors.redAccent,
+                          color: isDark ? Colors.white : const Color(0xFF1A1A1A),
                         ),
                       ),
                       Text(
                         widget.version,
                         style: const TextStyle(
                           fontSize: 10,
-                          color: Colors.grey,
+                          color: Color(0xFF64748B),
+                          fontFamily: 'monospace',
                         ),
                       ),
                     ],
@@ -325,39 +337,39 @@ class _FeatureCardState extends State<_FeatureCard> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Expanded(
               child: Text(
                 widget.description,
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                  height: 1.4,
+                ),
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton(
+              child: ElevatedButton(
                 onPressed: widget.isOpen ? widget.onTap : null,
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                   backgroundColor: widget.isOpen
-                      ? (isDark ? Colors.white10 : Colors.grey.shade200)
+                      ? colors.performance.withValues(alpha: 0.1)
                       : null,
-                  side: BorderSide(
-                    color: isDark ? Colors.white10 : Colors.black12,
+                  foregroundColor:
+                      widget.isOpen ? colors.performance : const Color(0xFF475569),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
                   ),
                 ),
                 child: Text(
                   widget.isOpen ? 'Open' : 'Install',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: widget.isOpen
-                        ? (isDark ? Colors.white70 : Colors.black87)
-                        : Colors.grey,
-                  ),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                 ),
               ),
             ),

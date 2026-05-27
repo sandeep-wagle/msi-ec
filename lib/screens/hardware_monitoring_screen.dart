@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/di/injection.dart';
+import '../core/app_colors.dart';
 import '../domain/entities/system_info.dart';
 import '../domain/repositories/msi_repository.dart';
+import '../widgets/msi_gauge.dart';
+import '../widgets/msi_card.dart';
 
 class HardwareMonitoringScreen extends StatefulWidget {
   const HardwareMonitoringScreen({super.key});
@@ -73,17 +76,17 @@ class _HardwareMonitoringScreenState extends State<HardwareMonitoringScreen>
     if (_systemInfo == null) {
       return const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEB1D24)),
         ),
       );
     }
 
-    final theme = Theme.of(context);
+    final colors = context.extension<AppColors>()!;
 
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -91,112 +94,124 @@ class _HardwareMonitoringScreenState extends State<HardwareMonitoringScreen>
               children: [
                 Text(
                   'Monitor',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const Spacer(),
-                const Icon(Icons.grid_view, size: 20),
-                const SizedBox(width: 16),
-                const Icon(Icons.settings, size: 20),
-                const SizedBox(width: 16),
-                const CircleAvatar(
-                  radius: 12,
-                  child: Icon(Icons.person, size: 16),
-                ),
+                _buildTimeBadge(),
               ],
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 32),
+            // Gauge Row
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left Column: Monitor Cards
+                Expanded(
+                  child: MsiGauge(
+                    label: 'GPU Usage',
+                    value: _systemInfo!.gpuUsage ?? 0,
+                    max: 100,
+                    unit: '%',
+                    color: colors.performance,
+                    temperature: _systemInfo!.gpuTemperature,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: MsiGauge(
+                    label: 'CPU Usage',
+                    value: _systemInfo!.cpuUsage ?? 0,
+                    max: 100,
+                    unit: '%',
+                    color: _systemInfo!.cpuTemperature != null &&
+                            _systemInfo!.cpuTemperature! > 70
+                        ? colors.tempHot
+                        : colors.tempWarm,
+                    temperature: _systemInfo!.cpuTemperature,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: MsiGauge(
+                    label: 'VRAM Usage',
+                    value: _systemInfo!.vramUsage ?? 0,
+                    max: _systemInfo!.vramTotal ?? 8192,
+                    unit: 'MB',
+                    color: colors.superBattery,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Progress Cards Row
+            Row(
+              children: [
+                Expanded(
+                  child: MsiProgressCard(
+                    label: 'Memory',
+                    value:
+                        '${((_systemInfo!.ramUsage ?? 0) / (_systemInfo!.ramTotal ?? 1) * 100).toInt()}%',
+                    progress: (_systemInfo!.ramUsage ?? 0) /
+                        (_systemInfo!.ramTotal ?? 1),
+                    barColor: colors.performance,
+                    actionLabel: 'Free Up Memory',
+                    isLoading: _isLoadingMemory,
+                    onAction: () async {
+                      setState(() => _isLoadingMemory = true);
+                      await _repository.freeUpMemory();
+                      setState(() => _isLoadingMemory = false);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: MsiProgressCard(
+                    label: 'Disk',
+                    value: '${_systemInfo!.ssdTemp.toInt()}°C',
+                    progress: _systemInfo!.diskUsage,
+                    barColor: colors.success,
+                    actionLabel: 'Clean up the disk',
+                    isLoading: _isLoadingDisk,
+                    onAction: () async {
+                      setState(() => _isLoadingDisk = true);
+                      await _repository.cleanUpDisk();
+                      setState(() => _isLoadingDisk = false);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            // System Details
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Expanded(
                   flex: 3,
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildGaugeCard(
-                              'GPU Usage',
-                              _systemInfo!.gpuUsage ?? 0,
-                              100,
-                              '%',
-                              [
-                                theme.colorScheme.primary,
-                                theme.colorScheme.primary.withValues(
-                                  alpha: 0.7,
-                                ),
-                              ],
-                              temperature: _systemInfo!.gpuTemperature,
-                            ),
-                          ),
-                          const SizedBox(width: 32),
-                          Expanded(
-                            child: _buildGaugeCard(
-                              'CPU Usage',
-                              _systemInfo!.cpuUsage ?? 0,
-                              100,
-                              '%',
-                              [Colors.white70, Colors.white24],
-                              temperature: _systemInfo!.cpuTemperature,
-                            ),
-                          ),
-                          const SizedBox(width: 32),
-                          Expanded(
-                            child: _buildGaugeCard(
-                              'VRAM Usage',
-                              _systemInfo!.vramUsage ?? 0,
-                              _systemInfo!.vramTotal ?? 8192,
-                              'MB',
-                              [Colors.grey.shade400, Colors.grey.shade700],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 48),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildBarCard(
-                              'Disk',
-                              '${_systemInfo!.ssdTemp.toInt()}°c',
-                              _systemInfo!.diskUsage,
-                              'Clean up the disk',
-                              () async {
-                                setState(() => _isLoadingDisk = true);
-                                await _repository.cleanUpDisk();
-                                setState(() => _isLoadingDisk = false);
-                              },
-                              isLoading: _isLoadingDisk,
-                            ),
-                          ),
-                          const SizedBox(width: 32),
-                          Expanded(
-                            child: _buildBarCard(
-                              'Memory',
-                              '${((_systemInfo!.ramUsage ?? 0) / (_systemInfo!.ramTotal ?? 1) * 100).toInt()}%',
-                              (_systemInfo!.ramUsage ?? 0) /
-                                  (_systemInfo!.ramTotal ?? 1),
-                              'Free Up Memory',
-                              () async {
-                                setState(() => _isLoadingMemory = true);
-                                await _repository.freeUpMemory();
-                                setState(() => _isLoadingMemory = false);
-                              },
-                              isLoading: _isLoadingMemory,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: MsiCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const MsiSectionHeader(title: 'Performance Details'),
+                        const SizedBox(height: 20),
+                        _buildPerfDetails(colors),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 48),
-                // Right Column: System Details Sidebar
-                Expanded(flex: 2, child: _buildDetailsSidebar(theme)),
+                const SizedBox(width: 20),
+                Expanded(
+                  flex: 2,
+                  child: MsiCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const MsiSectionHeader(title: 'System Info'),
+                        const SizedBox(height: 20),
+                        _buildSystemDetails(colors),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -205,299 +220,139 @@ class _HardwareMonitoringScreenState extends State<HardwareMonitoringScreen>
     );
   }
 
-  Widget _buildGaugeCard(
-    String label,
-    int value,
-    int max,
-    String unit,
-    List<Color> colors, {
-    int? temperature,
-  }) {
-    final percent = max > 0 ? value / max : 0.0;
-    return RepaintBoundary(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardTheme.color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 120,
-                    height: 120,
-                    child: CircularProgressIndicator(
-                      value: percent,
-                      strokeWidth: 10,
-                      backgroundColor: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.1),
-                      color: colors.isNotEmpty ? colors.first : Colors.blue,
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '$value',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        unit,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (temperature != null) ...[
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _getTempBgColor(temperature).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _getTempBgColor(temperature).withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.thermostat,
-                      size: 14,
-                      color: _getTempBgColor(temperature),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$temperature°C',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: _getTempBgColor(temperature),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ],
+  Widget _buildTimeBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0F2E),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0x1AFFFFFF)),
+      ),
+      child: const Text(
+        'Live',
+        style: TextStyle(
+          fontSize: 11,
+          color: Color(0xFF22C55E),
+          fontWeight: FontWeight.w600,
+          fontFamily: 'monospace',
+        ),
       ),
     );
   }
 
-  Color _getTempBgColor(int temp) {
-    if (temp < 50) return Colors.green;
-    if (temp < 70) return Colors.orange;
-    return Colors.red;
-  }
-
-  Widget _buildBarCard(
-    String label,
-    String valueText,
-    double percent,
-    String buttonText,
-    VoidCallback onTap, {
-    bool isLoading = false,
-  }) {
-    return RepaintBoundary(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardTheme.color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  valueText,
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: percent,
-                    minHeight: 6,
-                    backgroundColor: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.1),
-                    color: Colors.blue.shade600,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      buttonText,
-                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: isLoading ? null : onTap,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: isLoading ? Colors.grey : Colors.blue.shade700,
-                          shape: BoxShape.circle,
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
-                                  ),
-                                ),
-                              )
-                            : const Icon(
-                                Icons.bolt,
-                                size: 12,
-                                color: Colors.white,
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailsSidebar(ThemeData theme) {
+  Widget _buildPerfDetails(AppColors colors) {
     final fans = _fans;
-    final totalGb = ((_systemInfo?.ramTotal ?? 0) / 1024).toInt();
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          _systemInfo?.cpuModel ?? 'Intel Core i7-11800H @ 2.30GHz',
-          style: const TextStyle(fontSize: 13),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.05),
-          child: Text(
-            _systemInfo?.gpuModel ?? 'NVIDIA GeForce RTX 3080',
-            style: const TextStyle(fontSize: 13),
-          ),
-        ),
-        _buildSidebarRow('RAM', '$totalGb GB'),
-        _buildSidebarRow(
-          'VRAM',
-          '${_systemInfo?.vramUsage ?? 0} / ${_systemInfo?.vramTotal ?? 8192} MB',
-          isAlt: true,
-        ),
-        _buildSidebarRow(
-          'Fan 1',
-          '${fans.isNotEmpty ? fans[0].currentRpm : 0} RPM',
-        ),
-        _buildSidebarRow(
-          'Fan 2',
-          '${fans.length > 1 ? fans[1].currentRpm : 0} RPM',
-          isAlt: true,
-        ),
-        _buildSidebarRow('GPU Clock', '${_systemInfo?.gpuCoreClock ?? 0} MHz'),
-        _buildSidebarRow(
-          'CPU Temp',
-          '${_systemInfo?.cpuTemperature ?? 0} °C',
-          isAlt: true,
-        ),
-        _buildSidebarRow('GPU Temp', '${_systemInfo?.gpuTemperature ?? 0} °C'),
-        _buildSsdRow(),
-        _buildSidebarRow(
+        _buildPerfRow('Fan 1', '${fans.isNotEmpty ? fans[0].currentRpm : 0} RPM', colors),
+        _buildPerfRow('Fan 2', '${fans.length > 1 ? fans[1].currentRpm : 0} RPM', colors, alt: true),
+        _buildPerfRow('GPU Clock', '${_systemInfo?.gpuCoreClock ?? 0} MHz', colors),
+        _buildPerfRow('CPU Temp', '${_systemInfo?.cpuTemperature ?? 0} °C', colors, alt: true),
+        _buildPerfRow('GPU Temp', '${_systemInfo?.gpuTemperature ?? 0} °C', colors),
+        _buildSsdRow(colors),
+        _buildPerfRow(
           'Power Plan',
-          _systemInfo?.powerPlan ?? 'Balance',
-          isAlt: true,
+          _systemInfo?.powerPlan ?? 'Balanced',
+          colors,
+          alt: true,
         ),
       ],
     );
   }
 
-  Widget _buildSidebarRow(String label, String value, {bool isAlt = false}) {
+  Widget _buildPerfRow(String label, String value, AppColors colors,
+      {bool alt = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: isAlt
-          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
-          : null,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      decoration: BoxDecoration(
+        color: alt ? colors.surfaceElevated : Colors.transparent,
+        border: Border(
+          bottom: BorderSide(color: colors.border),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
+          Text(label, style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
           Text(
             value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFFCBD5E1),
+              fontFamily: 'monospace',
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSsdRow() {
+  Widget _buildSsdRow(AppColors colors) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      decoration: BoxDecoration(
+        color: colors.surfaceElevated,
+        border: Border(bottom: BorderSide(color: colors.border)),
+      ),
       child: Row(
         children: [
-          const Text('SSD', style: TextStyle(fontSize: 13, color: Colors.grey)),
-          const SizedBox(width: 8),
-          const Icon(Icons.storage, size: 14, color: Colors.grey),
+          const Text('SSD', style: TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+          const SizedBox(width: 6),
+          const Icon(Icons.storage, size: 14, color: Color(0xFF475569)),
           const Spacer(),
           const Text(
             '400.67 GB available',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
+            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           SizedBox(
-            width: 80,
-            child: LinearProgressIndicator(
-              value: 0.16,
-              minHeight: 4,
-              backgroundColor: Colors.grey.withValues(alpha: 0.2),
-              color: Colors.blue.shade700,
+            width: 60,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: 0.16,
+                minHeight: 4,
+                backgroundColor: colors.gaugeTrack,
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          const Text('16 %', style: TextStyle(fontSize: 11)),
+          const SizedBox(width: 8),
+          const Text('16%', style: TextStyle(fontSize: 11, color: Color(0xFFCBD5E1), fontFamily: 'monospace')),
         ],
       ),
+    );
+  }
+
+  Widget _buildSystemDetails(AppColors colors) {
+    return Column(
+      children: [
+        MsiInfoRow(
+          label: 'CPU',
+          value: _systemInfo?.cpuModel ?? 'Intel Core i7-11800H @ 2.30GHz',
+        ),
+        MsiInfoRow(
+          label: 'GPU',
+          value: _systemInfo?.gpuModel ?? 'NVIDIA GeForce RTX 3080',
+          alt: true,
+        ),
+        MsiInfoRow(
+          label: 'RAM',
+          value: '${((_systemInfo?.ramTotal ?? 0) / 1024).toInt()} GB',
+        ),
+        MsiInfoRow(
+          label: 'VRAM',
+          value:
+              '${_systemInfo?.vramUsage ?? 0} / ${_systemInfo?.vramTotal ?? 8192} MB',
+          alt: true,
+        ),
+        MsiInfoRow(
+          label: 'Battery',
+          value:
+              '${_systemInfo?.batteryLevel ?? 0}% ${_systemInfo?.isCharging == true ? '(Charging)' : '(Discharging)'}',
+        ),
+      ],
     );
   }
 }
