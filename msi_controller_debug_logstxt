@@ -1,0 +1,1286 @@
+[   +8 ms] executing: uname -m
+[   +3 ms] Exit code 0 from: uname -m
+[        ] x86_64
+[   +4 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[        ] executing: [/home/sandy/development/tools/flutter/flutter/] git -c log.showSignature=false log HEAD -n 1 --pretty=format:%ad --date=iso
+[  +27 ms] Exit code 0 from: git -c log.showSignature=false log HEAD -n 1 --pretty=format:%ad --date=iso
+[        ] 2026-05-15 14:13:13 -0700
+[  +18 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[   +2 ms] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[ +118 ms] executing: /home/sandy/development/tools/android-sdk/platform-tools/adb devices -l
+[  +14 ms] List of devices attached
+[   +2 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[   +2 ms] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[  +22 ms] Skipping pub get: version match.
+[  +89 ms] Found plugin shared_preferences at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences-2.5.5/
+[   +3 ms] Found plugin shared_preferences_windows at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_windows-2.4.1/
+[   +6 ms] Found plugin path_provider_windows at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0/
+[   +3 ms] Found plugin shared_preferences_web at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_web-2.4.3/
+[   +3 ms] Found plugin shared_preferences_linux at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_linux-2.4.1/
+[   +1 ms] Found plugin path_provider_linux at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1/
+[   +1 ms] Found plugin shared_preferences_foundation at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/
+[   +2 ms] Found plugin shared_preferences_android at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.23/
+[   +1 ms] Found plugin path_provider at /home/sandy/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
+[        ] Found plugin path_provider_foundation at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_foundation-2.6.0/
+[   +3 ms] Found plugin path_provider_android at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_android-2.3.1/
+[   +1 ms] Found plugin jni_flutter at /home/sandy/.pub-cache/hosted/pub.dev/jni_flutter-1.0.1/
+[   +2 ms] Found plugin jni at /home/sandy/.pub-cache/hosted/pub.dev/jni-1.0.0/
+[  +41 ms] Found plugin shared_preferences at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences-2.5.5/
+[        ] Found plugin shared_preferences_windows at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_windows-2.4.1/
+[   +1 ms] Found plugin path_provider_windows at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0/
+[   +1 ms] Found plugin shared_preferences_web at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_web-2.4.3/
+[        ] Found plugin shared_preferences_linux at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_linux-2.4.1/
+[        ] Found plugin path_provider_linux at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1/
+[        ] Found plugin shared_preferences_foundation at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/
+[        ] Found plugin shared_preferences_android at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.23/
+[        ] Found plugin path_provider at /home/sandy/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
+[        ] Found plugin path_provider_foundation at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_foundation-2.6.0/
+[   +1 ms] Found plugin path_provider_android at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_android-2.3.1/
+[        ] Found plugin jni_flutter at /home/sandy/.pub-cache/hosted/pub.dev/jni_flutter-1.0.1/
+[        ] Found plugin jni at /home/sandy/.pub-cache/hosted/pub.dev/jni-1.0.0/
+[   +8 ms] Skipping generating generated_plugin_registrant.h because it is up-to-date.
+[   +3 ms] Skipping generating generated_plugin_registrant.cc because it is up-to-date.
+[   +1 ms] Skipping generating generated_plugins.cmake because it is up-to-date.
+[  +52 ms] Initializing file store
+[   +7 ms] Skipping target: gen_localizations
+[   +2 ms] gen_dart_plugin_registrant: Starting due to {InvalidatedReasonKind.inputChanged: The following inputs have updated contents: /home/sandy/development/flutter/apps/msi_controller/.dart_tool/package_config.json,/home/sandy/development/flutter/apps/msi_controller/.dart_tool/flutter_build/dart_plugin_registrant.dart}
+[  +29 ms] Found plugin shared_preferences at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences-2.5.5/
+[        ] Found plugin shared_preferences_windows at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_windows-2.4.1/
+[   +1 ms] Found plugin path_provider_windows at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_windows-2.3.0/
+[   +2 ms] Found plugin shared_preferences_web at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_web-2.4.3/
+[   +1 ms] Found plugin shared_preferences_linux at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_linux-2.4.1/
+[        ] Found plugin path_provider_linux at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_linux-2.2.1/
+[        ] Found plugin shared_preferences_foundation at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.5.6/
+[        ] Found plugin shared_preferences_android at /home/sandy/.pub-cache/hosted/pub.dev/shared_preferences_android-2.4.23/
+[        ] Found plugin path_provider at /home/sandy/.pub-cache/hosted/pub.dev/path_provider-2.1.5/
+[        ] Found plugin path_provider_foundation at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_foundation-2.6.0/
+[   +1 ms] Found plugin path_provider_android at /home/sandy/.pub-cache/hosted/pub.dev/path_provider_android-2.3.1/
+[        ] Found plugin jni_flutter at /home/sandy/.pub-cache/hosted/pub.dev/jni_flutter-1.0.1/
+[        ] Found plugin jni at /home/sandy/.pub-cache/hosted/pub.dev/jni-1.0.0/
+[   +5 ms] Skipping generating dart_plugin_registrant.dart because it is up-to-date.
+[        ] gen_dart_plugin_registrant: Complete
+[        ] Skipping target: _composite
+[        ] complete
+[   +2 ms] Launching lib/main.dart on Linux in debug mode...
+[   +2 ms] /home/sandy/development/tools/flutter/flutter/bin/cache/dart-sdk/bin/dartaotruntime /home/sandy/development/tools/flutter/flutter/bin/cache/dart-sdk/bin/snapshots/frontend_server_aot.dart.snapshot --sdk-root /home/sandy/development/tools/flutter/flutter/bin/cache/artifacts/engine/common/flutter_patched_sdk/ --incremental --target=flutter --experimental-emit-debug-metadata -DFLUTTER_VERSION=3.44.0 -DFLUTTER_CHANNEL=stable -DFLUTTER_GIT_URL=https://github.com/flutter/flutter.git -DFLUTTER_FRAMEWORK_REVISION=559ffa3f75 -DFLUTTER_ENGINE_REVISION=4c525dac5e -DFLUTTER_DART_VERSION=3.12.0 --output-dill /tmp/flutter_tools.IAICTD/flutter_tool.TNGRHS/app.dill --packages /home/sandy/development/flutter/apps/msi_controller/.dart_tool/package_config.json -Ddart.vm.profile=false -Ddart.vm.product=false --enable-asserts --track-widget-creation --filesystem-scheme org-dartlang-root --initialize-from-dill build/e526d636a6238c5a01b25d33d78dd941.cache.dill.track.dill --source file:///home/sandy/development/flutter/apps/msi_controller/.dart_tool/flutter_build/dart_plugin_registrant.dart --source package:flutter/src/dart_plugin_registrant.dart -Dflutter.dart_plugin_registrant=file:///home/sandy/development/flutter/apps/msi_controller/.dart_tool/flutter_build/dart_plugin_registrant.dart --verbosity=error --enable-experiment=alternative-invalidation-strategy
+[  +11 ms] Building Linux application...
+[   +5 ms] <- compile package:msi_controller/main.dart
+[   +5 ms] executing: [/home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/] cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DFLUTTER_TARGET_PLATFORM=linux-x64 /home/sandy/development/flutter/apps/msi_controller/linux
+[ +126 ms] -- Configuring done (0.1s)
+[  +38 ms] -- Generating done (0.0s)
+[        ] -- Build files have been written to: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug
+[  +15 ms] executing: ninja -C /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug install
+[   +4 ms] ninja: Entering directory `/home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug'
+[+1803 ms] [1/5] Generating /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/libflutter_linux_gtk.so, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_basic_message_channel.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_binary_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_binary_messenger.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_dart_project.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_engine.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_json_message_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_json_method_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_message_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_method_call.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_method_channel.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_method_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_method_response.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_plugin_registrar.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_plugin_registry.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_standard_message_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_standard_method_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_string_codec.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_value.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/fl_view.h, /home/sandy/development/flutter/apps/msi_controller/linux/flutter/ephemeral/flutter_linux/flutter_linux.h, _phony_
+[        ] [   +9 ms] executing: uname -m
+[        ] [   +2 ms] Exit code 0 from: uname -m
+[        ] [        ] x86_64
+[        ] [   +6 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[        ] [   +6 ms] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] [   +1 ms] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LinuxEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] [  +30 ms] Artifact Instance of 'MaterialFonts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'GradleWrapper' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'AndroidGenSnapshotArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'AndroidInternalBuildArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IOSEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterWebSdk' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterEngineStamp' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LegacyCanvasKitRemover' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterSdk' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'WindowsEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'MacOSEngineArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'LinuxFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'MacOSFuchsiaSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterRunnerSDKArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FlutterRunnerDebugSymbols' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'IosUsbArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'FontSubsetArtifacts' is not required, skipping update.
+[        ] [        ] Artifact Instance of 'PubDependencies' is not required, skipping update.
+[        ] [  +30 ms] Initializing file store
+[        ] [  +11 ms] Done initializing file store
+[        ] [  +42 ms] Skipping target: dart_build
+[        ] [   +1 ms] Skipping target: gen_dart_plugin_registrant
+[        ] [ +401 ms] Skipping target: unpack_linux
+[        ] [        ] Skipping target: install_code_assets
+[        ] [        ] Skipping target: gen_localizations
+[        ] [ +362 ms] Skipping target: kernel_snapshot_program
+[        ] [ +264 ms] Skipping target: debug_bundle_linux-x64_assets
+[        ] [        ] Persisting file store
+[        ] [   +5 ms] Done persisting file store
+[        ] [  +12 ms] build succeeded.
+[        ] [        ] "flutter assemble" took 1,174ms.
+[        ] [  +37 ms] Running 1 shutdown hook
+[        ] [        ] Shutdown hooks complete
+[        ] [ +219 ms] exiting with code 0
+[        ] [1/2] Install the project...
+[        ] -- Install configuration: "Debug"
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/msi_controller
+[        ] -- Set non-toolchain portion of runtime path of "/home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/msi_controller" to "$ORIGIN/lib"
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/icudtl.dat
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/lib/libflutter_linux_gtk.so
+[   +3 ms] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/lib/libdartjni.so
+[        ] -- Up-to-date: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/lib
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/lib/native_assets.json
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/fonts
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/fonts/MaterialIcons-Regular.otf
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/assets
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/assets/images
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/assets/images/msi_sdk_box.png
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/NativeAssetsManifest.json
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/packages
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/packages/cupertino_icons
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/packages/cupertino_icons/assets
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/packages/cupertino_icons/assets/CupertinoIcons.ttf
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/kernel_blob.bin
+[  +38 ms] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/NOTICES.Z
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/FontManifest.json
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/AssetManifest.bin
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/version.json
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/shaders
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/shaders/ink_sparkle.frag
+[        ] -- Installing: /home/sandy/development/flutter/apps/msi_controller/build/linux/x64/debug/bundle/data/flutter_assets/shaders/stretch_effect.frag
+[  +13 ms] Building Linux application... (completed in 2,069ms)
+[   +1 ms] ✓ Built build/linux/x64/debug/bundle/msi_controller
+[ +331 ms] VM Service URL on device: http://127.0.0.1:33075/wWf0RESD3e0=/
+[   +2 ms] Caching compiled dill
+[  +61 ms] Connecting to service protocol: http://127.0.0.1:33075/wWf0RESD3e0=/
+[  +10 ms] Gdk-Message: 22:29:57.558: Unable to load  from the cursor theme
+[  +64 ms] Launching a Dart Developer Service (DDS) instance at http://127.0.0.1:0, connecting to VM service at http://127.0.0.1:33075/wWf0RESD3e0=/.
+[ +282 ms] Successfully connected to service protocol: http://127.0.0.1:33075/wWf0RESD3e0=/
+[   +6 ms] DevFS: Creating new filesystem on the device (null)
+[  +20 ms] DevFS: Created new filesystem on the device (file:///tmp/msi_controllerLPTKAS/msi_controller/)
+[   +2 ms] Updating assets for linux
+[        ] runHooks() with {TargetFile: /home/sandy/development/flutter/apps/msi_controller/lib/main.dart, BuildMode: debug} and TargetPlatform.linux_x64
+[        ] runHooks() - will perform dart build
+[  +24 ms] Building native assets for linux_x64.
+[  +28 ms] input.json contents:
+           {
+             "assets": {},
+             "config": {
+               "build_asset_types": [],
+               "linking_enabled": false
+             },
+             "out_dir_shared": "/home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/shared/objective_c/build/",
+             "out_file": "/home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/objective_c/337ce265dc/output.json",
+             "package_name": "objective_c",
+             "package_root": "/home/sandy/.pub-cache/hosted/pub.dev/objective_c-9.4.1/",
+             "user_defines": {}
+           }
+[   +4 ms] output.json contents:
+           {
+             "assets_for_linking": {},
+             "status": "success",
+             "timestamp": "2026-06-06 10:44:16.000"
+           }
+[   +1 ms] Rerunning build for objective_c in /home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/objective_c/337ce265dc/. Environment variable changed: PATH.
+[   +1 ms] input.json contents:
+           {
+             "assets": {},
+             "config": {
+               "build_asset_types": [],
+               "linking_enabled": false
+             },
+             "out_dir_shared": "/home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/shared/objective_c/build/",
+             "out_file": "/home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/objective_c/337ce265dc/output.json",
+             "package_name": "objective_c",
+             "package_root": "/home/sandy/.pub-cache/hosted/pub.dev/objective_c-9.4.1/",
+             "user_defines": {}
+           }
+[   +6 ms] Running `(cd /home/sandy/.pub-cache/hosted/pub.dev/objective_c-9.4.1/; HOME=/home/sandy ANDROID_HOME=/home/sandy/development/tools/android-sdk PATH=/home/sandy/.local/bin:/home/sandy/.local/bin:/usr/lib/jvm/java-17-openjdk-amd64/bin:/home/sandy/.npm-global/bin:/home/sandy/development/tools/android-studio/bin:/home/sandy/development/tools/android-sdk/platform-tools:/home/sandy/development/tools/android-sdk/emulator:/home/sandy/development/tools/flutter/flutter/bin:/home/sandy/.opencode/bin:/home/sandy/.local/bin:/home/sandy/.local/bin:/home/sandy/.local/bin:/home/sandy/development/tools/android-sdk/tools:/home/sandy/development/tools/android-sdk/tools/bin:/home/sandy/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin /home/sandy/development/tools/flutter/flutter/bin/cache/dart-sdk/bin/dart --packages=/home/sandy/development/flutter/apps/msi_controller/.dart_tool/package_config.json /home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/objective_c/337ce265dc/hook.dill --config=/home/sandy/development/flutter/apps/msi_controller/.dart_tool/hooks_runner/objective_c/337ce265dc/input.json )`.
+[ +108 ms] output.json contents:
+           {
+             "assets_for_linking": {},
+             "status": "success",
+             "timestamp": "2026-06-06 22:29:58.000"
+           }
+[  +13 ms] Building native assets for linux_x64 done.
+[        ] runHooks() - done
+[  +63 ms] Syncing files to device Linux...
+[   +2 ms] Compiling dart to kernel with 0 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart c91ec7c3-8795-475e-946f-3e915e547a87
+[        ] <- c91ec7c3-8795-475e-946f-3e915e547a87
+[   +1 ms] Bundle processing done.
+[  +53 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 58ms)
+[        ] Synced 0.0MB.
+[        ] <- accept
+[   +1 ms] Connected to _flutterView/0x572b8ac636a0.
+[   +2 ms] Flutter run key commands.
+[   +1 ms] r Hot reload. 🔥🔥🔥
+[        ] R Hot restart.
+[        ] h List all available interactive commands.
+[        ] d Detach (terminate "flutter run" but leave application running).
+[        ] c Clear the screen
+[        ] q Quit (terminate the application on the device).
+[        ] A Dart VM Service on Linux is available at: http://127.0.0.1:41487/jtPeuQV-dl0=/
+[        ] The Flutter DevTools debugger and profiler on Linux is available at: http://127.0.0.1:41487/jtPeuQV-dl0=/devtools/?uri=ws://127.0.0.1:41487/jtPeuQV-dl0=/ws
+[ +207 ms] Native: msi_dsp_service already running.
+[  +12 ms] Repository: Attempting to connect to DSP socket...
+[ +232 ms] DSP service already running
+[        ] DSP service initialization successful
+[   +6 ms] Setting unified Fan Mode: Cooler Boost
+[   +4 ms] Loading sound profile: Music
+[        ] Repository: Sample rate change requested: 48000 Hz
+[   +9 ms] Repository: Persistent DSP socket connected
+[   +5 ms] Repository: Error sending DSP command: Bad state: StreamSink is bound to a stream
+[        ] Repository: Cannot send command, socket null: ENABLE
+[  +11 ms] Native: setGpuMode: switching to nvidia in background
+[        ] Native: Filing background task: pkexec prime-select nvidia
+[        ] Native: Filing background task: echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+[        ] Native: Filing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[        ] Native: Filing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+[        ] Native: setShiftMode(turbo) -> triggered governor=performance in background
+[        ] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[   +1 ms] Repository: DSP response: {"name":"Music","bass":12.0,"treble":-4.0,"voice":-7.0,"eq_gains":[-0.0,1.0,-1.0,-0.0,1.0,2.0,1.0,4.0,3.0,0.0],"compressor":false,"surround":true,"volume":0.6454904513888888,"buffer_size":256,"noise_level":0.0,"stereo_width":1.5,"limiter_enabled":false,"compressor_ratio":3.0,"surround_variation":"Surround","night_mode":false,"effects_enabled":true,"mic_enabled":true,"mic_gain":1.0,"mic_noise_suppression":false,"echo_cancellation":false,"voice_clarity":true,"treble_enhancer":true,"bass_boost":true,"tracker_enabled":false,"sharing_enabled":false}
+[  +50 ms] Native: Background task finished (code -1): echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+[   +1 ms] Native: Background task finished (code -1): echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[   +1 ms] Native: Background task finished (code -1): echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[        ] Native: Background task finished (code -1): echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+[  +35 ms] Info: selecting the nvidia profile
+[        ] Deleting /lib/modprobe.d/nvidia-runtimepm.conf
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[ +105 ms] -Repository: Attempting to connect to DSP socket...
+[   +5 ms] Repository: Persistent DSP socket connected
+[  +74 ms] Native: Background task finished (code -1): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+[ +246 ms] /|Repository: DSP response: OK
+[+6577 ms] \-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|Done
+[   +3 ms] Native: Background task finished (code 0): pkexec prime-select nvidia
+[+8003 ms] ══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+           The following assertion was thrown building
+           RawGestureDetector-[LabeledGlobalKey<RawGestureDetectorState>#8b9d6](state:
+           RawGestureDetectorState#81d19(gestures: <none>, behavior: opaque)):
+           A RenderSliverPadding expected a child of type RenderSliver but received a child of type
+           _RenderLayoutBuilder.
+           RenderObjects expect specific types of children because they coordinate with their children during
+           layout and paint. For example, a RenderSliver cannot be the child of a RenderBox because a
+           RenderSliver does not understand the RenderBox layout protocol.
+
+           The RenderSliverPadding that expected a RenderSliver child was created by:
+             SliverPadding
+
+           The _RenderLayoutBuilder that did not match the expected child type was created by:
+             LayoutBuilder
+
+           The relevant error-causing widget was:
+             CustomScrollView
+             CustomScrollView:file:///home/sandy/development/flutter/apps/msi_controller/lib/screens/features_screen.dart:33:13
+
+           When the exception was thrown, this was the stack:
+           #0      RenderObjectWithChildMixin.debugValidateChild.<anonymous closure> (package:flutter/src/rendering/object.dart:4177:9)
+           #1      RenderObjectWithChildMixin.debugValidateChild (package:flutter/src/rendering/object.dart:4204:6)
+           #2      SingleChildRenderObjectElement.insertRenderObjectChild (package:flutter/src/widgets/framework.dart:7129:25)
+           #3      RenderObjectElement.attachRenderObject (package:flutter/src/widgets/framework.dart:6941:35)
+           #4      RenderObjectElement.mount (package:flutter/src/widgets/framework.dart:6801:5)
+           #5      _LayoutBuilderElement.mount (package:flutter/src/widgets/layout_builder.dart:172:11)
+           ...     Normal element mounting (4 frames)
+           #9      Element.inflateWidget (package:flutter/src/widgets/framework.dart:4587:20)
+           #10     MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7264:36)
+           #11     MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7279:32)
+           #12     _ViewportElement.mount (package:flutter/src/widgets/viewport.dart:283:11)
+           ...     Normal element mounting (132 frames)
+           #144    Element.inflateWidget (package:flutter/src/widgets/framework.dart:4587:20)
+           #145    MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7264:36)
+           #146    MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7279:32)
+           ...     Normal element mounting (126 frames)
+           #272    Element.inflateWidget (package:flutter/src/widgets/framework.dart:4587:20)
+           #273    MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7264:36)
+           #274    Element.updateChild (package:flutter/src/widgets/framework.dart:4059:18)
+           #275    Element.updateChildren (package:flutter/src/widgets/framework.dart:4255:32)
+           #276    MultiChildRenderObjectElement.update (package:flutter/src/widgets/framework.dart:7295:17)
+           #277    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #278    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #279    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #280    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #281    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #282    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #283    Element.updateChildren (package:flutter/src/widgets/framework.dart:4191:32)
+           #284    MultiChildRenderObjectElement.update (package:flutter/src/widgets/framework.dart:7295:17)
+           #285    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #286    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #287    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #288    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #289    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #290    Element.updateChildren (package:flutter/src/widgets/framework.dart:4191:32)
+           #291    MultiChildRenderObjectElement.update (package:flutter/src/widgets/framework.dart:7295:17)
+           #292    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #293    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #294    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #295    StatelessElement.update (package:flutter/src/widgets/framework.dart:5895:5)
+           #296    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #297    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #298    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #299    StatelessElement.update (package:flutter/src/widgets/framework.dart:5895:5)
+           #300    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #301    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #302    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #303    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #304    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #305    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #306    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #307    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #308    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #309    Element.updateChildren (package:flutter/src/widgets/framework.dart:4191:32)
+           #310    MultiChildRenderObjectElement.update (package:flutter/src/widgets/framework.dart:7295:17)
+           #311    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #312    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #313    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #314    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #315    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #316    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #317    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #318    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #319    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #320    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #321    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #322    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #323    StatelessElement.update (package:flutter/src/widgets/framework.dart:5895:5)
+           #324    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #325    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #326    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #327    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #328    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #329    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #330    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #331    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #332    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #333    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #334    SingleChildRenderObjectElement.update (package:flutter/src/widgets/framework.dart:7122:14)
+           #335    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #336    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #337    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #338    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #339    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #340    SingleChildRenderObjectElement.update (package:flutter/src/widgets/framework.dart:7122:14)
+           #341    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #342    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #343    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #344    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #345    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #346    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #347    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #348    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #349    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #350    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #351    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #352    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #353    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #354    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #355    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #356    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #357    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #358    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #359    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #360    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #361    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #362    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #363    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #364    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #365    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #366    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #367    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #368    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #369    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #370    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #371    ProxyElement.update (package:flutter/src/widgets/framework.dart:6149:5)
+           #372    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #373    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #374    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #375    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #376    StatefulElement.update (package:flutter/src/widgets/framework.dart:6007:5)
+           #377    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+           #378    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5841:16)
+           #379    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #380    Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #381    BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2750:15)
+           #382    BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2807:11)
+           #383    BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3111:18)
+           #384    WidgetsBinding.drawFrame (package:flutter/src/widgets/binding.dart:1571:21)
+           #385    RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:509:5)
+           #386    SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+           #387    SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+           #388    SchedulerBinding._handleDrawFrame (package:flutter/src/scheduler/binding.dart:1198:5)
+           #389    _invoke (dart:ui/hooks.dart:423:13)
+           #390    PlatformDispatcher._drawFrame (dart:ui/platform_dispatcher.dart:447:5)
+           #391    _drawFrame (dart:ui/hooks.dart:395:31)
+
+           ════════════════════════════════════════════════════════════════════════════════════════════════════
+[+1437 ms] Another exception was thrown: 'package:flutter/src/widgets/framework.dart': Failed assertion: line 6268 pos 12: '_dependents.isEmpty': is not true.
+[+921897 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[  +10 ms] Scanned through 724 files in 7ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 2 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 48886d48-e10d-4b8d-aaf3-9d604a3e6788
+[        ] package:msi_controller/data/repositories/msi_repository_impl.dart
+[        ] package:msi_controller/screens/features_screen.dart
+[        ] <- 48886d48-e10d-4b8d-aaf3-9d604a3e6788
+[        ] Bundle processing done.
+[ +130 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[   +1 ms] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 133ms)
+[        ] Synced 0.6MB.
+[ +201 ms] <- accept
+[        ] reloaded 17 of 1064 libraries
+[   +3 ms] Reassembling application
+[ +136 ms] Hot reload performed in 470ms.
+[  +23 ms] Performing hot reload... (completed in 509ms)
+[        ] Reloaded 17 of 1064 libraries in 515ms (compile: 130 ms, reload: 202 ms, reassemble: 125 ms).
+[+377466 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +8 ms] Scanned through 724 files in 6ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 1 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 6c8c74d5-f124-49b5-8d04-94bd404f1798
+[        ] package:msi_controller/screens/smart_priority_screen.dart
+[        ] <- 6c8c74d5-f124-49b5-8d04-94bd404f1798
+[        ] Bundle processing done.
+[  +92 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 95ms)
+[        ] Synced 0.5MB.
+[ +152 ms] <- accept
+[        ] reloaded 16 of 1064 libraries
+[   +2 ms] Reassembling application
+[ +124 ms] Hot reload performed in 369ms.
+[  +22 ms] Performing hot reload... (completed in 405ms)
+[        ] Reloaded 16 of 1064 libraries in 408ms (compile: 93 ms, reload: 152 ms, reassemble: 114 ms).
+[+20890 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot restart...
+[   +6 ms] Scanned through 724 files in 5ms
+[        ] Syncing files to device Linux...
+[        ] <- reset
+[        ] Compiling dart to kernel with 0 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 09b78e9f-74aa-4cdf-a966-76bd7fce429b
+[        ] <- 09b78e9f-74aa-4cdf-a966-76bd7fce429b
+[        ] Bundle processing done.
+[ +107 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[  +64 ms] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 173ms)
+[        ] Synced 53.4MB.
+[        ] <- accept
+[  +60 ms] Finished waiting on operations.
+[ +117 ms] Hot restart performed in 357ms.
+[  +30 ms] Performing hot restart... (completed in 388ms)
+[        ] Restarted application in 391ms.
+[ +790 ms] Native: Starting msi_dsp_service...
+[  +14 ms] Repository: Attempting to connect to DSP socket...
+[ +242 ms] DSP service already running
+[        ] DSP service initialization successful
+[   +6 ms] Setting unified Fan Mode: Cooler Boost
+[   +4 ms] Loading sound profile: Music
+[        ] Repository: Sample rate change requested: 48000 Hz
+[   +9 ms] Repository: Persistent DSP socket connected
+[   +8 ms] Native: setGpuMode: switching to nvidia in background
+[        ] Native: Filing background task: pkexec prime-select nvidia
+[        ] Native: Filing background task: echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+[        ] Native: Filing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[        ] Native: Filing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+[        ] Native: setShiftMode(turbo) -> triggered governor=performance in background
+[        ] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[   +1 ms] Repository: DSP response: {"name":"Music","bass":12.0,"treble":-4.0,"voice":-7.0,"eq_gains":[-0.0,1.0,-1.0,-0.0,1.0,2.0,1.0,4.0,3.0,0.0],"compressor":false,"surround":true,"volume":0.6454904513888888,"buffer_size":256,"noise_level":0.0,"stereo_width":1.5,"limiter_enabled":false,"compressor_ratio":3.0,"surround_variation":"Surround","night_mode":false,"effects_enabled":true,"mic_enabled":true,"mic_gain":1.0,"mic_noise_suppression":false,"echo_cancellation":false,"voice_clarity":true,"treble_enhancer":true,"bass_boost":true,"tracker_enabled":false,"sharing_enabled":false}
+[  +41 ms] Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[        ] Native: Background task finished (code 0): echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+[  +24 ms] Info: selecting the nvidia profile
+[        ] Deleting /lib/modprobe.d/nvidia-runtimepm.conf
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[ +196 ms] -Native: Background task finished (code 0): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+[  +38 ms] /Repository: DSP response: OK
+[  +17 ms] Repository: DSP response: OK
+[ +242 ms] |Repository: DSP response: OK
+[+6713 ms] \-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\Done
+[   +3 ms] Native: Background task finished (code -1): pkexec prime-select nvidia
+[+220834 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +6 ms] Scanned through 724 files in 4ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 6 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 4888e1d6-fa35-4df2-bde4-2d580f4d835b
+[        ] package:msi_controller/screens/lan_manager_screen.dart
+[        ] package:msi_controller/screens/mystic_light_screen.dart
+[        ] package:msi_controller/screens/personal_space_screen.dart
+[        ] package:msi_controller/screens/smart_priority_screen.dart
+[        ] package:msi_controller/screens/sound_tune_screen.dart
+[        ] package:msi_controller/screens/system_diagnosis_screen.dart
+[        ] <- 4888e1d6-fa35-4df2-bde4-2d580f4d835b
+[        ] Bundle processing done.
+[  +64 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 66ms)
+[        ] Synced 0.3MB.
+[ +152 ms] <- accept
+[        ] reloaded 6 of 1063 libraries
+[   +2 ms] Reassembling application
+[ +188 ms] Hot reload performed in 402ms.
+[  +17 ms] Performing hot reload... (completed in 434ms)
+[        ] Reloaded 6 of 1063 libraries in 438ms (compile: 65 ms, reload: 152 ms, reassemble: 177 ms).
+[+389043 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +6 ms] Scanned through 724 files in 4ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 6 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 6a7e9344-0dfc-4367-8cee-479d239e4c60
+[        ] package:msi_controller/screens/lan_manager_screen.dart
+[        ] package:msi_controller/screens/mystic_light_screen.dart
+[        ] package:msi_controller/screens/personal_space_screen.dart
+[        ] package:msi_controller/screens/smart_priority_screen.dart
+[        ] package:msi_controller/screens/sound_tune_screen.dart
+[        ] package:msi_controller/screens/system_diagnosis_screen.dart
+[        ] <- 6a7e9344-0dfc-4367-8cee-479d239e4c60
+[        ] Bundle processing done.
+[  +59 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 62ms)
+[        ] Synced 0.3MB.
+[ +158 ms] <- accept
+[        ] reloaded 6 of 1063 libraries
+[   +2 ms] Reassembling application
+[ +316 ms] Hot reload performed in 532ms.
+[  +20 ms] Performing hot reload... (completed in 566ms)
+[        ] Reloaded 6 of 1063 libraries in 571ms (compile: 60 ms, reload: 158 ms, reassemble: 305 ms).
+[+56400 ms] ══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+            The following assertion was thrown during layout:
+            A RenderFlex overflowed by 4.5 pixels on the bottom.
+
+            The relevant error-causing widget was:
+              Column
+              Column:file:///home/sandy/development/flutter/apps/msi_controller/lib/screens/features_screen.dart:234:20
+
+            To inspect this widget in Flutter DevTools, visit:
+            http://127.0.0.1:41487/jtPeuQV-dl0=/devtools//#/inspector?uri=http%3A%2F%2F127.0.0.1%3A41487%2FjtPeuQV-dl0%3D%2F&inspectorRef=inspector-0
+
+            The overflowing RenderFlex has an orientation of Axis.vertical.
+            The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+            black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+            Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+            RenderFlex to fit within the available space instead of being sized to their natural size.
+            This is considered an error condition because it indicates that there is content that cannot be
+            seen. If the content is legitimately bigger than the available space, consider clipping it with a
+            ClipRect widget before putting it in the flex, or using a scrollable container rather than a Flex,
+            like a ListView.
+            The specific RenderFlex in question is: RenderFlex#46e44 OVERFLOWING:
+              creator: Column ← Padding ← DecoratedBox ← ConstrainedBox ← Container ← BackdropFilter ← ClipRRect ←
+                Transform ← FadeTransition ← GlassCard ← Transform ← ScaleTransition ← ⋯
+              parentData: offset=Offset(33.2, 33.2) (can use size)
+              constraints: BoxConstraints(w=142.6, h=179.5)
+              size: Size(142.6, 179.5)
+              direction: vertical
+              mainAxisAlignment: start
+              mainAxisSize: max
+              crossAxisAlignment: start
+              textDirection: ltr
+              verticalDirection: down
+              spacing: 0.0
+            ◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+            ════════════════════════════════════════════════════════════════════════════════════════════════════
+[   +4 ms] Another exception was thrown: A RenderFlex overflowed by 4.5 pixels on the bottom.
+[   +5 ms] Another exception was thrown: A RenderFlex overflowed by 4.5 pixels on the bottom.
+[   +5 ms] Another exception was thrown: A RenderFlex overflowed by 4.5 pixels on the bottom.
+[   +5 ms] Another exception was thrown: A RenderFlex overflowed by 4.5 pixels on the bottom.
+[   +5 ms] Another exception was thrown: A RenderFlex overflowed by 4.5 pixels on the bottom.
+[  +48 ms] Another exception was thrown: A RenderFlex overflowed by 53 pixels on the bottom.
+[   +8 ms] Another exception was thrown: A RenderFlex overflowed by 53 pixels on the bottom.
+[ +326 ms] Another exception was thrown: A RenderFlex overflowed by 5.6 pixels on the right.
+[   +2 ms] Another exception was thrown: A RenderFlex overflowed by 5.6 pixels on the right.
+[   +3 ms] Another exception was thrown: A RenderFlex overflowed by 5.6 pixels on the right.
+[   +3 ms] Another exception was thrown: A RenderFlex overflowed by 5.6 pixels on the right.
+[   +4 ms] Another exception was thrown: A RenderFlex overflowed by 5.6 pixels on the right.
+[   +2 ms] Another exception was thrown: A RenderFlex overflowed by 5.6 pixels on the right.
+[ +152 ms] Another exception was thrown: A RenderFlex overflowed by 29 pixels on the right.
+[   +1 ms] Another exception was thrown: A RenderFlex overflowed by 29 pixels on the right.
+[ +431 ms] Another exception was thrown: A RenderFlex overflowed by 8.0 pixels on the right.
+[  +79 ms] ** (msi_controller:2121559): WARNING **: 23:03:33.588: Timed out waiting for OpenGL frame of size 324x720 (have 332x720)
+[  +49 ms] Another exception was thrown: A RenderFlex overflowed by 1.8 pixels on the right.
+[ +214 ms] ** (msi_controller:2121559): WARNING **: 23:03:33.853: Timed out waiting for OpenGL frame of size 295x720 (have 305x720)
+[+1407960 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +6 ms] Scanned through 724 files in 5ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 2 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 5aa355a1-d87a-4937-a01e-133f3fdad144
+[        ] package:msi_controller/screens/features_screen.dart
+[        ] package:msi_controller/screens/smart_priority_screen.dart
+[        ] <- 5aa355a1-d87a-4937-a01e-133f3fdad144
+[        ] Bundle processing done.
+[  +92 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 94ms)
+[        ] Synced 0.5MB.
+[ +143 ms] <- accept
+[        ] reloaded 16 of 1063 libraries
+[   +2 ms] Reassembling application
+[ +137 ms] Hot reload performed in 368ms.
+[  +19 ms] Performing hot reload... (completed in 404ms)
+[        ] Reloaded 16 of 1063 libraries in 409ms (compile: 92 ms, reload: 143 ms, reassemble: 125 ms).
+[+17640 ms] [BLOC] _onSetPerformanceMode called with: PerformanceMode.superBattery
+[ +102 ms] Setting unified Fan Mode: Auto
+[   +1 ms] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[        ] Native: Filing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: setGpuMode: switching to intel in background
+[        ] Native: Filing background task: pkexec prime-select intel
+[        ] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[  +27 ms] Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[   +1 ms] Native: Background task finished (code -1): echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[   +1 ms] Native: Background task finished (code -1): echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[        ] Native: Background task finished (code -1): echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[  +20 ms] Info: selecting the intel profile
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[+6409 ms] -/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\Done
+[   +2 ms] Native: Background task finished (code -1): pkexec prime-select intel
+[+2946317 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +7 ms] Scanned through 724 files in 6ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 0 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 94cb1178-5ad0-471c-a44c-fb0210f5eaaf
+[        ] <- 94cb1178-5ad0-471c-a44c-fb0210f5eaaf
+[        ] Bundle processing done.
+[   +7 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 9ms)
+[        ] Synced 0.0MB.
+[   +2 ms] Reassembling application
+[  +64 ms] Hot reload performed in 69ms.
+[  +17 ms] Performing hot reload... (completed in 102ms)
+[        ] Reloaded 0 libraries in 103ms (compile: 7 ms, reload: 0 ms, reassemble: 53 ms).
+[+2056112 ms] Skipping target: gen_dart_plugin_registrant
+[   +2 ms] Skipping target: gen_localizations
+[   +1 ms] Skipping target: _composite
+[   +3 ms] complete
+[        ] Performing hot reload...
+[  +99 ms] Scanned through 724 files in 6ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 10 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart bf40f7bc-aa6e-45ef-8a66-81578d3c1156
+[        ] package:msi_controller/data/repositories/msi_repository_impl.dart
+[        ] package:msi_controller/domain/entities/system_info.dart
+[        ] package:msi_controller/domain/repositories/msi_repository.dart
+[        ] package:msi_controller/screens/features_screen.dart
+[        ] package:msi_controller/screens/hardware_monitoring_screen.dart
+[        ] package:msi_controller/screens/main_screen.dart
+[        ] package:msi_controller/screens/personal_space_screen.dart
+[        ] package:msi_controller/screens/settings_screen.dart
+[        ] package:msi_controller/screens/smart_priority_screen.dart
+[        ] package:msi_controller/services/persistence_service.dart
+[        ] <- bf40f7bc-aa6e-45ef-8a66-81578d3c1156
+[        ] Bundle processing done.
+[+1424 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[   +1 ms] DevFS: Sync finished
+[   +1 ms] Syncing files to device Linux... (completed in 1,430ms)
+[        ] Synced 0.8MB.
+[+1354 ms] <- accept
+[        ] reloaded 30 of 1063 libraries
+[  +14 ms] Reassembling application
+[ +463 ms] Hot reload performed in 3,253ms.
+[  +35 ms] Performing hot reload... (completed in 3.4s)
+[        ] Reloaded 30 of 1063 libraries in 3,431ms (compile: 1426 ms, reload: 1355 ms, reassemble: 458 ms).
+[+1715127 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +8 ms] Scanned through 724 files in 6ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 4 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart f21e47c3-1956-4b45-af3a-266b96c7a2d0
+[        ] package:msi_controller/domain/entities/system_info.dart
+[        ] package:msi_controller/screens/notification_screen.dart
+[        ] package:msi_controller/screens/personal_space_screen.dart
+[        ] package:msi_controller/widgets/glass_container.dart
+[        ] <- f21e47c3-1956-4b45-af3a-266b96c7a2d0
+[        ] Bundle processing done.
+[ +237 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[   +1 ms] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 241ms)
+[        ] Synced 0.8MB.
+[ +578 ms] <- accept
+[        ] reloaded 29 of 1063 libraries
+[   +3 ms] Reassembling application
+[ +294 ms] Hot reload performed in 1,107ms.
+[  +30 ms] Performing hot reload... (completed in 1,157ms)
+[        ] Reloaded 29 of 1063 libraries in 1,161ms (compile: 238 ms, reload: 579 ms, reassemble: 279 ms).
+[+1557122 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +5 ms] Scanned through 723 files in 4ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 3 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart 899de041-b7d7-449b-a43e-e214a7c7c634
+[        ] package:msi_controller/screens/personal_space_screen.dart
+[        ] package:msi_controller/screens/system_diagnosis_screen.dart
+[        ] package:msi_controller/services/persistence_service.dart
+[        ] <- 899de041-b7d7-449b-a43e-e214a7c7c634
+[        ] Bundle processing done.
+[ +113 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 115ms)
+[        ] Synced 0.6MB.
+[ +160 ms] <- accept
+[        ] reloaded 19 of 1063 libraries
+[   +1 ms] Reassembling application
+[ +140 ms] Hot reload performed in 412ms.
+[  +21 ms] Performing hot reload... (completed in 446ms)
+[        ] Reloaded 19 of 1063 libraries in 451ms (compile: 114 ms, reload: 161 ms, reassemble: 130 ms).
+[+3637 ms] ══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+           The following _TypeError was thrown building PersonalSpaceScreen(dirty, dependencies:
+           [InheritedCupertinoTheme, _InheritedTheme, _LocalizationsScope-[GlobalKey#02e04]], state:
+           _PersonalSpaceScreenState#e6404):
+           type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+
+           The relevant error-causing widget was:
+             PersonalSpaceScreen
+             PersonalSpaceScreen:file:///home/sandy/development/flutter/apps/msi_controller/lib/screens/features_screen.dart:95:49
+
+           When the exception was thrown, this was the stack:
+           #0      _PersonalSpaceScreenState._notes (package:msi_controller/screens/personal_space_screen.dart)
+           #1      _PersonalSpaceScreenState._buildNotes (package:msi_controller/screens/personal_space_screen.dart:418:24)
+           #2      _PersonalSpaceScreenState._buildContent (package:msi_controller/screens/personal_space_screen.dart:270:28)
+           #3      _PersonalSpaceScreenState.build (package:msi_controller/screens/personal_space_screen.dart:178:70)
+           #4      StatefulElement.build (package:flutter/src/widgets/framework.dart:5931:27)
+           #5      ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5817:15)
+           #6      StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #7      Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #8      BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2750:15)
+           #9      BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2807:11)
+           #10     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3111:18)
+           #11     WidgetsBinding.drawFrame (package:flutter/src/widgets/binding.dart:1571:21)
+           #12     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:509:5)
+           #13     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+           #14     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+           #15     SchedulerBinding._handleDrawFrame (package:flutter/src/scheduler/binding.dart:1198:5)
+           #16     _invoke (dart:ui/hooks.dart:423:13)
+           #17     PlatformDispatcher._drawFrame (dart:ui/platform_dispatcher.dart:447:5)
+           #18     _drawFrame (dart:ui/hooks.dart:395:31)
+
+           ════════════════════════════════════════════════════════════════════════════════════════════════════
+[+2549 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot reload...
+[   +5 ms] Scanned through 723 files in 4ms
+[        ] Syncing files to device Linux...
+[        ] Compiling dart to kernel with 0 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart cf5e1682-f8aa-48df-821c-ba8987e2a98d
+[        ] <- cf5e1682-f8aa-48df-821c-ba8987e2a98d
+[        ] Bundle processing done.
+[   +6 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[        ] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 8ms)
+[        ] Synced 0.0MB.
+[   +2 ms] Reassembling application
+[  +22 ms] ══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+           The following _TypeError was thrown building PersonalSpaceScreen(dirty, dependencies:
+           [InheritedCupertinoTheme, _InheritedTheme, _LocalizationsScope-[GlobalKey#02e04]], state:
+           _PersonalSpaceScreenState#e6404):
+           type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+
+           The relevant error-causing widget was:
+             PersonalSpaceScreen
+             PersonalSpaceScreen:file:///home/sandy/development/flutter/apps/msi_controller/lib/screens/features_screen.dart:95:49
+
+           When the exception was thrown, this was the stack:
+           #0      _PersonalSpaceScreenState._notes (package:msi_controller/screens/personal_space_screen.dart)
+           #1      _PersonalSpaceScreenState._buildNotes (package:msi_controller/screens/personal_space_screen.dart:418:24)
+           #2      _PersonalSpaceScreenState._buildContent (package:msi_controller/screens/personal_space_screen.dart:270:28)
+           #3      _PersonalSpaceScreenState.build (package:msi_controller/screens/personal_space_screen.dart:178:70)
+           #4      StatefulElement.build (package:flutter/src/widgets/framework.dart:5931:27)
+           #5      ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5817:15)
+           #6      StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5982:11)
+           #7      Element.rebuild (package:flutter/src/widgets/framework.dart:5529:7)
+           #8      BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2750:15)
+           #9      BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2807:11)
+           #10     BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3111:18)
+           #11     WidgetsBinding.drawFrame (package:flutter/src/widgets/binding.dart:1571:21)
+           #12     RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:509:5)
+           #13     SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1430:15)
+           #14     SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1345:9)
+           #15     SchedulerBinding.scheduleWarmUpFrame.<anonymous closure> (package:flutter/src/scheduler/binding.dart:1055:9)
+           #16     PlatformDispatcher.scheduleWarmUpFrame.<anonymous closure> (dart:ui/platform_dispatcher.dart:909:16)
+           #20     _RawReceivePort._handleMessage (dart:isolate-patch/isolate_patch.dart:192:12)
+           (elided 3 frames from class _Timer and dart:async-patch)
+
+           ════════════════════════════════════════════════════════════════════════════════════════════════════
+[  +45 ms] Hot reload performed in 63ms.
+[  +12 ms] Performing hot reload... (completed in 96ms)
+[        ] Reloaded 0 libraries in 97ms (compile: 6 ms, reload: 0 ms, reassemble: 50 ms).
+[   +6 ms] Another exception was thrown: type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+[  +31 ms] Another exception was thrown: type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+[  +32 ms] Another exception was thrown: type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+[  +33 ms] Another exception was thrown: type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+[  +99 ms] Another exception was thrown: type 'List<String>' is not a subtype of type 'List<PersonalNote>' of 'function result'
+[+1557 ms] Skipping target: gen_dart_plugin_registrant
+[        ] Skipping target: gen_localizations
+[        ] Skipping target: _composite
+[        ] complete
+[        ] Performing hot restart...
+[   +7 ms] Scanned through 723 files in 4ms
+[        ] Syncing files to device Linux...
+[        ] <- reset
+[        ] Compiling dart to kernel with 0 updated files
+[        ] Processing bundle.
+[        ] <- recompile package:msi_controller/main.dart d84c8fb8-e00c-4d50-8afe-70f33e0ece4e
+[        ] <- d84c8fb8-e00c-4d50-8afe-70f33e0ece4e
+[        ] Bundle processing done.
+[ +357 ms] Updating files.
+[        ] Pending asset builds completed. Writing dirty entries.
+[  +55 ms] DevFS: Sync finished
+[        ] Syncing files to device Linux... (completed in 413ms)
+[        ] Synced 53.5MB.
+[        ] <- accept
+[  +24 ms] Finished waiting on operations.
+[ +213 ms] Hot restart performed in 656ms.
+[  +26 ms] Performing hot restart... (completed in 686ms)
+[        ] Restarted application in 688ms.
+[ +760 ms] Native: Starting msi_dsp_service...
+[  +36 ms] Repository: Attempting to connect to DSP socket...
+[ +263 ms] DSP service already running
+[        ] DSP service initialization successful
+[   +6 ms] Setting unified Fan Mode: Auto
+[   +4 ms] Loading sound profile: Music
+[        ] Repository: Sample rate change requested: 48000 Hz
+[   +9 ms] Repository: Persistent DSP socket connected
+[  +16 ms] Native: setGpuMode: switching to intel in background
+[        ] Native: Filing background task: pkexec prime-select intel
+[        ] Native: Filing background task: echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+[        ] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[        ] Native: Filing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+[        ] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[        ] Repository: DSP response: {"name":"Music","bass":12.0,"treble":-4.0,"voice":-7.0,"eq_gains":[-0.0,1.0,-1.0,-0.0,1.0,2.0,1.0,4.0,3.0,0.0],"compressor":false,"surround":true,"volume":0.6454904513888888,"buffer_size":256,"noise_level":0.0,"stereo_width":1.5,"limiter_enabled":false,"compressor_ratio":3.0,"surround_variation":"Surround","night_mode":false,"effects_enabled":true,"mic_enabled":true,"mic_gain":1.0,"mic_noise_suppression":false,"echo_cancellation":false,"voice_clarity":true,"treble_enhancer":true,"bass_boost":true,"tracker_enabled":false,"sharing_enabled":false}
+[  +91 ms] Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+[        ] Native: Background task finished (code 0): echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+[        ] Native: Background task finished (code 0): echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[   +1 ms] Native: Background task finished (code -1): echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: Background task finished (code -1): echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[  +70 ms] Info: selecting the intel profile
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[ +210 ms] -/Repository: DSP response: OK
+[  +16 ms] Repository: DSP response: OK
+[ +242 ms] |Repository: DSP response: OK
+[   +6 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[ +257 ms] \Repository: DSP response: 1.00
+[+6060 ms] -/|\-/|\-/|\-/|\-/|\-/|\-/|\-/Done
+[   +3 ms] Native: Background task finished (code -1): pkexec prime-select intel
+[+45088 ms] Repository: DSP response: 1.00
+[  +84 ms] Repository: DSP response: 1.00
+[+187770 ms] Repository: DSP response: 1.00
+[+4512 ms] Repository: DSP response: 1.00
+[+179672 ms] Repository: DSP response: 1.00
+[+4537 ms] Repository: DSP response: 1.00
+[  +16 ms] Repository: DSP response: 1.00
+[  +19 ms] Repository: DSP response: 1.00
+[  +40 ms] Repository: DSP response: 1.00
+[  +58 ms] Repository: DSP response: 1.00
+[  +38 ms] Repository: DSP response: 1.00
+[ +452 ms] Repository: DSP response: 1.00
+[+2379 ms] Repository: DSP response: 1.00
+[+5005 ms] Repository: DSP response: 1.00
+[+5507 ms] Repository: DSP response: 1.00
+[ +331 ms] Repository: DSP response: 1.00
+[+36937 ms] Repository: DSP response: 1.00
+[  +15 ms] Repository: DSP response: 1.00
+[  +17 ms] Repository: DSP response: 1.00
+[ +512 ms] Repository: DSP response: 1.00
+[+113497 ms] Repository: DSP response: 1.00
+[  +21 ms] Repository: DSP response: 1.00
+[  +20 ms] Repository: DSP response: 1.00
+[  +21 ms] Repository: DSP response: 1.00
+[  +20 ms] Repository: DSP response: 1.00
+[  +19 ms] Repository: DSP response: 1.00
+[+3718 ms] Repository: DSP response: 1.00
+[+5000 ms] Repository: DSP response: 1.00
+[  +94 ms] Repository: DSP response: 1.00
+[+33194 ms] Repository: DSP response: 1.00
+[  +18 ms] Repository: DSP response: 1.00
+[  +25 ms] Repository: DSP response: 1.00
+[  +28 ms] Repository: DSP response: 1.00
+[  +19 ms] Repository: DSP response: 1.00
+[ +505 ms] Repository: DSP response: 1.00
+[+9394 ms] Repository: DSP response: 1.00
+[+5000 ms] Repository: DSP response: 1.00
+[+1746 ms] Repository: DSP response: 1.00
+[  +20 ms] Repository: DSP response: 1.00
+[  +19 ms] Repository: DSP response: 1.00
+[  +21 ms] Repository: DSP response: 1.00
+[  +21 ms] Repository: DSP response: 1.00
+[+36011 ms] Repository: DSP response: 1.00
+[ +521 ms] Repository: DSP response: 1.00
+[  +30 ms] Repository: DSP response: 1.00
+[  +35 ms] Repository: DSP response: 1.00
+[  +24 ms] Repository: DSP response: 1.00
+[  +23 ms] Repository: DSP response: 1.00
+[  +27 ms] Repository: DSP response: 1.00
+[+925876 ms] Repository: DSP response: 1.00
+[+5212 ms] Repository: DSP response: 1.00
+[+180011 ms] Repository: DSP response: 1.00
+[ +178 ms] Repository: DSP response: 1.00
+[+6418 ms] Repository: DSP response: 1.00
+[   +8 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[ +529 ms] Repository: DSP response: 1.00
+[+2336 ms] Repository: DSP response: 1.00
+[ +463 ms] Repository: DSP response: 1.00
+[   +1 ms] 1.00
+[        ] 1.00
+[+420920 ms] Repository: DSP response: 1.00
+[+4365 ms] Repository: DSP response: 1.00
+[+7588 ms] Repository: DSP response: 1.00
+[+5127 ms] Repository: DSP response: 1.00
+[+91467 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[+57506 ms] Repository: DSP response: 1.00
+[+4997 ms] Repository: DSP response: 1.00
+[+881320 ms] Repository: DSP response: 1.00
+[   +8 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[  +16 ms] Repository: DSP response: 1.00
+[+1861 ms] Repository: DSP response: 1.00
+[  +13 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[  +14 ms] Repository: DSP response: 1.00
+[  +24 ms] Repository: DSP response: 1.00
+[  +14 ms] Repository: DSP response: 1.00
+[  +43 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[+4999 ms] Repository: DSP response: 1.00
+[+9086 ms] Repository: DSP response: 1.00
+[+5004 ms] Repository: DSP response: 1.00
+[+67540 ms] Repository: DSP response: 1.00
+[+5023 ms] Repository: DSP response: 1.00
+[ +406 ms] Repository: DSP response: 1.00
+[ +570 ms] Repository: DSP response: 1.00
+[ +189 ms] Repository: DSP response: 1.00
+[+80120 ms] Repository: DSP response: 1.00
+[+949140 ms] Repository: DSP response: 1.00
+[+3426 ms] Repository: DSP response: 1.00
+[  +47 ms] Repository: DSP response: 1.00
+[+5073 ms] Repository: DSP response: 1.00
+[+6468 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[+1040555 ms] Repository: DSP response: 1.00
+[+4985 ms] Repository: DSP response: 1.00
+[+15436 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[+413675 ms] Repository: DSP response: 1.00
+[+4999 ms] Repository: DSP response: 1.00
+[+180579 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[  +14 ms] Repository: DSP response: 1.00
+[  +13 ms] Repository: DSP response: 1.00
+[+389190 ms] Repository: DSP response: 1.00
+[+4970 ms] Repository: DSP response: 1.00
+[+5352 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[+219873 ms] Repository: DSP response: 1.00
+[+4605 ms] Repository: DSP response: 1.00
+[+265991 ms] Repository: DSP response: 1.00
+[+4374 ms] Repository: DSP response: 1.00
+[+590808 ms] Repository: DSP response: 1.00
+[+4233 ms] Repository: DSP response: 1.00
+[+582341 ms] Repository: DSP response: 1.00
+[+4425 ms] Repository: DSP response: 1.00
+[+230052 ms] Repository: DSP response: 1.00
+[+4374 ms] Repository: DSP response: 1.00
+[+105996 ms] Native: Filing background task: echo "basic" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[  +49 ms] /usr/bin/tee: /sys/devices/platform/msi-ec/fan_mode: Invalid argument
+[        ] Native: Background task finished (code 256): echo "basic" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[+8510 ms] Native: Filing background task: echo "71" | pkexec tee /sys/devices/platform/msi-ec/cpu/basic_fan_speed > /dev/null
+[  +14 ms] /usr/bin/tee: /sys/devices/platform/msi-ec/cpu/basic_fan_speed: Permission denied
+[        ] Native: Background task finished (code 256): echo "71" | pkexec tee /sys/devices/platform/msi-ec/cpu/basic_fan_speed > /dev/null
+[+4354 ms] Native: Filing background task: echo "basic" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[  +12 ms] /usr/bin/tee: /sys/devices/platform/msi-ec/fan_mode: Invalid argument
+[        ] Native: Background task finished (code 256): echo "basic" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[+3899 ms] Native: Filing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[  +15 ms] Native: Background task finished (code 0): echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[+1694 ms] Native: Filing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[  +14 ms] Native: Background task finished (code 0): echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[+24481 ms] [BLOC] _onSetPerformanceMode called with: PerformanceMode.extreme
+[ +105 ms] Setting unified Fan Mode: Cooler Boost
+[   +1 ms] Native: Filing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[        ] Native: Filing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+[        ] Native: setShiftMode(turbo) -> triggered governor=performance in background
+[        ] Native: Filing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: setGpuMode: switching to nvidia in background
+[        ] Native: Filing background task: pkexec prime-select nvidia
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[  +22 ms] Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[   +1 ms] Native: Background task finished (code 0): echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[  +47 ms] Info: selecting the nvidia profile
+[        ] Deleting /lib/modprobe.d/nvidia-runtimepm.conf
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[ +132 ms] -Native: Background task finished (code 0): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+[+7288 ms] /|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-Done
+[   +1 ms] Native: Background task finished (code 0): pkexec prime-select nvidia
+[+104824 ms] Repository: DSP response: 1.00
+[+4400 ms] Repository: DSP response: 1.00
+[+260843 ms] Repository: DSP response: 1.00
+[+4386 ms] Repository: DSP response: 1.00
+[+302312 ms] Repository: DSP response: 1.00
+[+4403 ms] Repository: DSP response: 1.00
+[+242519 ms] Repository: DSP response: 1.00
+[+4338 ms] Repository: DSP response: 1.00
+[+215708 ms] Repository: DSP response: 1.00
+[+4607 ms] Repository: DSP response: 1.00
+[+199958 ms] Repository: DSP response: 1.00
+[+4228 ms] Repository: DSP response: 1.00
+[+234316 ms] Repository: DSP response: 1.00
+[+4292 ms] Repository: DSP response: 1.00
+[+199540 ms] Repository: DSP response: 1.00
+[+4355 ms] Repository: DSP response: 1.00
+[+246284 ms] Repository: DSP response: 1.00
+[+5009 ms] Repository: DSP response: 1.00
+[ +670 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[+178732 ms] Repository: DSP response: 1.00
+[+4540 ms] Repository: DSP response: 1.00
+[+311359 ms] Repository: DSP response: 1.00
+[+4327 ms] Repository: DSP response: 1.00
+[+226242 ms] Repository: DSP response: 1.00
+[+4279 ms] Repository: DSP response: 1.00
+[+236457 ms] Repository: DSP response: 1.00
+[+4280 ms] Repository: DSP response: 1.00
+[+206892 ms] Repository: DSP response: 1.00
+[+4643 ms] Repository: DSP response: 1.00
+[+273296 ms] Repository: DSP response: 1.00
+[+4519 ms] Repository: DSP response: 1.00
+[+49046 ms] [BLOC] _onSetPerformanceMode called with: PerformanceMode.balanced
+[ +102 ms] Setting unified Fan Mode: Auto
+[   +1 ms] Native: Filing background task: echo "comfort" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[        ] Native: Filing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo ondemand | pkexec tee $f > /dev/null 2>&1; done
+[        ] Native: setShiftMode(comfort) -> triggered governor=ondemand in background
+[        ] Native: Filing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[        ] Native: Filing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[   +1 ms] Native: setGpuMode: switching to on-demand in background
+[        ] Native: Filing background task: pkexec prime-select on-demand
+[  +66 ms] Native: Background task finished (code 0): echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+[        ] Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+[        ] Native: Background task finished (code -1): echo "comfort" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+[  +49 ms] Info: selecting the on-demand profile
+[        ] Writing /lib/modprobe.d/nvidia-runtimepm.conf
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[ +127 ms] -Native: Background task finished (code -1): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo ondemand | pkexec tee $f > /dev/null 2>&1; done
+[+5673 ms] /|\-/|\-/|\-/|\-/|\-/|\-/|\-Native: setGpuMode: switching to intel in background
+[        ] Native: Filing background task: pkexec prime-select intel
+[  +31 ms] /Info: selecting the intel profile
+[        ] Updating the initramfs. Please wait for the operation to complete:
+[+1576 ms] -|/\|-\/-|/\|-\Done
+[   +4 ms] Native: Background task finished (code -1): pkexec prime-select on-demand
+[+6028 ms] -/|\-/|\-/|\-/|\-/|\-/|\-/|\-/Done
+[  +14 ms] Native: Background task finished (code 0): pkexec prime-select intel
+[+100305 ms] Repository: DSP response: 1.00
+[ +433 ms] Repository: DSP response: 1.00
+[+25885 ms] Repository: DSP response: 1.00
+[  +94 ms] Repository: DSP response: 1.00
+[  +37 ms] Repository: DSP response: 1.00
+[  +25 ms] Repository: DSP response: 1.00
+[   +8 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[+4673 ms] Repository: DSP response: 1.00
+[+5000 ms] Repository: DSP response: 1.00
+[+741683 ms] Repository: DSP response: 1.00
+[+19927 ms] Repository: DSP response: 1.00
+[+19500 ms] Repository: DSP response: 1.00
+[+12564 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[+46088 ms] Repository: DSP response: 1.00
+[+15752 ms] Repository: DSP response: 1.00
+[+6033 ms] Repository: DSP response: 1.00
+[+161970 ms] Repository: DSP response: 1.00
+[+150032 ms] Repository: DSP response: 1.00
+[+11981 ms] Repository: DSP response: 1.00
+[+6020 ms] Repository: DSP response: 1.00
+[+5836 ms] Repository: DSP response: 1.00
+[+12110 ms] Repository: DSP response: 1.00
+[+6072 ms] Repository: DSP response: 1.00
+[+11947 ms] Repository: DSP response: 1.00
+[+17995 ms] Repository: DSP response: 1.00
+[+174010 ms] Repository: DSP response: 1.00
+[  +15 ms] Repository: DSP response: 1.00
+[+17855 ms] Repository: DSP response: 1.00
+[+1036256 ms] Repository: DSP response: 1.00
+[  +10 ms] Repository: DSP response: 1.00
+[+147879 ms] Repository: DSP response: 1.00
+[+11977 ms] Repository: DSP response: 1.00
+[+416045 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[+146000 ms] Repository: DSP response: 1.00
+[+17943 ms] Repository: DSP response: 1.00
+[+420005 ms] Repository: DSP response: 1.00
+[   +9 ms] Repository: DSP response: 1.00
+[+145962 ms] Repository: DSP response: 1.00
+[+32081 ms] Repository: DSP response: 1.00
+[  +16 ms] Repository: DSP response: 1.00
+[+141904 ms] Repository: DSP response: 1.00
+[+24064 ms] Repository: DSP response: 1.00
+[+29998 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[+11958 ms] Repository: DSP response: 1.00
+[+114025 ms] Repository: DSP response: 1.00
+[+89954 ms] Repository: DSP response: 1.00
+[  +12 ms] Repository: DSP response: 1.00
+[+12014 ms] Repository: DSP response: 1.00
+[+6020 ms] Repository: DSP response: 1.00
+[+5999 ms] Repository: DSP response: 1.00
+[+5920 ms] Repository: DSP response: 1.00
+[+12051 ms] Repository: DSP response: 1.00
+[+5998 ms] Repository: DSP response: 1.00
+[  +11 ms] Repository: DSP response: 1.00
+[+5985 ms] Repository: DSP response: 1.00
+[+6140 ms] Repository: DSP response: 1.00

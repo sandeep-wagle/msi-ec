@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../sound_tune_theme.dart';
+import 'package:msi_controller/screens/sound_tune/sound_tune_theme.dart';
 import 'shared_widgets.dart';
 import 'painters.dart';
 import 'equalizer_popup.dart';
-import '../../../logic/blocs/sound/sound_bloc.dart';
-import '../../../logic/blocs/sound/sound_event.dart';
-import '../../../logic/blocs/sound/sound_state.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_bloc.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_event.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_state.dart';
 
 class SurroundPanel extends StatelessWidget {
   const SurroundPanel({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final variation = context.select((SoundBloc b) => b.state.surroundVariation);
+    final variation = context.select(
+      (SoundBloc b) => b.state.surroundVariation,
+    );
 
     return Row(
       children: [
@@ -40,7 +42,11 @@ class SurroundPanel extends StatelessWidget {
               ),
               const Text(
                 'Equalizer',
-                style: TextStyle(color: kTextSub, fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: kTextSub,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
@@ -64,7 +70,13 @@ class SurroundPanel extends StatelessWidget {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Flexible(child: Text('SURROUND\nSOUND', style: SoundTuneTheme.h2, overflow: TextOverflow.ellipsis)),
+                    Flexible(
+                      child: Text(
+                        'SURROUND\nSOUND',
+                        style: SoundTuneTheme.h2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                     PowerToggle(field: 'virtualSurround'),
                   ],
                 ),
@@ -85,12 +97,16 @@ class SurroundPanel extends StatelessWidget {
                     SmallPill(
                       label: 'VIRTUAL SURROUND',
                       active: variation == 'Surround',
-                      onTap: () => context.read<SoundBloc>().add(const ChangeSurroundVariation('Surround')),
+                      onTap: () => context.read<SoundBloc>().add(
+                        const ChangeSurroundVariation('Surround'),
+                      ),
                     ),
                     SmallPill(
                       label: 'VIRTUAL HEADSET',
                       active: variation == 'Headset',
-                      onTap: () => context.read<SoundBloc>().add(const ChangeSurroundVariation('Headset')),
+                      onTap: () => context.read<SoundBloc>().add(
+                        const ChangeSurroundVariation('Headset'),
+                      ),
                     ),
                   ],
                 ),
@@ -118,7 +134,13 @@ class VolumeStabilizerPanel extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: Text('VOLUME\nSTABILIZER', style: SoundTuneTheme.h2, overflow: TextOverflow.ellipsis)),
+              Flexible(
+                child: Text(
+                  'VOLUME\nSTABILIZER',
+                  style: SoundTuneTheme.h2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               PowerToggle(field: 'smartVolume'),
             ],
           ),
@@ -135,7 +157,9 @@ class VolumeStabilizerPanel extends StatelessWidget {
             child: SmallPill(
               label: nightMode ? 'NIGHT ON' : 'NIGHT OFF',
               active: nightMode,
-              onTap: () => context.read<SoundBloc>().add(ToggleEnhancement('nightMode', !nightMode)),
+              onTap: () => context.read<SoundBloc>().add(
+                ToggleEnhancement('nightMode', !nightMode),
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -183,7 +207,13 @@ class EffectSliderPanel extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: Text(title, style: SoundTuneTheme.h2.copyWith(fontSize: 14), overflow: TextOverflow.ellipsis)),
+              Flexible(
+                child: Text(
+                  title,
+                  style: SoundTuneTheme.h2.copyWith(fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               PowerToggle(field: enableField),
             ],
           ),
@@ -195,10 +225,21 @@ class EffectSliderPanel extends StatelessWidget {
             children: [
               Text(
                 gain.toStringAsFixed(0),
-                style: const TextStyle(color: kAccent, fontSize: 32, fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  color: kAccent,
+                  fontSize: 32,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(width: 4),
-              const Text('dB', style: TextStyle(color: kTextSub, fontSize: 12, fontWeight: FontWeight.bold)),
+              const Text(
+                'dB',
+                style: TextStyle(
+                  color: kTextSub,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -206,12 +247,16 @@ class EffectSliderPanel extends StatelessWidget {
             value: gain,
             min: -12,
             max: 12,
-            onChanged: (v) => context.read<SoundBloc>().add(ChangeEffectGain(field, v)),
+            onChanged: (v) => context.read<SoundBloc>().add(
+              ChangeEffectGainPreview(field, v),
+            ),
+            onChangedEnd: (v) =>
+                context.read<SoundBloc>().add(ChangeEffectGain(field, v)),
           ),
           const Spacer(),
           Text(
-            desc, 
-            style: const TextStyle(color: kTextSub, fontSize: 10, height: 1.2), 
+            desc,
+            style: const TextStyle(color: kTextSub, fontSize: 10, height: 1.2),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
@@ -250,23 +295,46 @@ class AdvancedEffectPanel extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          Text(title, style: SoundTuneTheme.h2.copyWith(fontSize: 10, letterSpacing: 1.5), textAlign: TextAlign.center),
+          Text(
+            title,
+            style: SoundTuneTheme.h2.copyWith(fontSize: 10, letterSpacing: 1.5),
+            textAlign: TextAlign.center,
+          ),
           const Spacer(),
-          Text(value.toStringAsFixed(1), style: const TextStyle(color: kAccent, fontSize: 24, fontWeight: FontWeight.w900)),
+          Text(
+            value.toStringAsFixed(1),
+            style: const TextStyle(
+              color: kAccent,
+              fontSize: 24,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
           const SizedBox(height: 8),
           NahimicSlider(
             value: value,
             min: min,
             max: max,
             onChanged: (v) {
-              if (field == 'noiseLevel') context.read<SoundBloc>().add(ChangeNoiseLevel(v));
-              if (field == 'stereoWidth') context.read<SoundBloc>().add(ChangeStereoWidth(v));
+              if (field == 'noiseLevel') {
+                context.read<SoundBloc>().add(ChangeNoiseLevelPreview(v));
+              }
+              if (field == 'stereoWidth') {
+                context.read<SoundBloc>().add(ChangeStereoWidthPreview(v));
+              }
+            },
+            onChangedEnd: (v) {
+              if (field == 'noiseLevel') {
+                context.read<SoundBloc>().add(ChangeNoiseLevel(v));
+              }
+              if (field == 'stereoWidth') {
+                context.read<SoundBloc>().add(ChangeStereoWidth(v));
+              }
             },
           ),
           const Spacer(),
           Text(
-            desc, 
-            style: const TextStyle(color: kTextSub, fontSize: 9), 
+            desc,
+            style: const TextStyle(color: kTextSub, fontSize: 9),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -291,15 +359,26 @@ class LimiterPanel extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          Text(title, style: SoundTuneTheme.h2.copyWith(fontSize: 10, letterSpacing: 1.5), textAlign: TextAlign.center),
+          Text(
+            title,
+            style: SoundTuneTheme.h2.copyWith(fontSize: 10, letterSpacing: 1.5),
+            textAlign: TextAlign.center,
+          ),
           const Spacer(),
           const PowerToggle(field: 'limiterEnabled'),
           const SizedBox(height: 8),
-          Text(isEnabled ? 'ON' : 'OFF', style: TextStyle(color: isEnabled ? kAccent : kTextSub, fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(
+            isEnabled ? 'ON' : 'OFF',
+            style: TextStyle(
+              color: isEnabled ? kAccent : kTextSub,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const Spacer(),
           Text(
-            desc, 
-            style: const TextStyle(color: kTextSub, fontSize: 9), 
+            desc,
+            style: const TextStyle(color: kTextSub, fontSize: 9),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

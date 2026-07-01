@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import '../app_colors.dart';
+import 'package:msi_controller/core/app_colors.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: const Color(0xFFF3F4F6), // Light gray background
+      scaffoldBackgroundColor: const Color(0xFFF3F4F6),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFD32F2F), // MSI Red
+        seedColor: const Color(0xFFEB1D24),
         brightness: Brightness.light,
-        primary: const Color(0xFFD32F2F),
+        primary: const Color(0xFFEB1D24),
         surface: Colors.white,
       ),
       cardTheme: CardThemeData(
@@ -26,13 +26,13 @@ class AppTheme {
         color: Colors.white,
       ),
       navigationBarTheme: NavigationBarThemeData(
-        indicatorColor: const Color(0xFFD32F2F).withValues(alpha: 0.1),
+        indicatorColor: const Color(0xFFEB1D24).withValues(alpha: 0.1),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFFD32F2F),
+              color: Color(0xFFEB1D24),
             );
           }
           return const TextStyle(fontSize: 12, color: Colors.black54);
@@ -51,12 +51,12 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF121212), // Dark background
+      scaffoldBackgroundColor: const Color(0xFF050510),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFD32F2F), // MSI Red
+        seedColor: const Color(0xFFEB1D24),
         brightness: Brightness.dark,
-        primary: const Color(0xFFD32F2F),
-        surface: const Color(0xFF1E1E1E), // Slightly lighter for cards
+        primary: const Color(0xFFEB1D24),
+        surface: const Color(0xFF0A0A1E),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -68,10 +68,10 @@ class AppTheme {
             width: 1,
           ),
         ),
-        color: const Color(0xFF1E1E1E),
+        color: const Color(0xFF0A0A1E),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        indicatorColor: const Color(0xFFD32F2F).withValues(alpha: 0.2),
+        indicatorColor: const Color(0xFFEB1D24).withValues(alpha: 0.2),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
@@ -85,7 +85,7 @@ class AppTheme {
       ),
       extensions: const <ThemeExtension<dynamic>>[AppColors.dark],
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF121212),
+        backgroundColor: Color(0xFF050510),
         foregroundColor: Colors.white,
         elevation: 0,
       ),

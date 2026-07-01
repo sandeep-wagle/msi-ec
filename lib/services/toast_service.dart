@@ -1,8 +1,8 @@
 import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
-import '../widgets/custom_toast.dart';
-import '../main.dart';
+import 'package:msi_controller/widgets/custom_toast.dart';
+import 'package:msi_controller/main.dart';
 
 @lazySingleton
 class ToastService {

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSI Center · Liquid Glass Design Prototype</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --navy: #050510;
+    --msi-red: #EB1D24;
+    --msi-red-dim: rgba(235, 29, 36, 0.15);
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-hl: rgba(255, 255, 255, 0.06);
+    --text-primary: #F1F1F6;
+    --text-secondary: rgba(255, 255, 255, 0.5);
+    --text-muted: rgba(255, 255, 255, 0.3);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  html, body, #root { width: 100%; height: 100%; overflow: hidden; background: var(--navy); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+const { createElement: h, useState, useEffect, useRef } = React;
+
+function GlassCard({ children, style, onClick, blur = 12, ...rest }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{ position: 'relative', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--glass-border)', cursor: onClick ? 'pointer' : 'default', transition: 'border-color .25s, background .25s, transform .2s', ...style }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(235, 29, 36, 0.3)'; if (onClick) e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--glass-border)'; if (onClick) e.currentTarget.style.transform = 'translateY(0)'; }}
+      {...rest}
+    >
+      <div style={{ position: 'absolute', inset: 0, backdropFilter: `blur(${blur}px)`, WebkitBackdropFilter: `blur(${blur}px)`, background: 'var(--glass-bg)', borderRadius: 'var(--radius)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg, transparent, var(--glass-hl), transparent)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', zIndex: 1, height: '100%' }}>{children}</div>
+    </div>
+  );
+}
+
+function LiquidBg() {
+  const t = useRef(0);
+  const [, update] = useState(0);
+  useEffect(() => {
+    let id;
+    const anim = () => { t.current = (t.current + 0.003) % 1; update(v => v + 1); id = requestAnimationFrame(anim); };
+    id = requestAnimationFrame(anim);
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const blobs = [
+    { x: 0.2 + Math.sin(t.current * 0.5) * 0.08, y: 0.3 + Math.cos(t.current * 0.4) * 0.08, r: 0.35, c: 'rgba(235, 29, 36, 0.06)' },
+    { x: 0.7 + Math.sin(t.current * 0.3 + 1) * 0.06, y: 0.6 + Math.cos(t.current * 0.5 + 1) * 0.06, r: 0.4, c: 'rgba(10, 42, 139, 0.08)' },
+    { x: 0.5 + Math.sin(t.current * 0.4 + 2) * 0.1, y: 0.8 + Math.cos(t.current * 0.3 + 2) * 0.08, r: 0.3, c: 'rgba(235, 29, 36, 0.04)' },
+    { x: 0.8 + Math.sin(t.current * 0.6 + 3) * 0.05, y: 0.2 + Math.cos(t.current * 0.7 + 3) * 0.05, r: 0.25, c: 'rgba(59, 130, 246, 0.05)' },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, overflow: 'hidden' }}>
+      {blobs.map((b, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${b.x * 100}%`, top: `${b.y * 100}%`,
+          width: `${b.r * 100}vmin`, height: `${b.r * 100}vmin`,
+          borderRadius: '50%',
+          background: `radial-gradient(circle, ${b.c} 0%, transparent 70%)`,
+          transform: 'translate(-50%, -50%)',
+        }} />
+      ))}
+    </div>
+  );
+}
+
+const icons = {};
+
+function icon(paths) {
+  return ({ size = 24, color = '#fff' }) => (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      {paths.map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  );
+}
+
+icons.speed = icon(['M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z']);
+icons.balance = icon(['M12 2v20M4 8l8-4 8 4M4 16l8 4 8-4']);
+icons.silent = icon(['M12 3v18M8 8l-4 4 4 4M16 8l4 4-4 4']);
+icons.battery = icon(['M2 7h16v10H2zM22 11v2M6 11v2']);
+icons.customize = icon(['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', 'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z']);
+icons.cpu = icon(['M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3']);
+icons.gpu = icon(['M2 3h20v14H2zM8 7h8v6H8zM12 7v6']);
+icons.fan = icon(['M12 12c2-3 1-6 0-7s-3-1-4 0-1 4 0 5 4 2 5 2 3 1 2 4-2 3-3 2-2-3-1-5', 'M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z']);
+icons.smart = icon(['M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z']);
+icons.light = icon(['M9 18h6M10 21h4M15.09 14.39A6 6 0 1 0 9.5 14A6 6 0 0 0 12 18a6 6 0 0 0 3.09-3.61z']);
+icons.network = icon(['M22 12h-4l-3 9-6-18-3 9H2']);
+icons.sound = icon(['M11 5L6 9H2v6h4l5 4V5zM19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07']);
+icons.settings = icon(['M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42']);
+icons.thermo = icon(['M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z']);
+icons.notif = icon(['M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9', 'M13.73 21a2 2 0 0 1-3.46 0']);
+icons.grid = icon(['M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z']);
+icons.monitor = icon(['M2 3h20v14H2zM8 21h8M12 17v4']);
+icons.air = icon(['M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2']);
+
+function SectionHeader({ title, subtitle }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 0 12px 0' }}>
+      <div style={{ width: 3, height: 20, background: 'var(--msi-red)', borderRadius: 2 }} />
+      <span style={{ fontWeight: 700, fontSize: 16 }}>{title}</span>
+      {subtitle && <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{subtitle}</span>}
+    </div>
+  );
+}
+
+function GaugeCard({ label, value, unit, max = 100, color = '#EB1D24', temp }) {
+  const r = 40;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - Math.min(value / max, 1));
+  const tColor = temp > 70 ? '#EF4444' : temp > 50 ? '#FB923C' : '#22C55E';
+  const tBg = temp > 70 ? 'rgba(239,68,68,0.1)' : temp > 50 ? 'rgba(251,146,60,0.1)' : 'rgba(34,197,94,0.1)';
+  const tBd = temp > 70 ? 'rgba(239,68,68,0.3)' : temp > 50 ? 'rgba(251,146,60,0.3)' : 'rgba(34,197,94,0.3)';
+  return (
+    <GlassCard style={{ padding: 24 }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>{label}</div>
+        <svg width="100" height="100" viewBox="0 0 100 100" style={{ display: 'block', margin: '0 auto' }}>
+          <circle cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+          <circle cx="50" cy="50" r={r} fill="none" stroke={color} strokeWidth="8" strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round" transform="rotate(-90 50 50)" style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+          <text x="50" y="46" textAnchor="middle" fill="#fff" fontSize="22" fontWeight="700">{value}</text>
+          <text x="50" y="62" textAnchor="middle" fill="var(--text-secondary)" fontSize="11">{unit}</text>
+        </svg>
+        {temp != null && (
+          <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 12px', borderRadius: 20, background: tBg, border: `1px solid ${tBd}`, fontSize: 12, fontWeight: 600, color: tColor }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c-1.1 0-2 .9-2 2v10.2c-1.2.7-2 2-2 3.4 0 2.2 1.8 4 4 4s4-1.8 4-4c0-1.4-.8-2.7-2-3.4V4c0-1.1-.9-2-2-2z"/></svg>
+            {temp}°C
+          </div>
+        )}
+      </div>
+    </GlassCard>
+  );
+}
+
+function ScenarioCard({ label, icon: Icon, selected, onClick }) {
+  return (
+    <div onClick={onClick} style={{ position: 'relative', borderRadius: 'var(--radius)', border: `1px solid ${selected ? 'var(--msi-red)' : 'var(--glass-border)'}`, background: selected ? 'var(--msi-red-dim)' : 'transparent', padding: '20px 24px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, transition: 'border-color .2s, background .2s', flex: '1 0 140px', maxWidth: 180 }}>
+      <div style={{ position: 'absolute', inset: 0, borderRadius: 'var(--radius)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+        <Icon size={32} color={selected ? 'var(--msi-red)' : 'var(--text-secondary)'} />
+        <span style={{ fontSize: 13, fontWeight: 600, color: selected ? 'var(--msi-red)' : 'var(--text-secondary)' }}>{label}</span>
+      </div>
+    </div>
+  );
+}
+
+function FeatureCard({ title, ver, desc, icon: Icon }) {
+  return (
+    <GlassCard style={{ padding: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Icon size={20} color="var(--text-secondary)" />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--msi-red)' }}>{title}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{ver}</div>
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, flex: 1 }}>{desc}</div>
+        <button style={{ width: '100%', padding: '8px 0', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer', transition: 'background .2s' }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+        >Open</button>
+      </div>
+    </GlassCard>
+  );
+}
+
+function NotifCard({ icon: Icon, color, title, desc, time, action }) {
+  return (
+    <GlassCard style={{ padding: 14, blur: 8 }}>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `${color}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={18} color={color} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>{title}</span>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>{desc}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{time}</span>
+            {action && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--msi-red)', padding: '3px 8px', border: '1px solid rgba(235,29,36,0.3)', borderRadius: 4, cursor: 'pointer' }}>{action}</span>}
+          </div>
+        </div>
+      </div>
+    </GlassCard>
+  );
+}
+
+function App() {
+  const [tab, setTab] = useState(0);
+  const [scenario, setScenario] = useState('balanced');
+  const [nFilter, setNFilter] = useState('all');
+
+  const scenarios = [
+    { id: 'extreme', label: 'Extreme Performance', icon: icons.speed },
+    { id: 'balanced', label: 'Balanced', icon: icons.balance },
+    { id: 'silent', label: 'Silent', icon: icons.silent },
+    { id: 'superBattery', label: 'Super Battery', icon: icons.battery },
+    { id: 'user', label: 'Customize', icon: icons.customize },
+  ];
+
+  const features = [
+    { title: 'Smart Priority', ver: '3.2023.0413.01', desc: 'Optimize creative application performance.', icon: icons.smart },
+    { title: 'Cooling Hub', ver: '1.0.0.1', desc: 'Advanced fan control and temperature monitoring.', icon: icons.air },
+    { title: 'Battery Master', ver: '1.2.0.4', desc: 'Extend battery lifespan with charging limit.', icon: icons.battery },
+    { title: 'General Settings', ver: '2.0.0.22', desc: 'Toggle webcam, microphone, and system keys.', icon: icons.settings },
+    { title: 'Mystic Light', ver: '3.0.0.53', desc: 'Control lighting effects via OpenRGB.', icon: icons.light },
+    { title: 'LAN Manager', ver: '3.0.0.04', desc: 'Network traffic analysis and bandwidth monitoring.', icon: icons.network },
+    { title: 'Sound Tune', ver: '2.0.0.54', desc: 'AI noise cancellation for voice calls.', icon: icons.sound },
+  ];
+
+  const notices = [
+    { id: 'n1', title: 'Battery charged to limit', desc: '80% charge limit reached.', cat: 'system', icon: icons.battery, color: '#22C55E', time: '15m ago' },
+    { id: 'n2', title: 'CPU temperature high', desc: 'CPU reached 92°C.', cat: 'system', icon: icons.thermo, color: '#EF4444', time: '5m ago', action: 'Enable Cooler Boost' },
+    { id: 'n3', title: 'Driver updated', desc: 'msi-ec v6.5 applied.', cat: 'app', icon: icons.settings, color: '#3B82F6', time: '2h ago' },
+    { id: 'n4', title: 'Sound Tune switched', desc: 'Profile changed to Voice Call.', cat: 'app', icon: icons.sound, color: '#8B5CF6', time: '4h ago' },
+  ];
+
+  const gpuModes = [
+    { label: 'Dynamic', sub: 'On-Demand switching', icon: icons.smart },
+    { label: 'Discrete', sub: 'Maximum performance', icon: icons.cpu },
+    { label: 'Integrated', sub: 'Super battery (iGPU)', icon: icons.battery },
+    { label: 'MSI Smart', sub: 'Intelligent Hybrid', icon: icons.customize },
+  ];
+
+  const ft = nFilter === 'all' ? notices : notices.filter(n => n.cat === nFilter);
+
+  return (
+    <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--navy)', position: 'relative' }}>
+      <LiquidBg />
+      <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(5,5,16,0.8)', backdropFilter: 'blur(12px)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 32, height: 32, background: 'var(--msi-red)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ color: '#fff', fontWeight: 900, fontSize: 13, letterSpacing: 1.2 }}>MSI</span>
+            </div>
+            <span style={{ fontWeight: 700 }}>Center</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ padding: '4px 12px', background: 'rgba(235,29,36,0.1)', borderRadius: 4, fontSize: 11, color: 'var(--msi-red)', fontWeight: 600 }}>v3.0</div>
+            <icons.settings size={18} color="var(--text-secondary)" />
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--msi-red)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+        </header>
+
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          {/* Monitor */}
+          {tab === 0 && (
+            <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 32, height: '100%', overflow: 'auto', paddingBottom: 32 }}>
+              <div style={{ paddingTop: 28 }}><SectionHeader title="Monitor" /></div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+                <GaugeCard label="GPU Usage" value={62} unit="%" color="#3B82F6" temp={74} />
+                <GaugeCard label="CPU Usage" value={45} unit="%" temp={68} />
+                <GaugeCard label="VRAM Usage" value={3072} unit="MB" max={8192} color="#94A3B8" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 24 }}>
+                <GlassCard style={{ padding: 24 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>Disk</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>42°c</div>
+                  <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+                    <div style={{ width: '28%', height: '100%', background: '#3B82F6', borderRadius: 3, transition: 'width .6s' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Clean up the disk</div>
+                </GlassCard>
+                <GlassCard style={{ padding: 24 }}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>Memory</div>
+                  <div style={{ fontSize: 32, fontWeight: 700, marginBottom: 12 }}>55%</div>
+                  <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
+                    <div style={{ width: '55%', height: '100%', background: 'var(--msi-red)', borderRadius: 3, transition: 'width .6s' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Free Up Memory</div>
+                </GlassCard>
+              </div>
+              <GlassCard style={{ padding: 16 }}>
+                {[['CPU', 'Intel Core i7-11800H @ 2.30GHz'], ['GPU', 'NVIDIA GeForce RTX 3080'], ['RAM', '32 GB'], ['Fan 1', '2450 RPM'], ['Fan 2', '1800 RPM']].map(([k, v], i) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < 4 ? '1px solid rgba(255,255,255,0.04)' : 'none', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>{k}</span>
+                    <span style={{ fontWeight: 500 }}>{v}</span>
+                  </div>
+                ))}
+              </GlassCard>
+            </div>
+          )}
+
+          {/* Scenarios */}
+          {tab === 1 && (
+            <div style={{ padding: '0 32px', display: 'flex', flexDirection: 'column', gap: 24, height: '100%', overflow: 'auto', paddingBottom: 32 }}>
+              <div style={{ paddingTop: 28 }}><SectionHeader title="User Scenario" /></div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {scenarios.map(s => (
+                  <ScenarioCard key={s.id} label={s.label} icon={s.icon} selected={scenario === s.id} onClick={() => setScenario(s.id)} />
+                ))}
+              </div>
+              <SectionHeader title="GPU Switch" subtitle="Choose the best GPU mode for your current workload." />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                {gpuModes.map((g, i) => (
+                  <GlassCard key={g.label} style={{ padding: 16, textAlign: 'center' }}>
+                    <g.icon size={28} color={i === 0 ? 'var(--msi-red)' : 'var(--text-secondary)'} />
+                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8, color: i === 0 ? '#fff' : 'var(--text-secondary)' }}>{g.label}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{g.sub}</div>
+                  </GlassCard>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notifications */}
+          {tab === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'auto' }}>
+              <div style={{ padding: '20px 20px 8px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <icons.notif size={22} color="var(--text-primary)" />
+                <span style={{ fontWeight: 700, fontSize: 16 }}>Notification Center</span>
+                <span style={{ padding: '2px 8px', background: 'var(--msi-red)', borderRadius: 10, fontSize: 11, fontWeight: 700, color: '#fff' }}>{notices.length}</span>
+                <div style={{ flex: 1 }} />
+                <button style={{ background: 'none', border: 'none', color: 'var(--msi-red)', fontSize: 12, cursor: 'pointer' }}>Mark all read</button>
+              </div>
+              <div style={{ padding: '8px 16px', display: 'flex', gap: 8 }}>
+                {[{ id: 'all', label: 'All' }, { id: 'system', label: 'System Notices' }, { id: 'app', label: 'App Notifications' }].map(c => (
+                  <div key={c.id} onClick={() => setNFilter(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20, cursor: 'pointer', fontSize: 12, background: nFilter === c.id ? 'rgba(235,29,36,0.12)' : 'transparent', color: nFilter === c.id ? 'var(--msi-red)' : 'var(--text-secondary)', fontWeight: nFilter === c.id ? 600 : 400 }}>{c.label}</div>
+                ))}
+              </div>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 12px' }}>
+                {ft.map(n => <NotifCard key={n.id} {...n} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Features */}
+          {tab === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', overflow: 'auto', height: '100%' }}>
+              <GlassCard style={{ padding: '40px 48px', borderRadius: 0, borderLeft: 'none', borderRight: 'none' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 24, fontWeight: 700 }}>Feature Sets</span>
+                    <icons.speed size={24} color="var(--msi-red)" />
+                  </div>
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {['Usage Scenarios', 'Settings and History'].map(b => (
+                      <button key={b} style={{ padding: '10px 16px', border: '1px solid var(--text-muted)', borderRadius: 4, background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>{b}</button>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginTop: 20, fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                  Manage and open MSI exclusive features in this page.<br />Feel free to explore your Linux-powered MSI Center!
+                </div>
+              </GlassCard>
+              <div style={{ padding: '24px 48px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+                  <span style={{ fontWeight: 700, fontSize: 17 }}>Available items</span>
+                  <button style={{ padding: '8px 16px', border: '1px solid var(--glass-border)', borderRadius: 4, background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}>Refresh All</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 24 }}>
+                  {features.map(f => <FeatureCard key={f.title} {...f} />)}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <nav style={{ display: 'flex', justifyContent: 'center', gap: 8, borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(5,5,16,0.8)', backdropFilter: 'blur(12px)', padding: '4px 0' }}>
+          {[
+            { label: 'Monitor', icon: icons.monitor },
+            { label: 'Scenarios', icon: icons.speed },
+            { label: 'Notifications', icon: icons.notif },
+            { label: 'Features', icon: icons.grid },
+          ].map((t, i) => (
+            <div key={t.label} onClick={() => setTab(i)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 16px', cursor: 'pointer', opacity: tab === i ? 1 : 0.5, borderBottom: tab === i ? '2px solid var(--msi-red)' : '2px solid transparent', transition: 'opacity .2s', color: tab === i ? '#fff' : 'var(--text-secondary)', fontSize: 11, fontWeight: tab === i ? 600 : 400 }}>
+              <t.icon size={20} color={tab === i ? 'var(--msi-red)' : 'var(--text-secondary)'} />
+              <span>{t.label}</span>
+            </div>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

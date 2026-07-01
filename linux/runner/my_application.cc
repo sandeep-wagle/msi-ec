@@ -222,6 +222,18 @@ static void method_call_handler(FlMethodChannel *channel,
     }
   }
 
+  if (method_str == "getKeyboardBacklight") {
+    int brightness = getKeyboardBrightness();
+    FlValue *result = fl_value_new_map();
+    fl_value_set_take(result, fl_value_new_string("brightness"),
+                      fl_value_new_int(brightness >= 0 ? brightness : 0));
+    g_autoptr(FlMethodSuccessResponse) response =
+        fl_method_success_response_new(result);
+    fl_method_call_respond(method_call, FL_METHOD_RESPONSE(response),
+                           nullptr);
+    return;
+  }
+
   if (method_str == "setKeyboardBacklight") {
     if (fl_value_get_type(args) != FL_VALUE_TYPE_MAP)
       return;
@@ -402,6 +414,48 @@ static void method_call_handler(FlMethodChannel *channel,
           fl_method_success_response_new(fl_value_new_bool(true));
       fl_method_call_respond(method_call, FL_METHOD_RESPONSE(response),
                              nullptr);
+      return;
+    }
+  }
+
+  if (method_str == "cleanUpDisk") {
+    bool success = cleanUpDisk();
+    g_autoptr(FlMethodSuccessResponse) response =
+        fl_method_success_response_new(fl_value_new_bool(success));
+    fl_method_call_respond(method_call, FL_METHOD_RESPONSE(response), nullptr);
+    return;
+  }
+
+  if (method_str == "setSmartPriority") {
+    if (fl_value_get_type(args) != FL_VALUE_TYPE_MAP)
+      return;
+    g_autoptr(FlValue) k_apps = fl_value_new_string("apps");
+    FlValue *apps_arg = fl_value_lookup(args, k_apps);
+    if (apps_arg != nullptr && fl_value_get_type(apps_arg) == FL_VALUE_TYPE_LIST) {
+      std::vector<std::string> apps;
+      for (size_t i = 0; i < fl_value_get_length(apps_arg); ++i) {
+        FlValue *app_val = fl_value_get_list_value(apps_arg, i);
+        if (fl_value_get_type(app_val) == FL_VALUE_TYPE_STRING) {
+          apps.push_back(fl_value_get_string(app_val));
+        }
+      }
+      bool success = setSmartPriority(apps);
+      g_autoptr(FlMethodSuccessResponse) response =
+          fl_method_success_response_new(fl_value_new_bool(success));
+      fl_method_call_respond(method_call, FL_METHOD_RESPONSE(response), nullptr);
+      return;
+    }
+  }
+
+  if (method_str == "openFile") {
+    if (fl_value_get_type(args) != FL_VALUE_TYPE_MAP) return;
+    g_autoptr(FlValue) k_path = fl_value_new_string("path");
+    FlValue *path_arg = fl_value_lookup(args, k_path);
+    if (path_arg != nullptr && fl_value_get_type(path_arg) == FL_VALUE_TYPE_STRING) {
+      openFile(fl_value_get_string(path_arg));
+      g_autoptr(FlMethodSuccessResponse) response =
+          fl_method_success_response_new(fl_value_new_bool(true));
+      fl_method_call_respond(method_call, FL_METHOD_RESPONSE(response), nullptr);
       return;
     }
   }

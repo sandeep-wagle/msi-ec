@@ -1,8 +1,15 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../core/di/injection.dart';
-import '../domain/repositories/msi_repository.dart';
-import '../services/toast_service.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/core/app_colors.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/services/toast_service.dart';
+import 'package:msi_controller/core/widgets/app_button.dart';
+import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/screens/gaming_mode/widgets/gaming_mode_toggle.dart';
+import 'package:msi_controller/screens/gaming_mode/widgets/add_game_button.dart';
 
 class _GameEntry {
   final String name;
@@ -11,11 +18,7 @@ class _GameEntry {
   bool enabled = false;
   bool gamingModeOn = false;
 
-  _GameEntry({
-    required this.name,
-    required this.icon,
-    required this.iconColor,
-  });
+  _GameEntry({required this.name, required this.icon, required this.iconColor});
 }
 
 class GamingModeScreen extends StatefulWidget {
@@ -25,32 +28,34 @@ class GamingModeScreen extends StatefulWidget {
   State<GamingModeScreen> createState() => _GamingModeScreenState();
 }
 
-class _GamingModeScreenState extends State<GamingModeScreen> {
+class _GamingModeScreenState extends State<GamingModeScreen>
+    with TickerProviderStateMixin {
   final MsiRepository _repository = getIt<MsiRepository>();
 
   bool _globalGamingMode = false;
   bool _isApplying = false;
   bool _smartDetection = false;
   bool _crosshairOverlay = false;
-
-  // New: Smart Detection timer
   Timer? _detectionTimer;
-
-  // Per-feature toggles (what gaming mode controls)
   bool _extremePerf = true;
   bool _gamingAudio = true;
   bool _coolerBoost = true;
 
   final List<_GameEntry> _games = [
     _GameEntry(
-      name: 'Hotkey Lighting',
-      icon: Icons.keyboard,
-      iconColor: Colors.orange,
+      name: 'HOTKEY LIGHTING',
+      icon: Icons.keyboard_rounded,
+      iconColor: const Color(0xFFF59E0B),
     ),
     _GameEntry(
-      name: 'Client',
-      icon: Icons.sports_esports,
-      iconColor: Colors.green,
+      name: 'EPIC GAMES CLIENT',
+      icon: Icons.sports_esports_rounded,
+      iconColor: const Color(0xFF22C55E),
+    ),
+    _GameEntry(
+      name: 'STEAM VR ENGINE',
+      icon: Icons.view_in_ar_rounded,
+      iconColor: const Color(0xFF3B82F6),
     ),
   ];
 
@@ -72,11 +77,8 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
   void _startDetection() {
     _detectionTimer?.cancel();
     _detectionTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
-      // In a real app, we'd check running processes via native bridge
-      // For now, we'll simulate detection for known game processes
       if (!_globalGamingMode && _smartDetection) {
-        // Logic: if any process in _games is running, prompt or auto-enable
-        debugPrint('Smart Detection: scanning for games...');
+        debugPrint('Smart Detection: scanning for hardware signatures...');
       }
     });
   }
@@ -96,17 +98,12 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
       );
       if (mounted) {
         if (value) {
-          getIt<ToastService>().showSuccess(
-            'Gaming Mode enabled — Optimizations applied',
-          );
+          getIt<ToastService>().showSuccess('GAMING MODE: ACTIVE (OPTIMIZED)');
         } else {
-          getIt<ToastService>().showInfo(
-            'Gaming Mode disabled — System restored',
-          );
+          getIt<ToastService>().showInfo('GAMING MODE: STANDBY (RESTORED)');
         }
       }
     } catch (e) {
-      // Revert on failure
       if (mounted) setState(() => _globalGamingMode = !value);
     } finally {
       if (mounted) setState(() => _isApplying = false);
@@ -115,279 +112,219 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: theme.scaffoldBackgroundColor,
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row
-                Row(
-                  children: [
-                    Text(
-                      'Gaming Mode',
-                      style: theme.textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red.shade700,
-                      ),
-                    ),
-                    const Spacer(),
-                    // Main Gaming Mode toggle
-                    _buildGamingModeToggle(isDark),
-                    const SizedBox(width: 16),
-                    OutlinedButton.icon(
-                      onPressed: () => setState(() {}),
-                      icon: const Icon(Icons.refresh, size: 16),
-                      label: const Text('Refresh'),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.help_outline, size: 18),
-                      onPressed: () {},
-                      tooltip: 'About Gaming Mode',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Description
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.04)
-                        : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isDark ? Colors.white12 : Colors.black12,
-                    ),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              // Header
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.xl,
                   ),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Left description
-                      Expanded(
-                        flex: 3,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'MSI Gaming Mode provides auto-tuning function for the game you are playing with the best possible visual and audio lighting setting and brings you a superior gaming experience.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? Colors.white70 : Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Warning banner
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: Colors.orange.withValues(alpha: 0.4),
-                                ),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber,
-                                    size: 14,
-                                    color: Colors.orange.shade700,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'The following functions can be set in game customization to turn ON/OFF',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.orange.shade700,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            // Feature toggles grid
-                            _buildFeatureGrid(isDark),
-                          ],
+                      Container(
+                        width: 3,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: colors.performance,
+                          borderRadius: AppRadius.xsAll,
                         ),
                       ),
-                      const SizedBox(width: 32),
-                      // Right illustration
-                      Expanded(
-                        flex: 2,
-                        child: _buildGamingIllustration(isDark),
+                      const SizedBox(width: AppSpacing.md),
+                      Text(
+                        'Gaming Mode',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const Spacer(),
+                      GamingModeToggle(
+                        isActive: _globalGamingMode,
+                        isApplying: _isApplying,
+                        colors: colors,
+                        onChanged: _toggleGamingMode,
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+              ),
 
-                // Game List
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    ..._games.map((game) => _buildGameEntry(game, isDark)),
-                    // Add Game button
-                    _buildAddGameButton(isDark),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (_crosshairOverlay)
-          IgnorePointer(
-            child: CustomPaint(
-              size: Size.infinite,
-              painter: _CrosshairPainter(),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildGamingModeToggle(bool isDark) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: _globalGamingMode
-            ? Colors.red.shade700.withValues(alpha: 0.15)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: _globalGamingMode ? Colors.red.shade700 : Colors.grey.shade400,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Gaming Mode',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: _globalGamingMode ? Colors.red.shade700 : Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 8),
-          _isApplying
-              ? SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Colors.red.shade700,
+              // Hero Illustration & Main Toggles
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.xxxl,
+                  ),
+                  child: GlassCard(
+                    padding: const EdgeInsets.all(AppSpacing.xxl),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'AUTO-TUNING ENGINE',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white24,
+                                  letterSpacing: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'MSI Gaming Mode provides intelligent resource allocation and hardware synchronization to deliver ultimate frame rates and low-latency audio.',
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 13,
+                                  height: 1.5,
+                                ),
+                              ),
+                              const SizedBox(height: AppSpacing.xxl),
+                              _buildFeatureGrid(colors),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xxxl),
+                        const Expanded(
+                          flex: 2,
+                          child: _GamingHeroIllustration(),
+                        ),
+                      ],
                     ),
                   ),
-                )
-              : Switch(
-                  value: _globalGamingMode,
-                  activeThumbColor: Colors.red.shade700,
-                  onChanged: _toggleGamingMode,
                 ),
+              ),
+
+              // Game Profiles Grid
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.md,
+                  ),
+                  child: Text(
+                    'RECOGNIZED GAME PROFILES',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: colors.textSecondary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xxxl,
+                ),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: AppSpacing.xl,
+                    mainAxisSpacing: AppSpacing.xl,
+                    childAspectRatio: 2.8,
+                  ),
+                  delegate: SliverChildListDelegate([
+                    ..._games.asMap().entries.map(
+                      (entry) =>
+                          _buildGameEntry(entry.value, entry.key, colors),
+                    ),
+                    AddGameButton(colors: colors, onTap: _addGame),
+                  ]),
+                ),
+              ),
+              const SliverToBoxAdapter(
+                child: SizedBox(height: AppSpacing.xxxl),
+              ),
+            ],
+          ),
+          if (_crosshairOverlay)
+            IgnorePointer(
+              child: CustomPaint(
+                size: Size.infinite,
+                painter: _CrosshairPainter(),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildFeatureGrid(bool isDark) {
+  Widget _buildFeatureGrid(AppColors colors) {
     final features = [
       _FeatureToggleItem(
-        label: 'System Performance',
-        description:
-            'Extreme Performance mode + powerprofilesctl + free memory',
-        isOn: _extremePerf,
-        color: Colors.red,
-        onChanged: (v) => setState(() => _extremePerf = v),
+        'CORE PERFORMANCE',
+        'Push hardware to extreme clock speeds',
+        _extremePerf,
+        colors.performance,
+        (v) => setState(() => _extremePerf = v),
       ),
       _FeatureToggleItem(
-        label: 'Smart Detection',
-        description: 'AI: Auto-enable Gaming Mode when a game is launched',
-        isOn: _smartDetection,
-        color: Colors.greenAccent,
-        onChanged: _toggleSmartDetection,
+        'PRO RADAR SCAN',
+        'Auto-launch optimizations on game start',
+        _smartDetection,
+        colors.balanced,
+        _toggleSmartDetection,
       ),
       _FeatureToggleItem(
-        label: 'Crosshair Overlay',
-        description: 'Virtual crosshair for better aim in FPS games',
-        isOn: _crosshairOverlay,
-        color: Colors.lime,
-        onChanged: (v) => setState(() => _crosshairOverlay = v),
+        'TACTICAL OVERLAY',
+        'FPS Crosshair and performance telemetry',
+        _crosshairOverlay,
+        colors.warning,
+        (v) => setState(() => _crosshairOverlay = v),
       ),
       _FeatureToggleItem(
-        label: 'MSI Audio Engine / Gaming Audio',
-        description: 'Max volume and gaming sound profile initialization',
-        isOn: _gamingAudio,
-        color: Colors.blueAccent,
-        onChanged: (v) => setState(() => _gamingAudio = v),
+        'NAHIMIC ENGINE',
+        'Max spatial awareness and voice clarity',
+        _gamingAudio,
+        colors.balanced,
+        (v) => setState(() => _gamingAudio = v),
       ),
       _FeatureToggleItem(
-        label: 'Cooler Boost',
-        description: 'Engage full fan speed for extreme cooling',
-        isOn: _coolerBoost,
-        color: Colors.cyan,
-        onChanged: (v) => setState(() => _coolerBoost = v),
+        'COOLER BOOST 5',
+        'Forced thermal extraction (MAX RPM)',
+        _coolerBoost,
+        colors.performance,
+        (v) => setState(() => _coolerBoost = v),
       ),
     ];
 
     return Column(
-      children: features
-          .map(
-            (f) => _buildFeatureRow(
-              f,
-              isDark,
-              onChanged: (v) {
-                f.onChanged(v);
-                if (_globalGamingMode) {
-                  _toggleGamingMode(true);
-                }
-              },
-            ),
-          )
-          .toList(),
+      children: features.map((f) => _buildFeatureRow(f, colors)).toList(),
     );
   }
 
-  Widget _buildFeatureRow(
-    _FeatureToggleItem item,
-    bool isDark, {
-    required ValueChanged<bool> onChanged,
-  }) {
+  Widget _buildFeatureRow(_FeatureToggleItem item, AppColors colors) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              color: item.color,
-              shape: BoxShape.circle,
-            ),
+          Icon(
+            Icons.bolt_rounded,
+            size: 14,
+            color: item.isOn
+                ? item.color
+                : colors.textTertiary.withValues(alpha: 0.2),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,193 +332,94 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
                 Text(
                   item.label,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: item.color,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: item.isOn ? colors.textPrimary : colors.textTertiary,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 Text(
-                  item.description,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? Colors.white54 : Colors.black54,
+                  item.description.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 8,
+                    color: Colors.white24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ],
             ),
           ),
-          Transform.scale(
-            scale: 0.75,
-            child: Switch(
-              value: item.isOn,
-              activeThumbColor: item.color,
-              onChanged: onChanged,
-            ),
+          Switch(
+            value: item.isOn,
+            activeTrackColor: item.color.withValues(alpha: 0.3),
+            activeThumbColor: item.color,
+            onChanged: (v) {
+              item.onChanged(v);
+              if (_globalGamingMode) {
+                _toggleGamingMode(true);
+              } else {
+                _applyFeatureStandalone(item.label, v);
+              }
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGamingIllustration(bool isDark) {
-    return Container(
-      height: 160,
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center,
-          radius: 0.9,
-          colors: [
-            Colors.red.shade900.withValues(alpha: 0.35),
-            Colors.purple.shade900.withValues(alpha: 0.2),
-            Colors.transparent,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Glow circle
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.red.withValues(alpha: 0.1),
-                border: Border.all(
-                  color: Colors.red.withValues(alpha: 0.3),
-                  width: 2,
-                ),
-              ),
-            ),
-            Icon(Icons.sports_esports, size: 56, color: Colors.red.shade400),
-            // Stars
-            Positioned(
-              top: 10,
-              right: 20,
-              child: Icon(
-                Icons.star,
-                size: 12,
-                color: Colors.amber.withValues(alpha: 0.8),
-              ),
-            ),
-            Positioned(
-              bottom: 20,
-              left: 10,
-              child: Icon(
-                Icons.flash_on,
-                size: 16,
-                color: Colors.red.withValues(alpha: 0.7),
-              ),
-            ),
-            Positioned(
-              top: 20,
-              left: 20,
-              child: Icon(
-                Icons.auto_awesome,
-                size: 10,
-                color: Colors.purple.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGameEntry(_GameEntry game, bool isDark) {
-    return Container(
-      width: 200,
-      margin: const EdgeInsets.only(right: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.04)
-            : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: isDark ? Colors.white12 : Colors.black12),
-      ),
+  Widget _buildGameEntry(_GameEntry game, int index, AppColors colors) {
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
-              color: game.iconColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
+              color: game.iconColor.withValues(alpha: 0.1),
+              borderRadius: AppRadius.smAll,
+              border: Border.all(color: game.iconColor.withValues(alpha: 0.2)),
             ),
-            child: Icon(game.icon, color: game.iconColor, size: 20),
+            child: Icon(game.icon, color: game.iconColor, size: 24),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              game.name,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  game.name,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textPrimary,
+                    letterSpacing: 0.5,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  game.gamingModeOn ? 'SYNCED' : 'UNLINKED',
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    color: game.gamingModeOn
+                        ? colors.performance
+                        : colors.textTertiary,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
             ),
           ),
-          // Settings icon
-          InkWell(
-            onTap: () => _showGameSettings(game),
-            borderRadius: BorderRadius.circular(4),
-            child: Padding(
-              padding: const EdgeInsets.all(4),
-              child: Icon(
-                Icons.settings,
-                size: 14,
-                color: isDark ? Colors.white38 : Colors.black38,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          // Gaming mode indicator
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: game.gamingModeOn
-                  ? Colors.red.shade600
-                  : Colors.grey.shade400,
-              shape: BoxShape.circle,
-            ),
+          IconButton(
+            onPressed: () => _showGameSettings(game),
+            icon: const Icon(Icons.tune_rounded, size: 18),
+            color: colors.textTertiary,
+            tooltip: 'Config',
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAddGameButton(bool isDark) {
-    return GestureDetector(
-      onTap: _addGame,
-      child: Container(
-        width: 180,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(
-            color: isDark ? Colors.white24 : Colors.black26,
-            style: BorderStyle.solid,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add,
-              size: 18,
-              color: isDark ? Colors.white38 : Colors.black45,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'Add Game',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? Colors.white38 : Colors.black45,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -590,99 +428,224 @@ class _GamingModeScreenState extends State<GamingModeScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF050510),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: game.iconColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(4),
+            Icon(game.icon, color: game.iconColor, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              game.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
               ),
-              child: Icon(game.icon, color: game.iconColor, size: 18),
             ),
-            const SizedBox(width: 10),
-            Text(game.name),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SwitchListTile(
-              title: const Text('Gaming Mode', style: TextStyle(fontSize: 13)),
-              subtitle: const Text(
-                'Apply gaming optimizations when this game is running',
-                style: TextStyle(fontSize: 11),
-              ),
-              value: game.gamingModeOn,
-              activeThumbColor: Colors.red.shade700,
-              onChanged: (v) {
-                setState(() => game.gamingModeOn = v);
-                Navigator.pop(context);
-              },
-            ),
-          ],
+        content: SwitchListTile(
+          title: const Text(
+            'AUTO-OPTIMIZE',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          subtitle: const Text(
+            'ENGAGE GAMING ENGINE ON LAUNCH',
+            style: TextStyle(fontSize: 9, color: Colors.white38),
+          ),
+          value: game.gamingModeOn,
+          activeThumbColor: const Color(0xFFEB1D24),
+          onChanged: (v) {
+            setState(() => game.gamingModeOn = v);
+            Navigator.pop(context);
+          },
         ),
         actions: [
-          TextButton(
+          AppButton(
+            text: 'DISMISS',
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+            isElevated: false,
+            isPrimary: false,
+            foregroundColor: Colors.white38,
           ),
         ],
       ),
     );
   }
 
-  void _addGame() {
-    final icons = [
-      (Icons.sports_esports, 'Game', Colors.green),
-      (Icons.computer, 'App', Colors.blue),
-    ];
+  void _applyFeatureStandalone(String label, bool value) {
+    switch (label) {
+      case 'COOLER BOOST 5':
+        _repository.setCoolerBoost(value);
+        break;
+      case 'CORE PERFORMANCE':
+        _repository.setFeatureEnabled('extreme_perf', value);
+        break;
+      case 'NAHIMIC ENGINE':
+        _repository.setFeatureEnabled('gaming_audio', value);
+        break;
+    }
+  }
 
+  void _addGame() {
     showDialog(
       context: context,
       builder: (_) {
         final nameController = TextEditingController();
         return AlertDialog(
-          title: const Text('Add Game'),
+          backgroundColor: const Color(0xFF050510),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+          title: const Text(
+            'LINK APPLICATION',
+            style: TextStyle(
+              color: Color(0xFFEB1D24),
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+            ),
+          ),
           content: TextField(
             controller: nameController,
+            style: const TextStyle(
+              color: Colors.white,
+              fontFamily: 'monospace',
+            ),
             decoration: const InputDecoration(
-              hintText: 'Game or application name',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.sports_esports),
+              hintText: 'Enter executable name...',
+              prefixIcon: Icon(Icons.search_rounded),
             ),
             autofocus: true,
           ),
           actions: [
-            TextButton(
+            AppButton(
+              text: 'CANCEL',
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              isElevated: false,
+              isPrimary: false,
+              foregroundColor: Colors.white24,
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red.shade700,
-              ),
+            AppButton(
+              text: 'ATTACH',
               onPressed: () {
                 if (nameController.text.trim().isNotEmpty) {
                   setState(() {
                     _games.add(
                       _GameEntry(
-                        name: nameController.text.trim(),
-                        icon: icons[0].$1,
-                        iconColor: icons[0].$3,
+                        name: nameController.text.trim().toUpperCase(),
+                        icon: Icons.sports_esports_rounded,
+                        iconColor: Colors.greenAccent,
                       ),
                     );
                   });
                   Navigator.pop(context);
                 }
               },
-              child: const Text('Add', style: TextStyle(color: Colors.white)),
+              foregroundColor: const Color(0xFFEB1D24),
             ),
           ],
         );
       },
     );
   }
+}
+
+class _GamingHeroIllustration extends StatefulWidget {
+  const _GamingHeroIllustration();
+  @override
+  State<_GamingHeroIllustration> createState() =>
+      _GamingHeroIllustrationState();
+}
+
+class _GamingHeroIllustrationState extends State<_GamingHeroIllustration>
+    with TickerProviderStateMixin {
+  late AnimationController _rotateController;
+  @override
+  void initState() {
+    super.initState();
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _rotateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
+    return SizedBox(
+      height: 200,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          RotationTransition(
+            turns: _rotateController,
+            child: CustomPaint(
+              size: const Size(180, 180),
+              painter: _TargetHudPainter(colors.performance),
+            ),
+          ),
+          Icon(
+            Icons.sports_esports_rounded,
+            size: 64,
+            color: colors.performance,
+          ),
+          const Positioned(
+            bottom: 0,
+            child: Text(
+              'ENGINE READY',
+              style: TextStyle(
+                color: Colors.greenAccent,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetHudPainter extends CustomPainter {
+  final Color color;
+  _TargetHudPainter(this.color);
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    canvas.drawCircle(center, radius, paint);
+    canvas.drawCircle(
+      center,
+      radius - 20,
+      paint..color = color.withValues(alpha: 0.1),
+    );
+    for (var i = 0; i < 8; i++) {
+      final angle = i * math.pi / 4;
+      canvas.drawLine(
+        Offset(
+          center.dx + math.cos(angle) * (radius - 10),
+          center.dy + math.sin(angle) * (radius - 10),
+        ),
+        Offset(
+          center.dx + math.cos(angle) * radius,
+          center.dy + math.sin(angle) * radius,
+        ),
+        paint..strokeWidth = 3,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _CrosshairPainter extends CustomPainter {
@@ -692,12 +655,9 @@ class _CrosshairPainter extends CustomPainter {
       ..color = Colors.greenAccent
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
-
     final center = Offset(size.width / 2, size.height / 2);
     const length = 15.0;
     const gap = 5.0;
-
-    // Draw crosshair lines
     canvas.drawLine(
       Offset(center.dx, center.dy - gap),
       Offset(center.dx, center.dy - gap - length),
@@ -718,8 +678,6 @@ class _CrosshairPainter extends CustomPainter {
       Offset(center.dx + gap + length, center.dy),
       paint,
     );
-
-    // Draw center dot
     canvas.drawCircle(center, 1, paint..style = PaintingStyle.fill);
   }
 
@@ -733,12 +691,11 @@ class _FeatureToggleItem {
   final bool isOn;
   final Color color;
   final ValueChanged<bool> onChanged;
-
-  const _FeatureToggleItem({
-    required this.label,
-    required this.description,
-    required this.isOn,
-    required this.color,
-    required this.onChanged,
-  });
+  const _FeatureToggleItem(
+    this.label,
+    this.description,
+    this.isOn,
+    this.color,
+    this.onChanged,
+  );
 }

@@ -6,6 +6,11 @@ import 'package:flutter/material.dart';
 extension ColorValues on Color {
   Color withValues({required double alpha}) {
     final a = (alpha.clamp(0.0, 1.0) * 255).round();
-    return Color.fromARGB(a, red, green, blue);
+    return Color.fromARGB(
+      a,
+      (r * 255).round(),
+      (g * 255).round(),
+      (b * 255).round(),
+    );
   }
 }

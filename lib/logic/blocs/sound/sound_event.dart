@@ -7,8 +7,6 @@ abstract class SoundEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class LoadSoundSettings extends SoundEvent {}
-
 class SetSoundProfile extends SoundEvent {
   final String profile;
   const SetSoundProfile(this.profile);
@@ -58,9 +56,25 @@ class ChangeStereoWidth extends SoundEvent {
   List<Object?> get props => [width];
 }
 
+class ChangeStereoWidthPreview extends SoundEvent {
+  final double width;
+  const ChangeStereoWidthPreview(this.width);
+
+  @override
+  List<Object?> get props => [width];
+}
+
 class ChangeNoiseLevel extends SoundEvent {
   final double level;
   const ChangeNoiseLevel(this.level);
+
+  @override
+  List<Object?> get props => [level];
+}
+
+class ChangeNoiseLevelPreview extends SoundEvent {
+  final double level;
+  const ChangeNoiseLevelPreview(this.level);
 
   @override
   List<Object?> get props => [level];
@@ -77,6 +91,14 @@ class ToggleLimiter extends SoundEvent {
 class ChangeCompressorRatio extends SoundEvent {
   final double ratio;
   const ChangeCompressorRatio(this.ratio);
+
+  @override
+  List<Object?> get props => [ratio];
+}
+
+class ChangeCompressorRatioPreview extends SoundEvent {
+  final double ratio;
+  const ChangeCompressorRatioPreview(this.ratio);
 
   @override
   List<Object?> get props => [ratio];
@@ -135,6 +157,14 @@ class ChangeSurroundVariation extends SoundEvent {
 class ChangeMicrophoneGain extends SoundEvent {
   final double gain;
   const ChangeMicrophoneGain(this.gain);
+
+  @override
+  List<Object?> get props => [gain];
+}
+
+class ChangeMicrophoneGainPreview extends SoundEvent {
+  final double gain;
+  const ChangeMicrophoneGainPreview(this.gain);
 
   @override
   List<Object?> get props => [gain];

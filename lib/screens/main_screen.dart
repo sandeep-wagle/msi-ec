@@ -1,18 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../core/di/injection.dart';
-import '../core/theme/theme_provider.dart';
-import '../domain/repositories/msi_repository.dart';
-import '../logic/blocs/settings/settings_bloc.dart';
-import '../logic/blocs/sound/sound_bloc.dart';
+import 'package:msi_controller/core/app_colors.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/core/theme/theme_provider.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_bloc.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_bloc.dart';
 import 'hardware_monitoring_screen.dart';
 import 'features_screen.dart';
 import 'user_scenario_screen.dart';
 import 'system_diagnosis_screen.dart';
 import 'notification_screen.dart';
 import 'settings_screen.dart';
-import '../widgets/sdk_initialization_loader.dart';
+import 'package:msi_controller/widgets/sdk_initialization_loader.dart';
+import 'package:msi_controller/widgets/glass_bottom_nav.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -50,6 +53,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _initializeService() async {
+    if (!mounted) return;
     setState(() {
       _isTabLoading = true;
       _loadProgress = 0.1;
@@ -58,27 +62,31 @@ class _MainScreenState extends State<MainScreen> {
     final repository = getIt<MsiRepository>();
     final success = await repository.initialize();
 
-    if (mounted) {
-      setState(() {
-        _isInitialized = success;
-        _loadProgress = 0.4;
-        if (!success) {
-          _initError =
-              'Failed to initialize MSI driver. Make sure msi-ec is installed.';
-        }
-      });
-    }
+    if (!mounted) return;
+    setState(() {
+      _isInitialized = success;
+      _loadProgress = 0.4;
+      if (!success) {
+        _initError =
+            'Failed to initialize MSI driver. Make sure msi-ec is installed.';
+      }
+    });
 
+    if (!mounted) return;
     final settingsBloc = context.read<SettingsBloc>();
     final soundBloc = context.read<SoundBloc>();
 
     await Future.delayed(const Duration(milliseconds: 100));
 
     var waitTime = 0;
-    while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) && waitTime < 10000 && mounted) {
-      setState(() {
-        _loadProgress = (_loadProgress + 0.05).clamp(0.4, 0.9);
-      });
+    while ((settingsBloc.state.isLoading || soundBloc.state.isLoading) &&
+        waitTime < 10000 &&
+        mounted) {
+      if (mounted) {
+        setState(() {
+          _loadProgress = (_loadProgress + 0.05).clamp(0.4, 0.9);
+        });
+      }
       await Future.delayed(const Duration(milliseconds: 200));
       waitTime += 200;
     }
@@ -96,17 +104,22 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final colors = theme.extension<AppColors>()!;
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFD32F2F),
-                borderRadius: BorderRadius.circular(4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xxs,
+                vertical: AppSpacing.xxxs,
+              ),
+              decoration: const BoxDecoration(
+                color: Color(0xFFEB1D24),
+                borderRadius: BorderRadius.all(Radius.circular(AppRadius.xs)),
               ),
               child: const Text(
                 'MSI',
@@ -118,11 +131,16 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.xs),
             const Text('Center', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => _navigateToNotifications(context),
+            tooltip: 'Notifications',
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => _navigateToSettings(context),
@@ -135,13 +153,13 @@ class _MainScreenState extends State<MainScreen> {
             },
             tooltip: 'Toggle Theme',
           ),
-          const SizedBox(width: 8),
-          const CircleAvatar(
-            backgroundColor: Colors.redAccent,
+          const SizedBox(width: AppSpacing.xxs),
+          CircleAvatar(
+            backgroundColor: colors.performance,
             radius: 14,
-            child: Icon(Icons.person, size: 18, color: Colors.white),
+            child: const Icon(Icons.person, size: 18, color: Colors.white),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.sm),
         ],
       ),
       body: Column(
@@ -149,12 +167,12 @@ class _MainScreenState extends State<MainScreen> {
           if (!_isInitialized && _initError != null)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.orange.shade800,
+              padding: const EdgeInsets.all(AppSpacing.xs),
+              color: colors.warning.withValues(alpha: 0.9),
               child: Row(
                 children: [
                   const Icon(Icons.warning_amber, color: Colors.white),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xxs),
                   Expanded(
                     child: Text(
                       _initError!,
@@ -167,13 +185,20 @@ class _MainScreenState extends State<MainScreen> {
           Expanded(
             child: Stack(
               children: [
-                IndexedStack(
-                  index: _selectedIndex,
-                  children: _screens,
+                AnimatedSwitcher(
+                  duration: AppDurations.medium,
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
+                  child: Container(
+                    key: ValueKey(_selectedIndex),
+                    child: _screens[_selectedIndex],
+                  ),
                 ),
                 if (_isTabLoading)
                   Container(
-                    color: Colors.black.withValues(alpha: 0.7),
+                    color: theme.scaffoldBackgroundColor.withValues(
+                      alpha: 0.95,
+                    ),
                     child: Center(
                       child: Material(
                         color: Colors.transparent,
@@ -186,35 +211,35 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: GlassBottomNav(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
           setState(() => _selectedIndex = index);
         },
         destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.speed_outlined),
-            selectedIcon: Icon(Icons.speed),
+          GlassBottomNavDestination(
+            icon: Icons.show_chart_outlined,
+            selectedIcon: Icons.show_chart,
             label: 'Monitor',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.psychology_outlined),
-            selectedIcon: Icon(Icons.psychology),
+          GlassBottomNavDestination(
+            icon: Icons.auto_awesome_outlined,
+            selectedIcon: Icons.auto_awesome,
             label: 'Scenarios',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications),
-            label: 'Notifications',
+          GlassBottomNavDestination(
+            icon: Icons.notifications_outlined,
+            selectedIcon: Icons.notifications_active,
+            label: 'Alerts',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.analytics_outlined),
-            selectedIcon: Icon(Icons.analytics),
+          GlassBottomNavDestination(
+            icon: Icons.assignment_outlined,
+            selectedIcon: Icons.assignment,
             label: 'Diagnosis',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.grid_view_outlined),
-            selectedIcon: Icon(Icons.grid_view),
+          GlassBottomNavDestination(
+            icon: Icons.dashboard_outlined,
+            selectedIcon: Icons.dashboard,
             label: 'Features',
           ),
         ],
@@ -235,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
               elevation: 0,
               backgroundColor: Colors.transparent,
             ),
-            body: const _SettingsScreenWrapper(),
+            body: const SettingsScreen(),
           );
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -244,13 +269,27 @@ class _MainScreenState extends State<MainScreen> {
       ),
     );
   }
-}
 
-class _SettingsScreenWrapper extends StatelessWidget {
-  const _SettingsScreenWrapper();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SettingsScreen();
+  void _navigateToNotifications(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+            ),
+            body: const NotificationScreen(),
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 }

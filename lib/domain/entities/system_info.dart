@@ -188,6 +188,8 @@ class SystemInfo {
   final int? vramUsage; // in MB
   final int? vramTotal; // in MB
   final double diskUsage;
+  final double? diskTotalGb;
+  final double? diskUsedGb;
   final double ssdHealth;
   final double ssdTemp;
   final bool smartPriorityEnabled;
@@ -219,6 +221,8 @@ class SystemInfo {
     this.vramUsage,
     this.vramTotal = 8192, // Default to 8GB for RTX 3080 fallback
     this.diskUsage = 0.0,
+    this.diskTotalGb,
+    this.diskUsedGb,
     this.ssdHealth = 95.0,
     this.ssdTemp = 35.0,
     this.smartPriorityEnabled = false,
@@ -248,7 +252,11 @@ class SystemInfo {
     bool? resizableBar,
     int? gpuUsage,
     int? cpuUsage,
+    int? vramUsage,
+    int? vramTotal,
     double? diskUsage,
+    double? diskTotalGb,
+    double? diskUsedGb,
     double? ssdHealth,
     double? ssdTemp,
     bool? smartPriorityEnabled,
@@ -276,7 +284,12 @@ class SystemInfo {
       resizableBar: resizableBar ?? this.resizableBar,
       gpuUsage: gpuUsage ?? this.gpuUsage,
       cpuUsage: cpuUsage ?? this.cpuUsage,
+      vramUsage: vramUsage ?? this.vramUsage,
+      vramTotal: vramTotal ?? this.vramTotal,
       diskUsage: diskUsage ?? this.diskUsage,
+      diskTotalGb: diskTotalGb ?? this.diskTotalGb,
+      diskUsedGb: diskUsedGb ?? this.diskUsedGb,
+
       ssdHealth: ssdHealth ?? this.ssdHealth,
       ssdTemp: ssdTemp ?? this.ssdTemp,
       smartPriorityEnabled: smartPriorityEnabled ?? this.smartPriorityEnabled,
@@ -364,6 +377,8 @@ class DeviceSettings {
   final bool usbPowerShare;
   final bool coolerBoost;
   final int shiftModeOverride;
+  final int keyboardBrightness;
+  final int keyboardMode;
 
   DeviceSettings({
     this.webcamEnabled = false,
@@ -371,6 +386,8 @@ class DeviceSettings {
     this.usbPowerShare = false,
     this.coolerBoost = false,
     this.shiftModeOverride = 0,
+    this.keyboardBrightness = -1,
+    this.keyboardMode = 0,
   });
 
   DeviceSettings copyWith({
@@ -379,6 +396,8 @@ class DeviceSettings {
     bool? usbPowerShare,
     bool? coolerBoost,
     int? shiftModeOverride,
+    int? keyboardBrightness,
+    int? keyboardMode,
   }) {
     return DeviceSettings(
       webcamEnabled: webcamEnabled ?? this.webcamEnabled,
@@ -386,6 +405,8 @@ class DeviceSettings {
       usbPowerShare: usbPowerShare ?? this.usbPowerShare,
       coolerBoost: coolerBoost ?? this.coolerBoost,
       shiftModeOverride: shiftModeOverride ?? this.shiftModeOverride,
+      keyboardBrightness: keyboardBrightness ?? this.keyboardBrightness,
+      keyboardMode: keyboardMode ?? this.keyboardMode,
     );
   }
 }

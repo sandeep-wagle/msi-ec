@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/widgets/sdk/procedural_radar.dart';
+import 'package:msi_controller/widgets/sdk/info_panel.dart';
+import 'package:msi_controller/widgets/sdk/system_logs.dart';
 
 class SdkInitializationLoader extends StatefulWidget {
   final double progress;
@@ -8,8 +12,8 @@ class SdkInitializationLoader extends StatefulWidget {
   const SdkInitializationLoader({
     super.key,
     this.progress = 0.4,
-    this.message = 'Waiting for SDK initialization...',
-    this.version = 'Version 2.0.34.0',
+    this.message = 'Synchronizing hardware protocols...',
+    this.version = 'v2.0.34.0',
   });
 
   @override
@@ -18,132 +22,88 @@ class SdkInitializationLoader extends StatefulWidget {
 }
 
 class _SdkInitializationLoaderState extends State<SdkInitializationLoader>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _pulseAnimation;
+    with TickerProviderStateMixin {
+  late AnimationController _rotateController;
+  late AnimationController _scanController;
+  late Animation<double> _scanAnimation;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 10),
+    )..repeat();
+
+    _scanController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.05,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    )..repeat();
+
+    _scanAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 50,
+      ),
+    ]).animate(_scanController);
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _rotateController.dispose();
+    _scanController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: 480,
+      padding: const EdgeInsets.all(AppSpacing.xxxl),
       decoration: BoxDecoration(
-        color: const Color(0xFF12141C),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF050510).withValues(alpha: 0.95),
+        borderRadius: AppRadius.lgAll,
         border: Border.all(color: Colors.white10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.5),
+            blurRadius: 40,
+            spreadRadius: 10,
+          ),
+        ],
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
-              // 3D Box Icon with Scale Animation
-              ScaleTransition(
-                scale: _pulseAnimation,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blueAccent.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/images/msi_sdk_box.png',
-                    fit: BoxFit.contain,
-                  ),
-                ),
+              ProceduralRadar(
+                progress: widget.progress,
+                rotateController: _rotateController,
+                scanAnimation: _scanAnimation,
               ),
-              const SizedBox(width: 32),
-              // Text Content
+              const SizedBox(width: AppSpacing.xxxl),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: 100,
-                      height: 100,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CircularProgressIndicator(
-                            value: widget.progress,
-                            strokeWidth: 8,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFFD32F2F),
-                            ),
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.1,
-                            ),
-                            strokeCap: StrokeCap.round,
-                          ),
-                          Center(
-                            child: Text(
-                              '${(widget.progress * 100).toInt()}%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    const Text(
-                      'INITIALIZING MSI SDK',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Synchronizing hardware settings...',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                child: InfoPanel(
+                  message: widget.message,
+                  version: widget.version,
+                  progress: widget.progress,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          Align(
-            alignment: Alignment.bottomRight,
-            child: Text(
-              widget.version,
-              style: const TextStyle(color: Colors.white30, fontSize: 12),
-            ),
-          ),
+          const SizedBox(height: AppSpacing.xxl),
+          SystemLogs(progress: widget.progress),
         ],
       ),
     );

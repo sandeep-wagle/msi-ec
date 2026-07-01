@@ -7,6 +7,9 @@ abstract class MsiRepository {
   Stream<SystemInfo> get systemInfoStream;
   Stream<List<FanInfo>> get fanInfoStream;
 
+  SystemInfo? get lastSystemInfo;
+  List<FanInfo>? get lastFanInfo;
+
   bool get isInitialized;
   bool get hasMsiEcSupport;
 
@@ -21,12 +24,15 @@ abstract class MsiRepository {
   Future<bool> setFanMode(FanMode mode);
 
   Future<bool> setKeyboardBacklight(KeyboardBacklightInfo info);
+  Future<int> getKeyboardBacklight();
 
   Future<DeviceSettings> getDeviceSettings();
   Future<bool> setCoolerBoost(bool enable);
   Future<bool> setDeviceSetting(String key, dynamic value);
   Future<bool> freeUpMemory();
   Future<bool> cleanUpDisk();
+  Future<void> refreshSystemInfo();
+  Future<void> refreshFanInfo();
 
   // Gaming Mode
   Future<bool> setGamingMode(
@@ -39,9 +45,13 @@ abstract class MsiRepository {
   // Feature set management
   Future<bool> setFeatureEnabled(String featureId, bool enabled);
   Future<bool> openFeature(String featureId);
+  Future<void> openFile(String path);
 
   // AI LAN Manager
   Future<bool> setAiLanPriority(bool enable);
+
+  // Smart Priority
+  Future<bool> setSmartPriority(List<String> apps);
 
   // Sound Tune Advanced
   Future<bool> setSoundProfile(String profile);
@@ -63,6 +73,7 @@ abstract class MsiRepository {
   Future<void> setSoundMicNoiseSuppression(bool enabled);
   Future<void> setSoundEchoCancellation(bool enabled);
   Future<void> applyCurrentProfile();
+  Future<void> updateDsp(AudioProfile profile);
   Stream<double> get volumeStream;
   double get currentVolume;
 

@@ -91,7 +91,9 @@ class AudioProfile {
       bass: (json['bass'] ?? 0.0).toDouble(),
       treble: (json['treble'] ?? 0.0).toDouble(),
       voice: (json['voice'] ?? 0.0).toDouble(),
-      eqGains: List<double>.from((json['eq_gains'] ?? List.filled(10, 0.0)).map((e) => e.toDouble())),
+      eqGains: List<double>.from(
+        (json['eq_gains'] ?? List.filled(10, 0.0)).map((e) => e.toDouble()),
+      ),
       compressor: json['compressor'] ?? false,
       surround: json['surround'] ?? false,
       volume: (json['volume'] ?? 1.0).toDouble(),

@@ -1,8 +1,13 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import '../core/di/injection.dart';
-import '../domain/entities/system_info.dart';
-import '../domain/repositories/msi_repository.dart';
+import 'package:msi_controller/core/app_colors.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/domain/entities/system_info.dart';
+import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/core/widgets/app_button.dart';
+import 'package:msi_controller/screens/system_diagnosis/widgets/section_title_widget.dart';
+import 'package:msi_controller/screens/system_diagnosis/widgets/status_badge_widget.dart';
 
 class SystemDiagnosisScreen extends StatefulWidget {
   const SystemDiagnosisScreen({super.key});
@@ -14,30 +19,19 @@ class SystemDiagnosisScreen extends StatefulWidget {
 class _SystemDiagnosisScreenState extends State<SystemDiagnosisScreen>
     with AutomaticKeepAliveClientMixin {
   final MsiRepository _repository = getIt<MsiRepository>();
-  SystemInfo? _systemInfo;
-  StreamSubscription? _sub;
   bool _isCelsius = true;
   bool _isLoadingMemory = false;
   bool _isLoadingDisk = false;
+  final List<String> _kernelLogs = [
+    '[INFO] KERNEL_DIAGNOSTIC_READY',
+    '[INFO] MSI_HARDWARE_MONITOR_STABLE',
+  ];
 
-  DateTime _lastSystemUpdate = DateTime.now();
-  static const _minUpdateInterval = Duration(milliseconds: 500);
-
-  @override
-  void initState() {
-    super.initState();
-    _sub = _repository.systemInfoStream.listen((info) {
-      final now = DateTime.now();
-      if (now.difference(_lastSystemUpdate) < _minUpdateInterval) return;
-      _lastSystemUpdate = now;
-      if (mounted) setState(() => _systemInfo = info);
+  void _addLog(String msg) {
+    setState(() {
+      _kernelLogs.insert(0, '[${DateTime.now().second}s] $msg');
+      if (_kernelLogs.length > 5) _kernelLogs.removeLast();
     });
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
   }
 
   @override
@@ -46,111 +40,263 @@ class _SystemDiagnosisScreenState extends State<SystemDiagnosisScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_systemInfo == null) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-        ),
-      );
-    }
-
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = theme.extension<AppColors>()!;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'System Diagnosis',
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'System Diagnosis allows you to easily check the usage of your storage devices.',
-            style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-          ),
-          const SizedBox(height: 32),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // System Checker Column
-              Expanded(
-                flex: 4,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildSectionHeader('System Checker'),
-                    const SizedBox(height: 24),
-                    _buildCheckerItem(
-                      label: 'Disk',
-                      percent: _systemInfo!.diskUsage,
-                      onPressed: () async {
-                        setState(() => _isLoadingDisk = true);
-                        await _repository.cleanUpDisk();
-                        setState(() => _isLoadingDisk = false);
-                      },
-                      buttonLabel: 'Clean Up Disk',
-                      isLoading: _isLoadingDisk,
-                    ),
-                    const SizedBox(height: 32),
-                    _buildCheckerItem(
-                      label: 'Memory',
-                      percent:
-                          (_systemInfo!.ramUsage ?? 0) /
-                          (_systemInfo!.ramTotal ?? 100),
-                      onPressed: () async {
-                        setState(() => _isLoadingMemory = true);
-                        await _repository.freeUpMemory();
-                        setState(() => _isLoadingMemory = false);
-                      },
-                      buttonLabel: 'Free Up Memory',
-                      isLoading: _isLoadingMemory,
-                    ),
-                  ],
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'System Diagnosis',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+      ),
+      body: StreamBuilder<SystemInfo>(
+        stream: _repository.systemInfoStream,
+        initialData: _repository.lastSystemInfo,
+        builder: (context, snapshot) {
+          final info = snapshot.data;
+
+          if (info == null) {
+            return const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEB1D24)),
+              ),
+            );
+          }
+
+          return CustomScrollView(
+            slivers: [
+              // Header Section
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.xxxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.xxxl,
+                    AppSpacing.xl,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 3,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: colors.performance,
+                              borderRadius: AppRadius.xsAll,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Text(
+                            'System Health',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.monitor_heart_outlined,
+                            color: colors.performance,
+                            size: 24,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        'Deep diagnostics and storage analysis for your MSI machine.',
+                        style: TextStyle(
+                          color: colors.textTertiary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 48),
-              // Storage Status Column
-              Expanded(
-                flex: 6,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildSectionHeader('Storage Status'),
-                        IconButton(
-                          icon: const Icon(Icons.refresh, size: 20),
-                          onPressed: () {},
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    _buildStorageCard(theme, isDark),
-                  ],
+
+              // Content Section
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.xxxl,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 900;
+                      return Column(
+                        children: [
+                          if (isWide)
+                            _buildWideLayout(info, colors)
+                          else
+                            _buildNarrowLayout(info, colors),
+                          const SizedBox(height: AppSpacing.xxxl),
+                          SectionTitleWidget(
+                            title: 'KERNEL_DIAGNOSTIC_OUTPUT',
+                            colors: colors,
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          _buildLogConsole(colors),
+                          const SizedBox(height: AppSpacing.xxxl),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Colors.grey,
+  Widget _buildLogConsole(AppColors colors) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: Colors.white10),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: _kernelLogs
+            .map(
+              (log) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  log,
+                  style: const TextStyle(
+                    color: Colors.greenAccent,
+                    fontSize: 10,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Widget _buildWideLayout(SystemInfo info, AppColors colors) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 4,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionTitleWidget(title: 'RESOURCE MAINTENANCE', colors: colors),
+              const SizedBox(height: AppSpacing.md),
+              _buildCheckerItem(
+                label: 'SSD CAPACITY',
+                percent: info.diskUsage,
+                buttonLabel: 'OPTIMIZE DISK',
+                isLoading: _isLoadingDisk,
+                color: colors.success,
+                onPressed: () async {
+                  setState(() => _isLoadingDisk = true);
+                  _addLog('INITIATING_DISK_VACUUM...');
+                  await _repository.cleanUpDisk();
+                  _addLog('CLEANUP_SUCCESS_FREE_NODES_RELEASED');
+                  await _repository.refreshSystemInfo();
+                  setState(() => _isLoadingDisk = false);
+                },
+                colors: colors,
+                index: 0,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildCheckerItem(
+                label: 'MEMORY LOAD',
+                percent: (info.ramUsage ?? 0) / (info.ramTotal ?? 100),
+                buttonLabel: 'PURGE RAM',
+                isLoading: _isLoadingMemory,
+                color: colors.performance,
+                onPressed: () async {
+                  setState(() => _isLoadingMemory = true);
+                  _addLog('EXECUTING_RAM_PURGE_0x3...');
+                  await _repository.freeUpMemory();
+                  _addLog('MEMORY_NORMALIZED_CACHES_DROPPED');
+                  await _repository.refreshSystemInfo();
+                  setState(() => _isLoadingMemory = false);
+                },
+                colors: colors,
+                index: 1,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.xl),
+        Expanded(
+          flex: 6,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionTitleWidget(title: 'STORAGE ARCHITECTURE', colors: colors),
+              const SizedBox(height: AppSpacing.md),
+              _buildStorageProCard(info, colors),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNarrowLayout(SystemInfo info, AppColors colors) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitleWidget(title: 'RESOURCE MAINTENANCE', colors: colors),
+        const SizedBox(height: AppSpacing.md),
+        _buildCheckerItem(
+          label: 'DISK',
+          percent: info.diskUsage,
+          buttonLabel: 'CLEAN UP',
+          isLoading: _isLoadingDisk,
+          color: colors.success,
+          onPressed: () async {
+            setState(() => _isLoadingDisk = true);
+            await _repository.cleanUpDisk();
+            await _repository.refreshSystemInfo();
+            setState(() => _isLoadingDisk = false);
+          },
+          colors: colors,
+          index: 0,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        _buildCheckerItem(
+          label: 'MEMORY',
+          percent: (info.ramUsage ?? 0) / (info.ramTotal ?? 100),
+          buttonLabel: 'FREE UP',
+          isLoading: _isLoadingMemory,
+          color: colors.performance,
+          onPressed: () async {
+            setState(() => _isLoadingMemory = true);
+            await _repository.freeUpMemory();
+            await _repository.refreshSystemInfo();
+            setState(() => _isLoadingMemory = false);
+          },
+          colors: colors,
+          index: 1,
+        ),
+        const SizedBox(height: AppSpacing.xxxl),
+        SectionTitleWidget(title: 'STORAGE ARCHITECTURE', colors: colors),
+        const SizedBox(height: AppSpacing.md),
+        _buildStorageProCard(info, colors),
+      ],
     );
   }
 
@@ -159,93 +305,70 @@ class _SystemDiagnosisScreenState extends State<SystemDiagnosisScreen>
     required double percent,
     required VoidCallback onPressed,
     required String buttonLabel,
+    required Color color,
+    required AppColors colors,
     bool isLoading = false,
+    int index = 0,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardTheme.color?.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(4),
-      ),
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              SizedBox(
-                width: 80,
-                child: Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: colors.textTertiary,
+                  letterSpacing: 1.0,
                 ),
               ),
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: percent,
-                  minHeight: 8,
-                  backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                  color: label == 'Memory' ? Colors.blue : Colors.grey,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Container(
-                width: 60,
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.redAccent.withValues(alpha: 0.5),
-                  ),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-                child: Center(
-                  child: Text(
-                    '${(percent * 100).toInt()} %',
-                    style: const TextStyle(
-                      color: Colors.redAccent,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+              const Spacer(),
+              Text(
+                '${(percent * 100).toInt()}%',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: colors.textPrimary,
+                  fontFamily: 'monospace',
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Center(
-            child: OutlinedButton(
-              onPressed: isLoading ? null : onPressed,
-              style: OutlinedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                      ),
-                    )
-                  : Text(buttonLabel),
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
+            borderRadius: AppRadius.xsAll,
+            child: LinearProgressIndicator(
+              value: percent.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: colors.gaugeTrack,
+              color: color,
             ),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          AppButton(
+            text: buttonLabel,
+            onPressed: isLoading ? null : onPressed,
+            isOutline: true,
+            isOval: false,
+            isPrimary: false,
+            backgroundColor: color.withValues(alpha: 0.3),
+            foregroundColor: colors.textPrimary,
+            isLoading: isLoading,
+            width: double.infinity,
+            height: 40,
+            fontSize: 11,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStorageCard(ThemeData theme, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.cardTheme.color?.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(4),
-      ),
+  Widget _buildStorageProCard(SystemInfo info, AppColors colors) {
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         children: [
           Row(
@@ -253,165 +376,78 @@ class _SystemDiagnosisScreenState extends State<SystemDiagnosisScreen>
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
-                    'NVMe SSD (System)',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    'NVMe SSD MASTER',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      color: colors.textPrimary,
+                      letterSpacing: 1.0,
+                    ),
                   ),
+                  const SizedBox(height: 4),
                   Text(
-                    '/dev/nvme0n1p2',
-                    style: TextStyle(color: Colors.grey, fontSize: 12),
+                    '/DEV/NVME0N1P2',
+                    style: TextStyle(
+                      color: colors.textTertiary,
+                      fontSize: 9,
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.green.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.circle, size: 8, color: Colors.green),
-                    SizedBox(width: 8),
-                    Text(
-                      'Healthy (51%~100%)',
-                      style: TextStyle(
-                        color: Colors.green,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              StatusBadgeWidget(label: 'HEALTHY', color: colors.success, colors: colors),
             ],
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: AppSpacing.xxxl),
           Row(
             children: [
-              // Circular Usage
               Expanded(
-                child: Row(
-                  children: [
-                    Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        SizedBox(
-                          width: 100,
-                          height: 100,
-                          child: CircularProgressIndicator(
-                            value: _systemInfo!.diskUsage,
-                            strokeWidth: 10,
-                            backgroundColor: Colors.grey.withValues(alpha: 0.1),
-                            color: Colors.blue,
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${(_systemInfo!.diskUsage * 100).toInt()}%',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Text(
-                              'Used',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 24),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Total: 512 GB',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildLegendItem(Colors.blue, 'Used', '281 GB'),
-                        _buildLegendItem(Colors.grey, 'Free', '231 GB'),
-                      ],
-                    ),
-                  ],
+                child: _buildProGauge(
+                  'STORAGE',
+                  info.diskUsage,
+                  colors.balanced,
+                  colors,
+                  suffix: '%',
                 ),
               ),
               Container(
                 height: 80,
                 width: 1,
-                color: Colors.grey.withValues(alpha: 0.2),
+                color: colors.border.withValues(alpha: 0.1),
               ),
-              // Circular Temp
               Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 24),
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          SizedBox(
-                            width: 100,
-                            height: 100,
-                            child: CircularProgressIndicator(
-                              value: _systemInfo!.ssdTemp / 100,
-                              strokeWidth: 10,
-                              backgroundColor: Colors.grey.withValues(
-                                alpha: 0.1,
-                              ),
-                              color: Colors.pinkAccent,
-                            ),
-                          ),
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${_isCelsius ? _systemInfo!.ssdTemp.toInt() : (_systemInfo!.ssdTemp * 9 / 5 + 32).toInt()}°',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 24),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildTempToggle(
-                            'Celsius',
-                            _isCelsius,
-                            () => setState(() => _isCelsius = true),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildTempToggle(
-                            'Fahrenheit',
-                            !_isCelsius,
-                            () => setState(() => _isCelsius = false),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                child: _buildProGauge(
+                  'THERMAL',
+                  _isCelsius
+                      ? info.ssdTemp / 100
+                      : ((info.ssdTemp * 9 / 5 + 32) / 212),
+                  colors.performance,
+                  colors,
+                  customValue:
+                      '${_isCelsius ? info.ssdTemp.toInt() : (info.ssdTemp * 9 / 5 + 32).toInt()}°',
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildTempToggle(
+                'CELSIUS',
+                _isCelsius,
+                () => setState(() => _isCelsius = true),
+                colors,
+              ),
+              const SizedBox(width: AppSpacing.xl),
+              _buildTempToggle(
+                'FAHRENHEIT',
+                !_isCelsius,
+                () => setState(() => _isCelsius = false),
+                colors,
               ),
             ],
           ),
@@ -420,54 +456,91 @@ class _SystemDiagnosisScreenState extends State<SystemDiagnosisScreen>
     );
   }
 
-  Widget _buildLegendItem(Color color, String label, String value) {
-    return Row(
+  Widget _buildProGauge(
+    String label,
+    double percent,
+    Color color,
+    AppColors colors, {
+    String? customValue,
+    String suffix = '',
+  }) {
+    return Column(
       children: [
-        Icon(Icons.square, size: 10, color: color),
-        const SizedBox(width: 8),
-        Text(
-          '$label ',
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 100,
+              height: 100,
+              child: CircularProgressIndicator(
+                value: percent.clamp(0.0, 1.0),
+                strokeWidth: 6,
+                backgroundColor: colors.gaugeTrack,
+                color: color,
+              ),
+            ),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  customValue ?? '${(percent * 100).toInt()}$suffix',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: colors.textPrimary,
+                    fontFamily: 'monospace',
+                    letterSpacing: -1,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    color: colors.textTertiary,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildTempToggle(String label, bool active, VoidCallback onTap) {
+  Widget _buildTempToggle(
+    String label,
+    bool active,
+    VoidCallback onTap,
+    AppColors colors,
+  ) {
     return InkWell(
       onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: active ? Colors.redAccent : Colors.grey,
-                width: 2,
-              ),
-            ),
-            child: active
-                ? const CircleAvatar(
-                    radius: 4,
-                    backgroundColor: Colors.redAccent,
-                  )
-                : const SizedBox(width: 8, height: 8),
+      borderRadius: AppRadius.smAll,
+      child: AnimatedContainer(
+        duration: AppDurations.fast,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: active
+              ? colors.performance.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: AppRadius.smAll,
+          border: Border.all(
+            color: active
+                ? colors.performance.withValues(alpha: 0.3)
+                : colors.border.withValues(alpha: 0.1),
           ),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: active ? Colors.white : Colors.grey,
-            ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: active ? colors.textPrimary : colors.textTertiary,
+            letterSpacing: 1.0,
           ),
-        ],
+        ),
       ),
     );
   }

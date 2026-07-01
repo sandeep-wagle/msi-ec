@@ -360,7 +360,7 @@ fn kill_filter_chain() {
 fn start_filter_chain() -> bool {
     info!("Starting pw-filter-chain with config...");
     
-    let     ld = Command::new("pw-filter-chain")
+    let child = Command::new("pw-filter-chain")
         .args(["-c", FILTER_CHAIN_CONFIG_PATH])
         .spawn();
     
@@ -454,14 +454,11 @@ fn start_device_monitor() {
                     info!("Device monitor connected to PulseAudio events");
                     
                     while let Ok(Some(line)) = reader.next_line().await {
-                        // Look for 'change' events on 'server' (default sink changes) 
-                        // or 'sink' (device properties/availability changes)
-                        if line.contains("Event 'change' on server") || line.contains("Event 'change' on sink") {
-                            debug!("Audio device change detected, debouncing...");
-                            // Debounce to allow PipeWire to settle
+                        // Only relink on actual device addition/removal (new sink appears or disappears)
+                        // NOT on property changes (which fire on every pw-cli set-param and would glitch audio)
+                        if line.contains("Event 'new' on sink") || line.contains("Event 'remove' on sink") {
+                            info!("Sink added or removed, re-linking...");
                             tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
-                            
-                            info!("Device change detected, triggering re-link...");
                             link_filter_chain();
                         }
                     }
@@ -782,11 +779,15 @@ fn get_node_id_by_name(name: &str) -> Option<u32> {
     None
 }
 
+fn send_single_param(node_id: u32, param: &str, value: f64) {
+    let cmd = format!("pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'", node_id, param, value);
+    let _ = Command::new("sh").args(["-c", &cmd]).output();
+}
+
 fn update_filter_params(profile: &AudioProfile) {
     // 1. Playback Node Updates
     if let Some(playback_id) = get_node_id_by_name("msi_dsp_input") {
         info!("Updating playback filter params for node {}", playback_id);
-        let mut updates = Vec::new();
         
         // Bypass logic
         let (bass, treble, voice, eq_gains, spatializer_width) = if profile.effects_enabled {
@@ -801,21 +802,22 @@ fn update_filter_params(profile: &AudioProfile) {
             (0.0, 0.0, 0.0, vec![0.0; 10], 1.0)
         };
 
-        // EQ
+        // Apply each param individually — avoids a massive atomic batch that can glitch audio
+        // Send EQs in one batch (they need to change together for balanced sound)
         let eq_bands = ["eq0", "eq1", "eq2", "eq3", "eq4", "eq5", "eq6", "eq7", "eq8", "eq9"];
         for (i, band) in eq_bands.iter().enumerate() {
             let gain = eq_gains.get(i).unwrap_or(&0.0);
-            updates.push((format!("{}L:Gain", band), *gain));
-            updates.push((format!("{}R:Gain", band), *gain));
+            send_single_param(playback_id, &format!("{}L:Gain", band), *gain);
+            send_single_param(playback_id, &format!("{}R:Gain", band), *gain);
         }
         
         // Basic Gains
-        updates.push(("bassL:Gain".into(), bass));
-        updates.push(("bassR:Gain".into(), bass));
-        updates.push(("trebleL:Gain".into(), treble));
-        updates.push(("trebleR:Gain".into(), treble));
-        updates.push(("voiceL:Gain".into(), voice));
-        updates.push(("voiceR:Gain".into(), voice));
+        send_single_param(playback_id, "bassL:Gain", bass);
+        send_single_param(playback_id, "bassR:Gain", bass);
+        send_single_param(playback_id, "trebleL:Gain", treble);
+        send_single_param(playback_id, "trebleR:Gain", treble);
+        send_single_param(playback_id, "voiceL:Gain", voice);
+        send_single_param(playback_id, "voiceR:Gain", voice);
         
         // Spatializer
         let mut width = spatializer_width;
@@ -830,7 +832,7 @@ fn update_filter_params(profile: &AudioProfile) {
         } else {
             width = 1.0;
         }
-        updates.push(("spatializer:Width".into(), width));
+        send_single_param(playback_id, "spatializer:Width", width);
         
         // Limiter & Night Mode
         let night_mode_active = profile.night_mode && profile.effects_enabled;
@@ -838,25 +840,18 @@ fn update_filter_params(profile: &AudioProfile) {
         let limiter_threshold = if night_mode_active { -12.0 } else if volume_stabilizer_active { -1.0 } else { -0.1 };
         let compress_ratio = if night_mode_active { 8.0 } else { profile.compressor_ratio.max(1.0) };
         
-        updates.push(("compressorL:Peak limit (dB)".into(), limiter_threshold));
-        updates.push(("compressorR:Peak limit (dB)".into(), limiter_threshold));
-        updates.push(("compressorL:Compression ratio".into(), compress_ratio));
-        updates.push(("compressorR:Compression ratio".into(), compress_ratio));
-        updates.push(("limiter:Limit (dB)".into(), -0.1));
-
-        for (param, value) in updates {
-            let cmd = format!("pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'", playback_id, param, value);
-            let _ = Command::new("sh").args(["-c", &cmd]).output();
-        }
+        send_single_param(playback_id, "compressorL:Peak limit (dB)", limiter_threshold);
+        send_single_param(playback_id, "compressorR:Peak limit (dB)", limiter_threshold);
+        send_single_param(playback_id, "compressorL:Compression ratio", compress_ratio);
+        send_single_param(playback_id, "compressorR:Compression ratio", compress_ratio);
+        send_single_param(playback_id, "limiter:Limit (dB)", -0.1);
     }
 
     // 2. Microphone Node Updates
     if let Some(mic_id) = get_node_id_by_name("msi_dsp_mic_input") {
         info!("Updating microphone filter params for node {}", mic_id);
         let mic_gain = if profile.mic_enabled { profile.mic_gain } else { 0.0 };
-        // We can update the captured volume or nodes in the mic chain
-        let cmd = format!("pw-cli set-param {} Props '{{ params = [ \"mic_hp:Gain\" {} ] }}'", mic_id, mic_gain);
-        let _ = Command::new("sh").args(["-c", &cmd]).output();
+        send_single_param(mic_id, "mic_hp:Gain", mic_gain);
     }
 }
 
@@ -874,10 +869,14 @@ fn apply_dsp_settings(profile: &AudioProfile, update_volume: bool) {
     info!("  EQ bands: {:?}", profile.eq_gains);
     info!("  Volume: {}%", (profile.volume * 100.0) as i32);
     
+    let effects_changed = {
+        let last_name = LAST_PROFILE_NAME.lock().unwrap();
+        last_name.as_str() != profile.name
+    };
+    
     {
         let mut settings = PROFILE_SETTINGS.lock().unwrap();
         settings.insert(profile.name.clone(), profile.clone());
-        let _ = save_profile_to_file(profile);
     }
     
     // EasyEffects-style: Always use persistent filter chain, never restart
@@ -904,20 +903,22 @@ fn apply_dsp_settings(profile: &AudioProfile, update_volume: bool) {
         update_filter_params(profile);
     }
     
-    // Global Effects Toggle (Sink Switching)
-    if profile.effects_enabled {
-        set_default_sink_to_dsp();
-    } else {
-        disable_dsp_switch_to_direct();
-    }
-    
     if update_volume {
         let new_volume = profile.volume.max(0.01);
         set_sink_volume(new_volume);
         info!("Volume set to {}%", (new_volume * 100.0) as i32);
     }
     
+    // Only persist profile.json when the profile name actually changed
+    if effects_changed {
+        let _ = save_profile_to_file(profile);
+    }
     let _ = save_profile(profile);
+    
+    {
+        let mut last = LAST_PROFILE_NAME.lock().unwrap();
+        *last = profile.name.clone();
+    }
     
     FILTER_CHAIN_RUNNING.store(true, Ordering::SeqCst);
     info!("COMMITTING full DSP state: Profile={}, Effects={}", profile.name, profile.effects_enabled);
@@ -950,7 +951,7 @@ async fn main() -> Result<()> {
     
     // Auto-apply saved profile on startup
     info!("Auto-applying saved DSP profile on service startup...");
-    apply_dsp_settings(&saved_profile, true);
+    apply_dsp_settings(&saved_profile, false);
 
     // Start background device monitor for seamless switching
     start_device_monitor();
@@ -986,14 +987,16 @@ async fn main() -> Result<()> {
                                         info!("Received ENABLE command");
                                         if !check_filter_chain_running() {
                                             let profile = load_saved_profile();
-                                            apply_dsp_settings(&profile, false); // Don't reset volume on enable
-                                        } else {
-                                            set_default_sink_to_dsp();
+                                            apply_dsp_settings(&profile, false);
                                         }
+                                        // Always set DSP as default sink on enable (handles the case where chain was stopped)
+                                        set_default_sink_to_dsp();
                                         let _ = socket.write_all(b"OK\n").await;
                                     } else if message == "DISABLE" {
                                         info!("Received DISABLE command");
                                         disable_dsp_switch_to_direct();
+                                        // Also stop the filter chain so it restarts cleanly on next ENABLE
+                                        kill_filter_chain();
                                         let _ = socket.write_all(b"OK\n").await;
                                     } else if message.starts_with("LOAD:") {
                                         let profile_name = message.replace("LOAD:", "").trim().to_string();
@@ -1059,7 +1062,7 @@ async fn main() -> Result<()> {
                                         info!("Received VOLUME command: {}", message);
                                         let vol_str = message.replace("VOLUME:", "").replace("VOLUME", "");
                                         if let Ok(vol) = vol_str.trim().parse::<f64>() {
-                                            let new_vol: f64 = vol.clamp(0.01, 1.5);
+                                            let new_vol: f64 = vol.clamp(0.2, 1.3);
                                             set_sink_volume(new_vol);
                                             let _ = socket.write_all(b"OK\n").await;
                                         } else {
@@ -1099,6 +1102,6 @@ fn clamp_profile(profile: &mut AudioProfile) {
     for gain in profile.eq_gains.iter_mut() {
         *gain = gain.clamp(-15.0, 15.0);
     }
-    profile.volume = profile.volume.clamp(0.0, 1.5);
+    profile.volume = profile.volume.clamp(0.0, 1.3);
     profile.stereo_width = profile.stereo_width.clamp(0.0, 2.0);
 }

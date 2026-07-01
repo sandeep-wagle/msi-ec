@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/system_info.dart';
+import 'package:msi_controller/domain/entities/system_info.dart';
 
 abstract class SettingsEvent extends Equatable {
   const SettingsEvent();
@@ -7,8 +7,6 @@ abstract class SettingsEvent extends Equatable {
   @override
   List<Object?> get props => [];
 }
-
-class LoadSettings extends SettingsEvent {}
 
 class SetGpuModeEvent extends SettingsEvent {
   final GpuMode mode;

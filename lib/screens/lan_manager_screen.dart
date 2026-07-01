@@ -1,8 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import '../domain/repositories/msi_repository.dart';
-import '../services/toast_service.dart';
+import 'package:msi_controller/core/app_colors.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/services/persistence_service.dart';
+import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/screens/lan_manager/widgets/lan_metric_card.dart';
+import 'package:msi_controller/screens/lan_manager/widgets/lan_divider.dart';
+import 'package:msi_controller/screens/lan_manager/widgets/info_row.dart';
+import 'package:msi_controller/screens/lan_manager/widgets/tool_button.dart';
 
 class LanManagerScreen extends StatefulWidget {
   const LanManagerScreen({super.key});
@@ -13,24 +20,15 @@ class LanManagerScreen extends StatefulWidget {
 
 class _LanManagerScreenState extends State<LanManagerScreen>
     with SingleTickerProviderStateMixin {
+  final PersistenceService _storage = GetIt.I<PersistenceService>();
   Timer? _refreshTimer;
   bool _aiPriorityEnabled = true;
   Map<String, dynamic> _networkStats = {};
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-    _animationController.forward();
-
+    _aiPriorityEnabled = _storage.loadLanAiPriority();
     _refreshNetworkStats();
     _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
       _refreshNetworkStats();
@@ -40,13 +38,10 @@ class _LanManagerScreenState extends State<LanManagerScreen>
   @override
   void dispose() {
     _refreshTimer?.cancel();
-    _animationController.dispose();
     super.dispose();
   }
 
   Future<void> _refreshNetworkStats() async {
-    // In a real implementation, this would call system network monitoring
-    // For now, mock some stats
     if (mounted) {
       setState(() {
         _networkStats = {
@@ -67,380 +62,243 @@ class _LanManagerScreenState extends State<LanManagerScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = theme.extension<AppColors>()!;
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'LAN Manager',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxxl,
+          AppSpacing.md,
+          AppSpacing.xxxl,
+          AppSpacing.xxxl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
-                  'LAN Manager',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+                Container(
+                  width: 3,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: colors.balanced,
+                    borderRadius: AppRadius.xsAll,
                   ),
                 ),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.network_check,
-                  color: theme.colorScheme.primary,
-                  size: 28,
+                const SizedBox(width: AppSpacing.md),
+                const Text(
+                  'Network Optimization',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const Spacer(),
+                Icon(Icons.network_check, color: colors.balanced, size: 24),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Real-time traffic analysis and low-latency network optimization.',
+              style: TextStyle(color: colors.textTertiary, fontSize: 13),
+            ),
+            const SizedBox(height: AppSpacing.xxxl),
+
+            // AI Priority Control
+            GlassCard(
+              padding: const EdgeInsets.all(AppSpacing.xl),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: colors.balanced.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: colors.balanced,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xl),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI LAN PRIORITY',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: colors.textPrimary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        Text(
+                          'Automatically prioritizes gaming and streaming traffic to ensure minimum jitter.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.xl),
+                  Switch(
+                    value: _aiPriorityEnabled,
+                    activeThumbColor: colors.balanced,
+                    onChanged: (value) async {
+                      setState(() => _aiPriorityEnabled = value);
+                      _storage.saveLanAiPriority(value);
+                      final repository = GetIt.instance<MsiRepository>();
+                      await repository.setAiLanPriority(value);
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: AppSpacing.xxxl),
+
+            // Speed Stats
+            Row(
+              children: [
+                Expanded(
+                  child: LanMetricCard(
+                    label: 'DOWNLOAD',
+                    value: _networkStats['downloadSpeed'] ?? '0 Mbps',
+                    icon: Icons.download_rounded,
+                    color: colors.balanced,
+                    colors: colors,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  child: LanMetricCard(
+                    label: 'UPLOAD',
+                    value: _networkStats['uploadSpeed'] ?? '0 Mbps',
+                    icon: Icons.upload_rounded,
+                    color: colors.textSecondary,
+                    colors: colors,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  child: LanMetricCard(
+                    label: 'LATENCY',
+                    value: _networkStats['ping'] ?? '0 ms',
+                    icon: Icons.timer_outlined,
+                    color: colors.warning,
+                    colors: colors,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Monitor network traffic and connection quality.',
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-            ),
-            const SizedBox(height: 32),
 
-            // Real-time Stats
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(height: AppSpacing.xxxl),
+
+            // Network Details & Tools
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Real-time Statistics',
+                      Text(
+                        'NETWORK INTERFACE',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textSecondary,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      IconButton(
-                        onPressed: _refreshNetworkStats,
-                        icon: const Icon(Icons.refresh),
-                        tooltip: 'Refresh',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'AI LAN Priority',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                      const SizedBox(height: AppSpacing.md),
+                      GlassCard(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: Column(
+                          children: [
+                            InfoRow(
+                              label: 'Connection',
+                              value: _networkStats['connectionType'] ?? '--',
                             ),
-                          ),
-                          Text(
-                            'Prioritize gaming and streaming traffic',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      Switch(
-                        value: _aiPriorityEnabled,
-                        onChanged: (value) async {
-                          setState(() => _aiPriorityEnabled = value);
-                          final repository = GetIt.I<MsiRepository>();
-                          await repository.setAiLanPriority(value);
-                        },
-                        activeThumbColor: theme.colorScheme.primary,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildStatCard(
-                          'Download',
-                          _networkStats['downloadSpeed'] ?? '0 Mbps',
-                          Icons.download,
-                          theme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildStatCard(
-                          'Upload',
-                          _networkStats['uploadSpeed'] ?? '0 Mbps',
-                          Icons.upload,
-                          Colors.white70,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildStatCard(
-                          'Ping',
-                          _networkStats['ping'] ?? '0 ms',
-                          Icons.timer,
-                          Colors.grey.shade400,
+                            LanDivider(colors: colors),
+                            InfoRow(
+                              label: 'IP Address',
+                              value: _networkStats['ipAddress'] ?? '--',
+                            ),
+                            LanDivider(colors: colors),
+                            InfoRow(
+                              label: 'Gateway',
+                              value: _networkStats['gateway'] ?? '--',
+                            ),
+                            LanDivider(colors: colors),
+                            InfoRow(
+                              label: 'DNS',
+                              value: _networkStats['dns'] ?? '--',
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Network Info
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Network Information',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildInfoRow(
-                    'Connection Type',
-                    _networkStats['connectionType'] ?? 'Unknown',
-                  ),
-                  _buildInfoRow(
-                    'IP Address',
-                    _networkStats['ipAddress'] ?? 'Not available',
-                  ),
-                  _buildInfoRow(
-                    'Gateway',
-                    _networkStats['gateway'] ?? 'Not available',
-                  ),
-                  _buildInfoRow(
-                    'DNS Servers',
-                    _networkStats['dns'] ?? 'Not available',
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Traffic Stats
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Traffic Statistics',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _buildTrafficCard(
-                          'Packets Sent',
-                          _networkStats['packetsSent']?.toString() ?? '0',
-                          Icons.send,
-                          theme.colorScheme.primary,
+                      Text(
+                        'QUICK TOOLS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textSecondary,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildTrafficCard(
-                          'Packets Received',
-                          _networkStats['packetsReceived']?.toString() ?? '0',
-                          Icons.inbox,
-                          Colors.grey.shade600,
-                        ),
+                      const SizedBox(height: AppSpacing.md),
+                      ToolButton(
+                        label: 'Diagnostic Ping',
+                        icon: Icons.radar_outlined,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      ToolButton(
+                        label: 'Speed Analysis',
+                        icon: Icons.speed_outlined,
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      ToolButton(
+                        label: 'Route Optimization',
+                        icon: Icons.alt_route_outlined,
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Network Tools
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Network Tools',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildToolButton(
-                          'Ping Test',
-                          Icons.network_ping,
-                          () {
-                            GetIt.instance<ToastService>().showInfo(
-                              'Running ping test...',
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildToolButton('Speed Test', Icons.speed, () {
-                          GetIt.instance<ToastService>().showInfo(
-                            'Running speed test...',
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+              ],
             ),
+
+            const SizedBox(height: AppSpacing.xxxl),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(
-            value,
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrafficCard(
-    String title,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.7)),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolButton(String label, IconData icon, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
       ),
     );
   }

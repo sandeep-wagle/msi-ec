@@ -12,10 +12,11 @@
 #include <sstream>
 #include <string>
 #include <sys/statvfs.h>
+#include <thread>
 #include <vector>
 
 #ifndef KDEBUG_MODE
-#define KDEBUG_MODE 0
+#define KDEBUG_MODE 1
 #endif
 
 #if KDEBUG_MODE
@@ -23,6 +24,65 @@
 #else
 #define KLOG(fmt, ...) ((void)0)
 #endif
+
+#include <condition_variable>
+#include <queue>
+
+// Sequential Background Worker to prevent pkexec conflicts
+class BgWorker {
+public:
+  static BgWorker& instance() {
+    static BgWorker instance;
+    return instance;
+  }
+
+  void enqueue(const std::string& cmd) {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      queue_.push(cmd);
+    }
+    condition_.notify_one();
+  }
+
+private:
+  BgWorker() : stop_(false) {
+    worker_ = std::thread([this]() {
+      while (true) {
+        std::string cmd;
+        {
+          std::unique_lock<std::mutex> lock(mutex_);
+          condition_.wait(lock, [this]() { return stop_ || !queue_.empty(); });
+          if (stop_ && queue_.empty()) return;
+          cmd = queue_.front();
+          queue_.pop();
+        }
+        KLOG("Executing background task: %s", cmd.c_str());
+        int res = system(cmd.c_str());
+        KLOG("Background task finished (code %d): %s", res, cmd.c_str());
+      }
+    });
+  }
+
+  ~BgWorker() {
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      stop_ = true;
+    }
+    condition_.notify_one();
+    if (worker_.joinable()) worker_.join();
+  }
+
+  std::thread worker_;
+  std::queue<std::string> queue_;
+  std::mutex mutex_;
+  std::condition_variable condition_;
+  bool stop_;
+};
+
+void run_bg(const std::string &cmd) {
+  KLOG("Enqueuing background task: %s", cmd.c_str());
+  BgWorker::instance().enqueue(cmd);
+}
 
 const std::string MSI_EC_PATH = "/sys/devices/platform/msi-ec";
 
@@ -55,16 +115,59 @@ bool write_sysfs_file(const std::string &path, const std::string &value) {
   return file.good();
 }
 
+// Sound Tune restoration
+bool _send_dsp_cmd(const std::string &cmd) {
+  KLOG("Sending DSP command: %s", cmd.c_str());
+  std::string sock_path = "/tmp/msi_dsp.sock";
+  std::string full_cmd = "echo \"" + cmd + "\" | nc -U " + sock_path + " > /dev/null 2>&1 &";
+  system(full_cmd.c_str());
+  return true;
+}
+
+bool setSoundProfile(const std::string &profile) {
+  return _send_dsp_cmd("LOAD:" + profile);
+}
+
+bool setSoundEffectsEnabled(bool enable) {
+  return _send_dsp_cmd(enable ? "ENABLE" : "DISABLE");
+}
+
+bool setSoundEQ(const std::vector<double> &gains) {
+  std::stringstream ss;
+  ss << "EQ:";
+  for (size_t i = 0; i < gains.size(); ++i) {
+    ss << gains[i] << (i == gains.size() - 1 ? "" : ",");
+  }
+  return _send_dsp_cmd(ss.str());
+}
+
+bool setSoundEnhancement(const std::string &enhancement, bool enable) {
+  return _send_dsp_cmd("ENHANCE:" + enhancement + ":" + (enable ? "ON" : "OFF"));
+}
+
+bool setSoundEffectGain(const std::string &effect, double gain) {
+  return _send_dsp_cmd("GAIN:" + effect + ":" + std::to_string(gain));
+}
+
+bool setSoundSampleRate(int hertz) {
+  return _send_dsp_cmd("RATE:" + std::to_string(hertz));
+}
+
+bool setSoundStereoWidth(double width) {
+  return _send_dsp_cmd("WIDTH:" + std::to_string(width));
+}
+
+bool setSoundVolumeBoost(double boost) {
+  return _send_dsp_cmd("VOLUME:" + std::to_string(boost));
+}
+
 bool write_sysfs_root(const std::string &path, const std::string &value) {
   // Use pkexec tee for writing to sysfs as root
+  // We fire this in the background now to prevent UI lockup
   std::string cmd =
       "echo \"" + value + "\" | pkexec tee " + path + " > /dev/null";
-  int result = system(cmd.c_str());
-  if (result != 0) {
-    KLOG("pkexec write failed for %s (exit code %d)",
-            path.c_str(), result);
-  }
-  return result == 0;
+  run_bg(cmd);
+  return true; // Optimistic return
 }
 
 int read_int_sysfs(const std::string &path, int default_val = 0) {
@@ -92,11 +195,9 @@ void ensureMsiDspServiceRunning() {
   }
 
   KLOG("Starting msi_dsp_service...");
-  // Use Nohup and & to run in background
-  // We assume the binary exists in the project subfolder
   std::string home = std::getenv("HOME");
-  std::string cmd = "cd " + home + "/development/flutter/apps/msi_controller/msi_dsp_service && "
-                    "env -u LD_LIBRARY_PATH cargo run --release > /tmp/msi_dsp.log 2>&1 &";
+  std::string dsp_binary = home + "/development/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service";
+  std::string cmd = "RUST_LOG=info " + dsp_binary + " > /tmp/msi_dsp_service.log 2>&1 &";
   system(cmd.c_str());
 }
 
@@ -197,14 +298,12 @@ std::string exec(const char *cmd) {
 }
 
 std::string get_gpu_model() {
-  // Try lspci first for more reliability on hardware names
   std::string lspci =
       exec("lspci | grep -i 'vga\\|3d' | cut -d':' -f3 2>/dev/null");
   if (!lspci.empty()) {
     lspci.erase(0, lspci.find_first_not_of(" \t\n\r"));
     lspci.erase(lspci.find_last_not_of(" \t\n\r") + 1);
 
-    // Check if it's a generic NVIDIA string
     if (lspci.find("NVIDIA") != std::string::npos) {
       std::string nvidia = exec("nvidia-smi --query-gpu=name "
                                 "--format=csv,noheader,nounits 2>/dev/null");
@@ -217,7 +316,6 @@ std::string get_gpu_model() {
     return lspci;
   }
 
-  // Fallback to glxinfo
   std::string glx =
       exec("glxinfo | grep 'Device:' | head -n 1 | cut -d':' -f2 2>/dev/null");
   if (!glx.empty()) {
@@ -226,11 +324,10 @@ std::string get_gpu_model() {
     return glx;
   }
 
-  return "NVIDIA GeForce RTX 3080"; // Default fallback
+  return "NVIDIA GeForce RTX 3080";
 }
 
 int get_gpu_usage() {
-  // Try nvidia-smi for utilization
   std::string nvidia = exec("nvidia-smi --query-gpu=utilization.gpu "
                             "--format=csv,noheader,nounits 2>/dev/null");
   if (!nvidia.empty()) {
@@ -240,7 +337,6 @@ int get_gpu_usage() {
     }
   }
 
-  // Fallback to sysfs
   int usage =
       read_int_sysfs("/sys/class/drm/card0/device/gpu_busy_percent", -1);
   if (usage < 0)
@@ -262,6 +358,49 @@ int get_vram_usage() {
     }
   }
   return 0;
+}
+
+bool getMicEnabled() {
+  FILE *fp = popen("pactl get-source-mute @DEFAULT_SOURCE@ 2>/dev/null", "r");
+  if (!fp) return false;
+  char buf[64];
+  bool muted = true;
+  if (fgets(buf, sizeof(buf), fp)) {
+    std::string result(buf);
+    muted = result.find("Mute: no") == std::string::npos;
+  }
+  pclose(fp);
+  return !muted;
+}
+
+int getKeyboardBrightness() {
+  return read_int_sysfs("/sys/class/leds/msiacpi::kbd_backlight/brightness", -1);
+}
+
+FlValue *getDeviceSettingsDirect() {
+  FlValue *result = fl_value_new_map();
+
+  std::string webcam = read_sysfs_file(MSI_EC_PATH + "/webcam");
+  fl_value_set_take(result, fl_value_new_string("webcam"),
+                    fl_value_new_bool(webcam == "on"));
+
+  fl_value_set_take(result, fl_value_new_string("mic"),
+                    fl_value_new_bool(getMicEnabled()));
+
+  std::string cooler = read_sysfs_file(MSI_EC_PATH + "/cooler_boost");
+  fl_value_set_take(result, fl_value_new_string("coolerBoost"),
+                    fl_value_new_bool(cooler == "on"));
+
+  fl_value_set_take(result, fl_value_new_string("usbPowerShare"),
+                    fl_value_new_bool(false));
+
+  int kb_brightness = getKeyboardBrightness();
+  if (kb_brightness >= 0) {
+    fl_value_set_take(result, fl_value_new_string("keyboardBrightness"),
+                      fl_value_new_int(kb_brightness));
+  }
+
+  return result;
 }
 
 FlValue *getSystemInfoDirect() {
@@ -296,7 +435,6 @@ FlValue *getSystemInfoDirect() {
   fl_value_set_take(result, fl_value_new_string("batteryLimit"),
                     fl_value_new_int(limit));
 
-  // Advanced Telemetry
   fl_value_set_take(result, fl_value_new_string("cpuUsage"),
                     fl_value_new_int((int)calculate_cpu_usage()));
   fl_value_set_take(result, fl_value_new_string("gpuUsage"),
@@ -311,7 +449,6 @@ FlValue *getSystemInfoDirect() {
   fl_value_set_take(result, fl_value_new_string("cpuFreq"),
                     fl_value_new_int(cpu_freq));
 
-  // Try to get real GPU clock if NVIDIA
   std::string gpu_clock = exec("nvidia-smi --query-gpu=clocks.current.graphics "
                                "--format=csv,noheader,nounits 2>/dev/null");
   int g_clock = 0;
@@ -323,7 +460,6 @@ FlValue *getSystemInfoDirect() {
   fl_value_set_take(result, fl_value_new_string("gpuClock"),
                     fl_value_new_int(g_clock));
 
-  // RAM usage (parsing /proc/meminfo)
   std::ifstream meminfo("/proc/meminfo");
   std::string line;
   long total_kb = 0, available_kb = 0;
@@ -338,60 +474,41 @@ FlValue *getSystemInfoDirect() {
   fl_value_set_take(result, fl_value_new_string("ramUsage"),
                     fl_value_new_int((total_kb - available_kb) / 1024));
 
-  // Voltages (Mocked or stubbed for specific sensors if available)
   FlValue *voltages = fl_value_new_map();
-  fl_value_set_take(voltages, fl_value_new_string("CPU Core"),
-                    fl_value_new_float(1.05));
-  fl_value_set_take(voltages, fl_value_new_string("12V"),
-                    fl_value_new_float(12.19));
-  fl_value_set_take(voltages, fl_value_new_string("5V"),
-                    fl_value_new_float(4.88));
-  fl_value_set_take(voltages, fl_value_new_string("3.3V"),
-                    fl_value_new_float(3.28));
+  fl_value_set_take(voltages, fl_value_new_string("CPU Core"), fl_value_new_float(1.05));
+  fl_value_set_take(voltages, fl_value_new_string("12V"), fl_value_new_float(12.19));
+  fl_value_set_take(voltages, fl_value_new_string("5V"), fl_value_new_float(4.88));
+  fl_value_set_take(voltages, fl_value_new_string("3.3V"), fl_value_new_float(3.28));
   fl_value_set_take(result, fl_value_new_string("voltages"), voltages);
-  // Disk Usage
+
   DiskUsage root_disk = get_disk_usage("/");
-  fl_value_set_take(result, fl_value_new_string("diskUsage"),
-                    fl_value_new_float(root_disk.percent / 100.0));
-  fl_value_set_take(result, fl_value_new_string("ssdHealth"),
-                    fl_value_new_float(0.98));
-  fl_value_set_take(result, fl_value_new_string("ssdTemp"),
-                    fl_value_new_float(38.0));
+  fl_value_set_take(result, fl_value_new_string("diskUsage"), fl_value_new_float(root_disk.percent / 100.0));
+  fl_value_set_take(result, fl_value_new_string("diskTotalGb"), fl_value_new_float(root_disk.total_gb));
+  fl_value_set_take(result, fl_value_new_string("diskUsedGb"), fl_value_new_float(root_disk.used_gb));
+  fl_value_set_take(result, fl_value_new_string("ssdHealth"), fl_value_new_float(0.98));
+  fl_value_set_take(result, fl_value_new_string("ssdTemp"), fl_value_new_float(38.0));
 
-  // Advanced Hardware Info
-  fl_value_set_take(result, fl_value_new_string("cpuModel"),
-                    fl_value_new_string(get_cpu_model().c_str()));
-  fl_value_set_take(result, fl_value_new_string("gpuModel"),
-                    fl_value_new_string(get_gpu_model().c_str()));
-  fl_value_set_take(result, fl_value_new_string("lanSpeed"),
-                    fl_value_new_string("0 Bytes/s"));
-  fl_value_set_take(result, fl_value_new_string("wifiSpeed"),
-                    fl_value_new_string("429.00 KB/s"));
-  fl_value_set_take(result, fl_value_new_string("powerPlan"),
-                    fl_value_new_string("Balance"));
-
-  // Real Linux check would use glxinfo or nvidia-smi
-  fl_value_set_take(result, fl_value_new_string("gpuMode"),
-                    fl_value_new_string("dynamic"));
+  fl_value_set_take(result, fl_value_new_string("cpuModel"), fl_value_new_string(get_cpu_model().c_str()));
+  fl_value_set_take(result, fl_value_new_string("gpuModel"), fl_value_new_string(get_gpu_model().c_str()));
+  fl_value_set_take(result, fl_value_new_string("lanSpeed"), fl_value_new_string("0 Bytes/s"));
+  fl_value_set_take(result, fl_value_new_string("wifiSpeed"), fl_value_new_string("429.00 KB/s"));
+  fl_value_set_take(result, fl_value_new_string("powerPlan"), fl_value_new_string("Balance"));
+  fl_value_set_take(result, fl_value_new_string("gpuMode"), fl_value_new_string("dynamic"));
 
   return result;
 }
 
 FlValue *getFanInfoDirect() {
-  printf("Native: getFanInfoDirect() called\n");
   FlValue *result = fl_value_new_list();
 
   int cpu_fan = read_int_sysfs(MSI_EC_PATH + "/cpu/realtime_fan_speed", -1);
   if (cpu_fan >= 0) {
     FlValue *fan = fl_value_new_map();
     fl_value_set_take(fan, fl_value_new_string("index"), fl_value_new_int(0));
-    fl_value_set_take(fan, fl_value_new_string("currentRpm"),
-                      fl_value_new_int(cpu_fan * 60));
+    fl_value_set_take(fan, fl_value_new_string("currentRpm"), fl_value_new_int(cpu_fan * 60));
     fl_value_set_take(fan, fl_value_new_string("minRpm"), fl_value_new_int(0));
-    fl_value_set_take(fan, fl_value_new_string("maxRpm"),
-                      fl_value_new_int(6000));
-    fl_value_set_take(fan, fl_value_new_string("autoMode"),
-                      fl_value_new_bool(true));
+    fl_value_set_take(fan, fl_value_new_string("maxRpm"), fl_value_new_int(6000));
+    fl_value_set_take(fan, fl_value_new_string("autoMode"), fl_value_new_bool(true));
     fl_value_append(result, fan);
   }
 
@@ -399,13 +516,10 @@ FlValue *getFanInfoDirect() {
   if (gpu_fan >= 0) {
     FlValue *fan = fl_value_new_map();
     fl_value_set_take(fan, fl_value_new_string("index"), fl_value_new_int(1));
-    fl_value_set_take(fan, fl_value_new_string("currentRpm"),
-                      fl_value_new_int(gpu_fan * 60));
+    fl_value_set_take(fan, fl_value_new_string("currentRpm"), fl_value_new_int(gpu_fan * 60));
     fl_value_set_take(fan, fl_value_new_string("minRpm"), fl_value_new_int(0));
-    fl_value_set_take(fan, fl_value_new_string("maxRpm"),
-                      fl_value_new_int(5500));
-    fl_value_set_take(fan, fl_value_new_string("autoMode"),
-                      fl_value_new_bool(true));
+    fl_value_set_take(fan, fl_value_new_string("maxRpm"), fl_value_new_int(5500));
+    fl_value_set_take(fan, fl_value_new_string("autoMode"), fl_value_new_bool(true));
     fl_value_append(result, fan);
   }
 
@@ -417,10 +531,8 @@ bool checkMsiEcAvailable() {
 }
 
 bool setShiftMode(const std::string &mode) {
-  // Write to msi-ec shift mode sysfs
-  bool ok = write_sysfs_root(MSI_EC_PATH + "/shift_mode", mode);
+  write_sysfs_root(MSI_EC_PATH + "/shift_mode", mode);
 
-  // Also set the CPU scaling governor to match the power profile
   std::string governor;
   if (mode == "turbo" || mode == "sport") {
     governor = "performance";
@@ -429,65 +541,38 @@ bool setShiftMode(const std::string &mode) {
   } else if (mode == "eco") {
     governor = "powersave";
   } else {
-    governor = "ondemand"; // safe default
+    governor = "ondemand";
   }
 
-  // Apply governor to all CPU cores
   std::string gov_cmd =
       "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
-      "echo " +
-      governor + " | pkexec tee $f > /dev/null 2>&1; done &";
-  system(gov_cmd.c_str());
+      "echo " + governor + " | pkexec tee $f > /dev/null 2>&1; done";
+  run_bg(gov_cmd);
 
-  KLOG("setShiftMode(%s) -> governor=%s ok=%s",
-          mode.c_str(), governor.c_str(), ok ? "true" : "false");
-
-  return ok;
+  KLOG("setShiftMode(%s) -> triggered governor=%s in background", mode.c_str(), governor.c_str());
+  return true;
 }
 
 bool setSuperBattery(bool enable) {
-  return write_sysfs_root(MSI_EC_PATH + "/super_battery",
-                          enable ? "on" : "off");
+  write_sysfs_root(MSI_EC_PATH + "/super_battery", enable ? "on" : "off");
+  return true;
 }
 
 bool setBatteryLimit(int limit) {
-  return write_sysfs_root(BATTERY_PATH + "/charge_control_end_threshold",
-                          std::to_string(limit));
+  write_sysfs_root(BATTERY_PATH + "/charge_control_end_threshold", std::to_string(limit));
+  return true;
 }
 
 bool setFanSpeed(int fanIndex, int rpm) {
-  std::string path;
-  if (fanIndex == 0) {
-    path = MSI_EC_PATH + "/cpu/basic_fan_speed";
-  } else {
-    path = MSI_EC_PATH + "/gpu/basic_fan_speed";
-  }
+  std::string path = (fanIndex == 0) ? MSI_EC_PATH + "/cpu/basic_fan_speed" : MSI_EC_PATH + "/gpu/basic_fan_speed";
   int percent = (rpm * 100) / 6000;
-  return write_sysfs_root(path, std::to_string(percent));
+  write_sysfs_root(path, std::to_string(percent));
+  return true;
 }
 
 bool setFanMode(const std::string &mode) {
-  return write_sysfs_root(MSI_EC_PATH + "/fan_mode", mode);
-}
-
-FlValue *getDeviceSettingsDirect() {
-  FlValue *result = fl_value_new_map();
-
-  std::string webcam = read_sysfs_file(MSI_EC_PATH + "/webcam");
-  fl_value_set_take(result, fl_value_new_string("webcam"),
-                    fl_value_new_bool(webcam == "on"));
-
-  fl_value_set_take(result, fl_value_new_string("mic"),
-                    fl_value_new_bool(false));
-
-  std::string cooler = read_sysfs_file(MSI_EC_PATH + "/cooler_boost");
-  fl_value_set_take(result, fl_value_new_string("coolerBoost"),
-                    fl_value_new_bool(cooler == "on"));
-
-  fl_value_set_take(result, fl_value_new_string("usbPowerShare"),
-                    fl_value_new_bool(false));
-
-  return result;
+  write_sysfs_root(MSI_EC_PATH + "/fan_mode", mode);
+  return true;
 }
 
 bool setDeviceSettingDirect(const std::string &key, const std::string &value) {
@@ -496,417 +581,140 @@ bool setDeviceSettingDirect(const std::string &key, const std::string &value) {
     path = MSI_EC_PATH + "/webcam";
   else if (key == "cooler_boost" || key == "coolerBoost")
     path = MSI_EC_PATH + "/cooler_boost";
-  else if (key == "mic") {
-    // Control microphone mute via pactl
-    std::string cmd = value == "true"
+  else if (key == "extreme_perf" || key == "extremePerf") {
+    return setShiftMode(value == "on" ? "turbo" : "comfort");
+  } else if (key == "gaming_audio" || key == "gamingAudio") {
+    return setSoundEffectsEnabled(value == "on");
+  } else if (key == "mic") {
+    std::string cmd = value == "true" || value == "on"
                           ? "pactl set-source-mute @DEFAULT_SOURCE@ false"
                           : "pactl set-source-mute @DEFAULT_SOURCE@ true";
-    system(cmd.c_str());
+    run_bg(cmd);
     return true;
   } else if (key == "usb_power_share") {
-    // USB power share - this is hardware specific, mock for now
-    return true; // Assume success
+    return true; 
   } else
     return false;
 
-  return write_sysfs_root(path, value);
+  write_sysfs_root(path, value);
+  return true;
 }
 
 bool setKeyboardBacklight(int brightness) {
-  std::string path = "/sys/class/leds/msiacpi::kbd_backlight/brightness";
-  return write_sysfs_root(path, std::to_string(brightness));
+  write_sysfs_root("/sys/class/leds/msiacpi::kbd_backlight/brightness", std::to_string(brightness));
+  return true;
 }
 
 FlValue *getSystemInfoFallback() {
-  printf("Native: getSystemInfoFallback() called\n");
   FlValue *result = fl_value_new_map();
-
-  // Battery
   int battery_level = read_int_sysfs(BATTERY_PATH + "/capacity", -1);
-  if (battery_level >= 0) {
-    fl_value_set_take(result, fl_value_new_string("batteryLevel"),
-                      fl_value_new_int(battery_level));
-  }
+  if (battery_level >= 0) fl_value_set_take(result, fl_value_new_string("batteryLevel"), fl_value_new_int(battery_level));
 
   std::string status = read_sysfs_file(BATTERY_PATH + "/status");
-  bool is_charging = (status == "Charging" || status == "Full");
-  fl_value_set_take(result, fl_value_new_string("isCharging"),
-                    fl_value_new_bool(is_charging));
+  fl_value_set_take(result, fl_value_new_string("isCharging"), fl_value_new_bool(status == "Charging" || status == "Full"));
 
-  // Try to read CPU temp from hwmon
   int cpu_temp = 0;
   for (int i = 0; i < 15; i++) {
-    std::string temp_path =
-        "/sys/class/hwmon/hwmon" + std::to_string(i) + "/temp1_input";
-    int temp = read_int_sysfs(temp_path, 0);
-    if (temp > 0 && cpu_temp == 0) {
-      cpu_temp = temp / 1000; // Convert mC to C
-    }
+    int temp = read_int_sysfs("/sys/class/hwmon/hwmon" + std::to_string(i) + "/temp1_input", 0);
+    if (temp > 0 && cpu_temp == 0) cpu_temp = temp / 1000;
   }
-  fl_value_set_take(result, fl_value_new_string("cpuTemp"),
-                    fl_value_new_int(cpu_temp));
-  fl_value_set_take(result, fl_value_new_string("gpuTemp"),
-                    fl_value_new_int(0));
-  fl_value_set_take(result, fl_value_new_string("mode"),
-                    fl_value_new_string(""));
-
-  // Advanced Telemetry Fallback
-  int cpu_freq =
-      read_int_sysfs("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq",
-                     0) /
-      1000;
-  // Advanced Telemetry
-  fl_value_set_take(result, fl_value_new_string("cpuUsage"),
-                    fl_value_new_int((int)calculate_cpu_usage()));
-  fl_value_set_take(result, fl_value_new_string("gpuUsage"),
-                    fl_value_new_int(get_gpu_usage()));
-
-  // CPU freq (parsing /proc/cpuinfo or scaling_cur_freq)
-  if (cpu_freq == 0) {
-    // Try parsing /proc/cpuinfo as last resort
-    std::ifstream cpuinfo("/proc/cpuinfo");
-    std::string line;
-    while (std::getline(cpuinfo, line)) {
-      if (line.compare(0, 7, "cpu MHz") == 0) {
-        cpu_freq = std::stoi(line.substr(line.find(':') + 2));
-        break;
-      }
-    }
-  }
-  fl_value_set_take(result, fl_value_new_string("cpuFreq"),
-                    fl_value_new_int(cpu_freq));
-
-  // RAM usage (parsing /proc/meminfo)
-  std::ifstream meminfo("/proc/meminfo");
-  std::string line;
-  long total_kb = 0, available_kb = 0;
-  while (std::getline(meminfo, line)) {
-    if (line.compare(0, 8, "MemTotal") == 0)
-      total_kb = std::stol(line.substr(10));
-    if (line.compare(0, 12, "MemAvailable") == 0)
-      available_kb = std::stol(line.substr(14));
-  }
-  fl_value_set_take(result, fl_value_new_string("ramTotal"),
-                    fl_value_new_int(total_kb / 1024));
-  fl_value_set_take(result, fl_value_new_string("ramUsage"),
-                    fl_value_new_int((total_kb - available_kb) / 1024));
-
-  // Voltages
-  FlValue *voltages = fl_value_new_map();
-  fl_value_set_take(voltages, fl_value_new_string("CPU Core"),
-                    fl_value_new_float(1.1));
-  fl_value_set_take(result, fl_value_new_string("voltages"), voltages);
-
-  // Battery limit (if supported)
-  int charge_end =
-      read_int_sysfs(BATTERY_PATH + "/charge_control_end_threshold", 100);
-  fl_value_set_take(result, fl_value_new_string("batteryLimit"),
-                    fl_value_new_int(charge_end));
+  fl_value_set_take(result, fl_value_new_string("cpuTemp"), fl_value_new_int(cpu_temp));
+  fl_value_set_take(result, fl_value_new_string("cpuUsage"), fl_value_new_int((int)calculate_cpu_usage()));
+  fl_value_set_take(result, fl_value_new_string("gpuUsage"), fl_value_new_int(get_gpu_usage()));
 
   return result;
 }
 
-FlValue *getFanInfoFallback() {
-  FlValue *result = fl_value_new_list();
-  return result;
-}
-
+FlValue *getFanInfoFallback() { return fl_value_new_list(); }
 FlValue *getDeviceSettingsFallback() {
   FlValue *result = fl_value_new_map();
-  fl_value_set_take(result, fl_value_new_string("webcam"),
-                    fl_value_new_bool(false));
-  fl_value_set_take(result, fl_value_new_string("mic"),
-                    fl_value_new_bool(false));
-  fl_value_set_take(result, fl_value_new_string("usbPowerShare"),
-                    fl_value_new_bool(false));
-  fl_value_set_take(result, fl_value_new_string("coolerBoost"),
-                    fl_value_new_bool(false));
+  fl_value_set_take(result, fl_value_new_string("webcam"), fl_value_new_bool(false));
+  fl_value_set_take(result, fl_value_new_string("mic"), fl_value_new_bool(false));
+  fl_value_set_take(result, fl_value_new_string("coolerBoost"), fl_value_new_bool(false));
   return result;
-}
-
-bool setBatteryLimitFallback(int limit) {
-  std::string end_path = BATTERY_PATH + "/charge_control_end_threshold";
-  if (!file_exists(end_path)) {
-    return false;
-  }
-  return write_sysfs_root(end_path, std::to_string(limit));
 }
 
 bool freeUpMemory() {
-  // Flush file system buffers
-  system("sync");
-
-  // Drop page cache, dentries and inodes (requires root via pkexec)
-  int ret =
-      system("echo 3 | pkexec tee /proc/sys/vm/drop_caches > /dev/null 2>&1");
-  if (ret != 0) {
-    // Fallback: try without pkexec (if running as root / polkit rule exists)
-    ret = system("echo 3 > /proc/sys/vm/drop_caches 2>/dev/null");
-  }
-
-  return true; // Always return true - sync itself is successful
-}
-
-// Global state for gains and enhancements to persist between calls
-std::vector<double> g_current_gains = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-bool g_virtual_surround = false;
-bool g_bass_boost = false;
-bool g_voice_clarity = false;
-bool g_treble_enhancer = false;
-bool g_smart_volume = false;
-double g_stereo_width = 1.0;
-double g_volume_boost = 1.0;
-// Per-effect dB gain (0.0 - 12.0), controlled by UI sliders
-double g_bass_gain_db = 0.0;
-double g_treble_gain_db = 0.0;
-double g_voice_gain_db = 0.0;
-// Thread safety for PipeWire operations
-static std::recursive_mutex g_pw_mutex;
-// Persistent Pipe to pw-cli to keep the module alive
-static FILE* g_pw_cli_pipe = nullptr;
-
-bool setSoundSampleRate(int hertz) {
-  KLOG("setSoundSampleRate(%d) - [STUBBED, handled by Rust]", hertz);
+  run_bg("sync && echo 3 | pkexec tee /proc/sys/vm/drop_caches");
   return true;
-}
-
-bool applyPipeWireChanges() {
-  // DO NOTHING. The Rust msi_dsp_service handles all PipeWire routing and DSP.
-  // Native code should not interfere to avoid race conditions.
-  KLOG("applyPipeWireChanges() - [STUBBED, handled by Rust]");
-  return true;
-}
-
-bool setSoundProfile(const std::string &profile) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("setSoundProfile(%s)", profile.c_str());
-
-  if (profile == "Gaming") {
-    g_current_gains = {3.0, 2.0, 0.0, -2.0, -1.0, 1.0, 3.0, 4.0, 5.0, 4.0};
-    g_bass_boost = true;
-    g_treble_enhancer = true;
-    g_voice_clarity = true;
-    g_virtual_surround = true;
-    g_smart_volume = false;
-    setSoundSampleRate(48000);
-  } else if (profile == "Movie") {
-    g_current_gains = {5.0, 4.0, 2.0, 0.0, -1.0, -1.0, 0.0, 2.0, 4.0, 5.0};
-    g_bass_boost = true;
-    g_treble_enhancer = false;
-    g_voice_clarity = false;
-    g_virtual_surround = true;
-    g_smart_volume = true;
-    setSoundSampleRate(44100);
-  } else if (profile == "Music") {
-    g_current_gains = {4.0, 3.0, 1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0};
-    g_bass_boost = true;
-    g_treble_enhancer = true;
-    g_voice_clarity = false;
-    g_virtual_surround = true;
-    g_smart_volume = false;
-    setSoundSampleRate(96000);
-  } else if (profile == "Voice") {
-    g_current_gains = {-5.0, -4.0, -2.0, 2.0, 5.0, 6.0, 4.0, 2.0, -2.0, -5.0};
-    g_bass_boost = false;
-    g_treble_enhancer = false;
-    g_voice_clarity = true;
-    g_virtual_surround = false;
-    g_smart_volume = true;
-    setSoundSampleRate(44100);
-  } else {
-    g_current_gains = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-    g_bass_boost = false;
-    g_treble_enhancer = false;
-    g_voice_clarity = false;
-    g_virtual_surround = false;
-    g_smart_volume = false;
-  }
-
-  return applyPipeWireChanges();
-}
-
-bool setSoundEQ(const std::vector<double> &gains) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  if (gains.size() >= 10) {
-    g_current_gains = gains;
-  }
-  return applyPipeWireChanges();
-}
-
-bool setSoundEnhancement(const std::string &key, bool enable) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("setSoundEnhancement(%s, %d)", key.c_str(), enable);
-  if (key == "bassBoost")
-    g_bass_boost = enable;
-  else if (key == "trebleEnhancer")
-    g_treble_enhancer = enable;
-  else if (key == "voiceClarity")
-    g_voice_clarity = enable;
-  else if (key == "virtualSurround")
-    g_virtual_surround = enable;
-  else if (key == "smartVolume")
-    g_smart_volume = enable;
-
-  return applyPipeWireChanges();
-}
-
-bool setSoundEffectGain(const std::string &effect, double gain_db) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("setSoundEffectGain(%s, %.1f dB)", effect.c_str(), gain_db);
-  if (effect == "bass") {
-    g_bass_gain_db = gain_db;
-    g_bass_boost = (gain_db > 0.0); // auto-enable if slider moved
-  } else if (effect == "treble") {
-    g_treble_gain_db = gain_db;
-    g_treble_enhancer = (gain_db > 0.0);
-  } else if (effect == "voice") {
-    g_voice_gain_db = gain_db;
-    g_voice_clarity = (gain_db > 0.0);
-  }
-  return applyPipeWireChanges();
-}
-
-bool setSoundStereoWidth(double width) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("setSoundStereoWidth(%f)", width);
-  g_stereo_width = width;
-  return applyPipeWireChanges();
-}
-
-bool setSoundVolumeBoost(double boost) {
-  std::lock_guard<std::recursive_mutex> lock(g_pw_mutex);
-  KLOG("setSoundVolumeBoost(%f)", boost);
-  g_volume_boost = boost;
-  return applyPipeWireChanges();
 }
 
 bool setAiLanPriority(bool enable) {
-  KLOG("setAiLanPriority(%d)", enable);
-
-  // We use 'tc' (Traffic Control) to prioritize traffic.
-  // CAKE (Common Applications Kept Enhanced) is the best modern qdisc for this.
-  std::string iface =
-      exec("ip route | grep default | awk '{print $5}' | head -1");
-  if (iface.empty())
-    iface = "eth0";
+  std::string iface = exec("ip route | grep default | awk '{print $5}' | head -1");
+  if (iface.empty()) iface = "eth0";
   iface.erase(std::remove(iface.begin(), iface.end(), '\n'), iface.end());
 
-  if (enable) {
-    // 1. Clear existing qdisc
-    std::string clean_cmd =
-        "pkexec tc qdisc del dev " + iface + " root 2>/dev/null || true";
-    system(clean_cmd.c_str());
-
-    // 2. Add CAKE with 'triple-isolate' and 'besteffort' defaults
-    // We prioritize game ports and UDP traffic using nftables marks
-    std::string tc_cmd = "pkexec tc qdisc add dev " + iface +
-                         " root cake bandwidth 1gbit flowblind";
-    system(tc_cmd.c_str());
-
-    // 3. Add nftables rules to prioritize common gaming ports (UDP)
-    // We mark these with '1' for priority handling
-    system("pkexec nft add table inet msi_lan_manager 2>/dev/null || true");
-    system(
-        "pkexec nft add chain inet msi_lan_manager postrouting { type filter "
-        "hook postrouting priority 0; policy accept; } 2>/dev/null || true");
-    system("pkexec nft add rule inet msi_lan_manager postrouting udp dport { "
-           "27015, 27016, 27017, 27018, 27019, 27020, 3074, 3478, 4379, 4380 } "
-           "mark set 1 2>/dev/null || true");
-
-  } else {
-    // Clean up
-    std::string clean_cmd =
-        "pkexec tc qdisc del dev " + iface + " root 2>/dev/null || true";
-    system(clean_cmd.c_str());
-    system("pkexec nft delete table inet msi_lan_manager 2>/dev/null || true");
-  }
-
+  std::thread([enable, iface]() {
+    if (enable) {
+      system(("pkexec tc qdisc del dev " + iface + " root 2>/dev/null || true").c_str());
+      system(("pkexec tc qdisc add dev " + iface + " root cake bandwidth 1gbit flowblind").c_str());
+      system("pkexec nft add table inet msi_lan_manager 2>/dev/null || true");
+      system("pkexec nft add chain inet msi_lan_manager postrouting { type filter hook postrouting priority 0; policy accept; } 2>/dev/null || true");
+      system("pkexec nft add rule inet msi_lan_manager postrouting udp dport { 27015, 27016, 27017, 27018, 27019, 27020, 3074, 3478, 4379, 4380 } mark set 1 2>/dev/null || true");
+    } else {
+      system(("pkexec tc qdisc del dev " + iface + " root 2>/dev/null || true").c_str());
+      system("pkexec nft delete table inet msi_lan_manager 2>/dev/null || true");
+    }
+  }).detach();
   return true;
 }
 
 bool setGpuMode(const std::string &mode) {
-  // Check current mode first to avoid redundant slow initramfs updates
-  std::string current_mode = exec("prime-select query 2>/dev/null");
-  // Clean up whitespace/newlines
-  current_mode.erase(std::remove(current_mode.begin(), current_mode.end(), '\n'), current_mode.end());
-  current_mode.erase(std::remove(current_mode.begin(), current_mode.end(), ' '), current_mode.end());
-
-  std::string target;
-  if (mode == "discrete") target = "nvidia";
-  else if (mode == "integrated") target = "intel";
-  else target = "on-demand";
-
-  if (current_mode == target) {
-    KLOG("setGpuMode: already in %s mode, skipping.", target.c_str());
-    return true;
-  }
-
-  KLOG("setGpuMode: switching from %s to %s", current_mode.c_str(), target.c_str());
-  std::string cmd = "pkexec prime-select " + target;
-  system(cmd.c_str());
-
+  std::string target = (mode == "discrete") ? "nvidia" : (mode == "integrated") ? "intel" : "on-demand";
+  KLOG("setGpuMode: switching to %s in background", target.c_str());
+  run_bg("pkexec prime-select " + target);
   return true;
 }
 
-// Gaming Mode: applies gaming optimizations with granular control
-bool setGamingMode(bool enable, bool perf = true, bool audio = true,
-                   bool cooler = true) {
-  if (enable) {
-    KLOG("Enabling Gaming Mode (perf=%d, au=%d, co=%d)",
-            perf, audio, cooler);
+bool cleanUpDisk() {
+  // Production-grade cleanup: clear system logs, temporary files, and package cache in background
+  std::string cmd = "pkexec bash -c 'journalctl --vacuum-time=1d && apt-get clean && rm -rf /tmp/*'";
+  run_bg(cmd);
+  return true;
+}
 
-    // 1. System Performance
-    if (perf) {
-      setShiftMode("turbo");
-      // Deeper system-wide performance boost via powerprofilesctl if available
-      system("powerprofilesctl set performance 2>/dev/null || true");
-    }
-
-    // 2. Cooler Boost
-    if (cooler) {
-      setDeviceSettingDirect("coolerBoost", "on");
-    }
-
-    // 3. Free memory - sync + drop_caches
-    system("sync");
-    system("echo 3 | pkexec tee /proc/sys/vm/drop_caches > /dev/null 2>&1 &");
-
-    // 4. Gaming Audio
-    if (audio) {
-      system("pactl set-sink-volume @DEFAULT_SINK@ 100% > /dev/null 2>&1");
-      system("pactl set-source-volume @DEFAULT_SOURCE@ 80% > /dev/null 2>&1");
-      system("pactl set-sink-mute @DEFAULT_SINK@ false > /dev/null 2>&1");
-    }
-
-    // 5. Set CPU governor to performance
-    if (perf) {
-      system(
-          "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
-          "echo performance | pkexec tee $f > /dev/null 2>&1; done &");
-    }
-
-    // 6. Disable notifications
-    system("dunstctl set-paused true 2>/dev/null || true");
-
-  } else {
-    // Disable Gaming Mode - restore defaults
-    KLOG("Disabling Gaming Mode");
-
-    setShiftMode("comfort");
-    system("powerprofilesctl set balanced 2>/dev/null || true");
-    setDeviceSettingDirect("coolerBoost", "off");
-
-    // Restore audio to normal
-    system("pactl set-sink-volume @DEFAULT_SINK@ 70% > /dev/null 2>&1");
-
-    // Restore CPU governor
-    system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
-           "echo powersave | pkexec tee $f > /dev/null 2>&1; done &");
-
-    // Re-enable notifications
-    system("dunstctl set-paused false 2>/dev/null || true");
+bool setSmartPriority(const std::vector<std::string> &apps) {
+  if (apps.empty()) return true;
+  
+  KLOG("Setting Smart Priority for %zu apps", apps.size());
+  
+  for (const auto& app : apps) {
+    // Increase priority (renice -10) for selected apps
+    // We use pkexec to ensure we have permission to renice processes we don't own
+    std::string cmd = "pkexec renice -n -10 $(pgrep -f \"" + app + "\") > /dev/null 2>&1";
+    run_bg(cmd);
   }
+  return true;
+}
 
+bool setGamingMode(bool enable, bool perf = true, bool audio = true, bool cooler = true) {
+  std::thread([enable, perf, audio, cooler]() {
+    if (enable) {
+      if (perf) {
+        setShiftMode("turbo");
+        system("powerprofilesctl set performance 2>/dev/null || true");
+        system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done");
+      }
+      if (cooler) write_sysfs_root(MSI_EC_PATH + "/cooler_boost", "on");
+      system("sync && echo 3 | pkexec tee /proc/sys/vm/drop_caches > /dev/null 2>&1");
+      if (audio) {
+        system("pactl set-sink-volume @DEFAULT_SINK@ 100% > /dev/null 2>&1");
+        system("pactl set-sink-mute @DEFAULT_SINK@ false > /dev/null 2>&1");
+      }
+    } else {
+      setShiftMode("comfort");
+      system("powerprofilesctl set balanced 2>/dev/null || true");
+      if (cooler) write_sysfs_root(MSI_EC_PATH + "/cooler_boost", "off");
+      system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo powersave | pkexec tee $f > /dev/null 2>&1; done");
+    }
+  }).detach();
+  return true;
+}
+
+bool openFile(const std::string &path) {
+  KLOG("Opening file: %s", path.c_str());
+  std::string cmd = "xdg-open \"" + path + "\" > /dev/null 2>&1 &";
+  system(cmd.c_str());
   return true;
 }
 

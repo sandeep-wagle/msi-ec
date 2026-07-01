@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../sound_tune_theme.dart';
+import 'package:msi_controller/screens/sound_tune/sound_tune_theme.dart';
 import 'shared_widgets.dart';
 import 'content_panels.dart';
 import 'smart_profile_view.dart';
-import '../../../logic/blocs/sound/sound_bloc.dart';
-import '../../../logic/blocs/sound/sound_event.dart';
-import '../../../services/toast_service.dart';
-import '../../../core/di/injection.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_bloc.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_event.dart';
+import 'package:msi_controller/services/toast_service.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/screens/sound_tune/widgets/sound_tune_header.dart';
 
 class AudioView extends StatelessWidget {
   const AudioView({super.key});
@@ -29,7 +30,9 @@ class AudioHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectsEnabled = context.select((SoundBloc b) => b.state.effectsEnabled);
+    final effectsEnabled = context.select(
+      (SoundBloc b) => b.state.effectsEnabled,
+    );
 
     return Container(
       height: 60,
@@ -43,13 +46,13 @@ class AudioHeader extends StatelessWidget {
           PowerToggle(field: 'effectsEnabled'),
           const SizedBox(width: 12),
           Text(
-            effectsEnabled ? 'Effects ON' : 'Effects OFF', 
+            effectsEnabled ? 'Effects ON' : 'Effects OFF',
             style: TextStyle(
-              color: effectsEnabled ? kAccent : kTextSub, 
-              fontSize: 12, 
-              fontWeight: FontWeight.bold, 
-              letterSpacing: 1.2
-            )
+              color: effectsEnabled ? kAccent : kTextSub,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
           ),
           const Spacer(),
           const Text('AUDIO', style: SoundTuneTheme.h1),
@@ -58,7 +61,8 @@ class AudioHeader extends StatelessWidget {
             icon: Icons.play_arrow,
             label: 'Try',
             color: kAccent,
-            onPressed: () => getIt<ToastService>().showInfo('▶ Playing test tone...'),
+            onPressed: () =>
+                getIt<ToastService>().showInfo('▶ Playing test tone...'),
           ),
           const SizedBox(width: 16),
           HeaderActionButton(
@@ -67,7 +71,9 @@ class AudioHeader extends StatelessWidget {
             color: kTextSub,
             onPressed: () {
               context.read<SoundBloc>().add(ResetSoundSettings());
-              getIt<ToastService>().showInfo('All sound settings have been reset.');
+              getIt<ToastService>().showInfo(
+                'All sound settings have been reset.',
+              );
             },
           ),
         ],
@@ -100,29 +106,44 @@ class ModeTabs extends StatelessWidget {
           final isSelected = profile == profileKey;
           return Expanded(
             child: GestureDetector(
-              onTap: () => context.read<SoundBloc>().add(SetSoundProfile(profileKey)),
+              onTap: () =>
+                  context.read<SoundBloc>().add(SetSoundProfile(profileKey)),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: isSelected ? kAccent : Colors.transparent, width: 4)),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: isSelected ? kAccent : Colors.transparent,
+                      width: 4,
+                    ),
+                  ),
                   gradient: isSelected
                       ? LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [kAccent.withValues(alpha: 0.05), Colors.transparent],
+                          colors: [
+                            kAccent.withValues(alpha: 0.05),
+                            Colors.transparent,
+                          ],
                         )
                       : null,
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: 24, color: isSelected ? kAccent : kTextSub),
+                    Icon(
+                      icon,
+                      size: 24,
+                      color: isSelected ? kAccent : kTextSub,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       label,
                       style: TextStyle(
                         color: isSelected ? kTextPrimary : kTextSub,
                         fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+                        fontWeight: isSelected
+                            ? FontWeight.w900
+                            : FontWeight.bold,
                         letterSpacing: 2.0,
                       ),
                     ),
@@ -153,7 +174,9 @@ class ContentLayout extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: NahimicPanel(
-                  child: profile == 'Custom' ? const SmartProfileView() : const SurroundPanel(),
+                  child: profile == 'Custom'
+                      ? const SmartProfileView()
+                      : const SurroundPanel(),
                 ),
               ),
               const Expanded(
@@ -167,9 +190,39 @@ class ContentLayout extends StatelessWidget {
           flex: 4,
           child: Row(
             children: [
-              const Expanded(child: NahimicPanel(child: EffectSliderPanel(title: 'VOICES', field: 'voice', enableField: 'voiceClarity', desc: 'Make them faraway or present\n(dialogs, choirs, chat, etc.)'))),
-              const Expanded(child: NahimicPanel(child: EffectSliderPanel(title: 'BASS', field: 'bass', enableField: 'bassBoost', desc: 'Make them punchy or lighter\n(explosions, engines, beats, bass guitars, etc.)'))),
-              const Expanded(child: NahimicPanel(child: EffectSliderPanel(title: 'TREBLE', field: 'treble', enableField: 'trebleEnhancer', desc: 'Make them faded or clearer\n(footsteps, whistles, cymbals, etc.)'))),
+              const Expanded(
+                child: NahimicPanel(
+                  child: EffectSliderPanel(
+                    title: 'VOICES',
+                    field: 'voice',
+                    enableField: 'voiceClarity',
+                    desc:
+                        'Make them faraway or present\n(dialogs, choirs, chat, etc.)',
+                  ),
+                ),
+              ),
+              const Expanded(
+                child: NahimicPanel(
+                  child: EffectSliderPanel(
+                    title: 'BASS',
+                    field: 'bass',
+                    enableField: 'bassBoost',
+                    desc:
+                        'Make them punchy or lighter\n(explosions, engines, beats, bass guitars, etc.)',
+                  ),
+                ),
+              ),
+              const Expanded(
+                child: NahimicPanel(
+                  child: EffectSliderPanel(
+                    title: 'TREBLE',
+                    field: 'treble',
+                    enableField: 'trebleEnhancer',
+                    desc:
+                        'Make them faded or clearer\n(footsteps, whistles, cymbals, etc.)',
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -177,9 +230,36 @@ class ContentLayout extends StatelessWidget {
           flex: 3,
           child: Row(
             children: [
-              Expanded(child: NahimicPanel(child: AdvancedEffectPanel(title: 'NOISE SUPPRESSION', field: 'noiseLevel', min: 0, max: 10, desc: 'Reduce background noise'))),
-              Expanded(child: NahimicPanel(child: AdvancedEffectPanel(title: 'STEREO WIDTH', field: 'stereoWidth', min: 0, max: 2, desc: 'Expand audio soundstage'))),
-              Expanded(child: NahimicPanel(child: LimiterPanel(title: 'LIMITER', desc: 'Prevent audio clipping'))),
+              Expanded(
+                child: NahimicPanel(
+                  child: AdvancedEffectPanel(
+                    title: 'NOISE SUPPRESSION',
+                    field: 'noiseLevel',
+                    min: 0,
+                    max: 10,
+                    desc: 'Reduce background noise',
+                  ),
+                ),
+              ),
+              Expanded(
+                child: NahimicPanel(
+                  child: AdvancedEffectPanel(
+                    title: 'STEREO WIDTH',
+                    field: 'stereoWidth',
+                    min: 0,
+                    max: 2,
+                    desc: 'Expand audio soundstage',
+                  ),
+                ),
+              ),
+              Expanded(
+                child: NahimicPanel(
+                  child: LimiterPanel(
+                    title: 'LIMITER',
+                    desc: 'Prevent audio clipping',
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -195,40 +275,35 @@ class EasySurroundView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildHeader('EASY SURROUND'),
+        SoundTuneHeader(
+          title: 'EASY SURROUND',
+          leading: const [
+            PowerToggle(field: 'virtualSurround'),
+            StatusText(field: 'virtualSurround'),
+          ],
+        ),
         Expanded(
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.gps_fixed, color: kAccent.withValues(alpha: 0.3), size: 120),
+                Icon(
+                  Icons.gps_fixed,
+                  color: kAccent.withValues(alpha: 0.3),
+                  size: 120,
+                ),
                 const SizedBox(height: 24),
                 const Text('OPTIMIZE YOUR HEADSET', style: SoundTuneTheme.h1),
                 const SizedBox(height: 12),
-                const Text('Connect your Bluetooth headset and enjoy the surround sound', style: SoundTuneTheme.subText),
+                const Text(
+                  'Connect your Bluetooth headset and enjoy the surround sound',
+                  style: SoundTuneTheme.subText,
+                ),
               ],
             ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildHeader(String title) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kPanelBorder))),
-      child: Row(
-        children: [
-          const PowerToggle(field: 'virtualSurround'),
-          const SizedBox(width: 16),
-          const StatusText(field: 'virtualSurround'),
-          const Spacer(),
-          Text(title, style: SoundTuneTheme.h1),
-          const Spacer(),
-        ],
-      ),
     );
   }
 }
@@ -248,8 +323,12 @@ class StatusText extends StatelessWidget {
     });
 
     return Text(
-      isActive ? 'ON' : 'OFF', 
-      style: TextStyle(color: isActive ? kAccent : kTextSub, fontWeight: FontWeight.bold, fontSize: 12),
+      isActive ? 'ON' : 'OFF',
+      style: TextStyle(
+        color: isActive ? kAccent : kTextSub,
+        fontWeight: FontWeight.bold,
+        fontSize: 12,
+      ),
     );
   }
 }
@@ -263,7 +342,13 @@ class SoundSharingView extends StatelessWidget {
 
     return Column(
       children: [
-        _buildHeader('SOUND SHARING'),
+        SoundTuneHeader(
+          title: 'SOUND SHARING',
+          leading: const [
+            PowerToggle(field: 'sharingEnabled'),
+            StatusText(field: 'sharingEnabled'),
+          ],
+        ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -275,11 +360,25 @@ class SoundSharingView extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.headset, color: state.sharingEnabled ? kAccent : kTextSub, size: 60),
+                        Icon(
+                          Icons.headset,
+                          color: state.sharingEnabled ? kAccent : kTextSub,
+                          size: 60,
+                        ),
                         const SizedBox(width: 16),
-                        Icon(Icons.wifi, color: state.sharingEnabled ? kAccent.withValues(alpha: 0.5) : kTextSub.withValues(alpha: 0.2), size: 40),
+                        Icon(
+                          Icons.wifi,
+                          color: state.sharingEnabled
+                              ? kAccent.withValues(alpha: 0.5)
+                              : kTextSub.withValues(alpha: 0.2),
+                          size: 40,
+                        ),
                         const SizedBox(width: 16),
-                        Icon(Icons.headset, color: state.sharingEnabled ? kAccent : kTextSub, size: 60),
+                        Icon(
+                          Icons.headset,
+                          color: state.sharingEnabled ? kAccent : kTextSub,
+                          size: 60,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -299,9 +398,15 @@ class SoundSharingView extends StatelessWidget {
                       ),
                       child: const Column(
                         children: [
-                          _SharingDeviceItem(name: 'Sony WH-1000XM4', connected: true),
+                          _SharingDeviceItem(
+                            name: 'Sony WH-1000XM4',
+                            connected: true,
+                          ),
                           Divider(color: kPanelBorder),
-                          _SharingDeviceItem(name: 'MSI IMMERSE GH50', connected: false),
+                          _SharingDeviceItem(
+                            name: 'MSI IMMERSE GH50',
+                            connected: false,
+                          ),
                         ],
                       ),
                     ),
@@ -315,23 +420,6 @@ class SoundSharingView extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(String title) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kPanelBorder))),
-      child: Row(
-        children: [
-          const PowerToggle(field: 'sharingEnabled'),
-          const SizedBox(width: 16),
-          const StatusText(field: 'sharingEnabled'),
-          const Spacer(),
-          Text(title, style: SoundTuneTheme.h1),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
 }
 
 class _SharingDeviceItem extends StatelessWidget {
@@ -345,12 +433,28 @@ class _SharingDeviceItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
         children: [
-          Icon(Icons.bluetooth, color: connected ? kAccent : kTextSub, size: 16),
+          Icon(
+            Icons.bluetooth,
+            color: connected ? kAccent : kTextSub,
+            size: 16,
+          ),
           const SizedBox(width: 12),
-          Text(name, style: TextStyle(color: connected ? kTextPrimary : kTextSub, fontSize: 13)),
+          Text(
+            name,
+            style: TextStyle(
+              color: connected ? kTextPrimary : kTextSub,
+              fontSize: 13,
+            ),
+          ),
           const Spacer(),
-          Text(connected ? 'CONNECTED' : 'NOT CONNECTED', 
-            style: TextStyle(color: connected ? kAccent : kTextSub, fontSize: 10, fontWeight: FontWeight.bold)),
+          Text(
+            connected ? 'CONNECTED' : 'NOT CONNECTED',
+            style: TextStyle(
+              color: connected ? kAccent : kTextSub,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -364,24 +468,16 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _buildHeader('SETTINGS'),
-        const Expanded(child: Center(child: Text('Application Settings...', style: TextStyle(color: kTextSub)))),
+        SoundTuneHeader(title: 'SETTINGS'),
+        const Expanded(
+          child: Center(
+            child: Text(
+              'Application Settings...',
+              style: TextStyle(color: kTextSub),
+            ),
+          ),
+        ),
       ],
-    );
-  }
-
-  Widget _buildHeader(String title) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kPanelBorder))),
-      child: Row(
-        children: [
-          const Spacer(),
-          Text(title, style: SoundTuneTheme.h1),
-          const Spacer(),
-        ],
-      ),
     );
   }
 }
@@ -395,7 +491,13 @@ class MicrophoneView extends StatelessWidget {
 
     return Column(
       children: [
-        _buildHeader('MICROPHONE'),
+        SoundTuneHeader(
+          title: 'MICROPHONE',
+          leading: const [
+            PowerToggle(field: 'micEnabled'),
+            StatusText(field: 'micEnabled'),
+          ],
+        ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -409,18 +511,36 @@ class MicrophoneView extends StatelessWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.mic, color: state.micEnabled ? kAccent : kTextSub, size: 80),
+                          Icon(
+                            Icons.mic,
+                            color: state.micEnabled ? kAccent : kTextSub,
+                            size: 80,
+                          ),
                           const SizedBox(height: 32),
-                          const Text('MICROPHONE GAIN', style: SoundTuneTheme.h2),
+                          const Text(
+                            'MICROPHONE GAIN',
+                            style: SoundTuneTheme.h2,
+                          ),
                           const SizedBox(height: 16),
                           NahimicSlider(
                             value: state.microphoneGain,
                             min: 0.0,
                             max: 2.0,
-                            onChanged: (v) => context.read<SoundBloc>().add(ChangeMicrophoneGain(v)),
+                            onChanged: (v) => context.read<SoundBloc>().add(
+                              ChangeMicrophoneGainPreview(v),
+                            ),
+                            onChangedEnd: (v) => context.read<SoundBloc>().add(
+                              ChangeMicrophoneGain(v),
+                            ),
                           ),
                           const SizedBox(height: 8),
-                          Text('${(state.microphoneGain * 100).round()}%', style: const TextStyle(color: kAccent, fontWeight: FontWeight.bold)),
+                          Text(
+                            '${(state.microphoneGain * 100).round()}%',
+                            style: const TextStyle(
+                              color: kAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -439,9 +559,13 @@ class MicrophoneView extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text('NOISE SUPPRESSION', style: SoundTuneTheme.h2),
+                                    const Text(
+                                      'NOISE SUPPRESSION',
+                                      style: SoundTuneTheme.h2,
+                                    ),
                                     PowerToggle(field: 'micNoiseSuppression'),
                                   ],
                                 ),
@@ -465,9 +589,13 @@ class MicrophoneView extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    const Text('ECHO CANCELLATION', style: SoundTuneTheme.h2),
+                                    const Text(
+                                      'ECHO CANCELLATION',
+                                      style: SoundTuneTheme.h2,
+                                    ),
                                     PowerToggle(field: 'echoCancellation'),
                                   ],
                                 ),
@@ -492,24 +620,6 @@ class MicrophoneView extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildHeader(String title) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kPanelBorder))),
-      child: Row(
-        children: [
-          const PowerToggle(field: 'micEnabled'),
-          const SizedBox(width: 16),
-          const StatusText(field: 'micEnabled'),
-          const Spacer(),
-          Text(title, style: SoundTuneTheme.h1),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
 }
 
 class SoundTrackerView extends StatelessWidget {
@@ -521,7 +631,13 @@ class SoundTrackerView extends StatelessWidget {
 
     return Column(
       children: [
-        _buildHeader('SOUND TRACKER'),
+        SoundTuneHeader(
+          title: 'SOUND TRACKER',
+          leading: const [
+            PowerToggle(field: 'trackerEnabled'),
+            StatusText(field: 'trackerEnabled'),
+          ],
+        ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -533,13 +649,26 @@ class SoundTrackerView extends StatelessWidget {
                     Stack(
                       alignment: Alignment.center,
                       children: [
-                        Icon(Icons.gps_fixed, color: state.trackerEnabled ? kAccent.withValues(alpha: 0.2) : kTextSub.withValues(alpha: 0.1), size: 200),
+                        Icon(
+                          Icons.gps_fixed,
+                          color: state.trackerEnabled
+                              ? kAccent.withValues(alpha: 0.2)
+                              : kTextSub.withValues(alpha: 0.1),
+                          size: 200,
+                        ),
                         if (state.trackerEnabled)
-                          const Icon(Icons.navigation, color: kAccent, size: 60),
+                          const Icon(
+                            Icons.navigation,
+                            color: kAccent,
+                            size: 60,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 32),
-                    const Text('VISUAL SOUND COMPASS', style: SoundTuneTheme.h1),
+                    const Text(
+                      'VISUAL SOUND COMPASS',
+                      style: SoundTuneTheme.h1,
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'The Sound Tracker is a visual indicator that points out the directions of sounds.',
@@ -556,22 +685,5 @@ class SoundTrackerView extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildHeader(String title) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: kPanelBorder))),
-      child: Row(
-        children: [
-          const PowerToggle(field: 'trackerEnabled'),
-          const SizedBox(width: 16),
-          const StatusText(field: 'trackerEnabled'),
-          const Spacer(),
-          Text(title, style: SoundTuneTheme.h1),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
 }
+

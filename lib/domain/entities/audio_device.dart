@@ -12,12 +12,7 @@ class AudioDevice {
   });
 
   Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'type': type,
-      'isActive': isActive,
-    };
+    return {'id': id, 'name': name, 'type': type, 'isActive': isActive};
   }
 
   factory AudioDevice.fromJson(Map<String, dynamic> json) {
@@ -122,7 +117,9 @@ class DeviceAudioProfile {
       bassGain: (json['bassGain'] ?? 0.0).toDouble(),
       trebleGain: (json['trebleGain'] ?? 0.0).toDouble(),
       voiceGain: (json['voiceGain'] ?? 0.0).toDouble(),
-      eqGains: List<double>.from(json['eqGains'] ?? List.generate(10, (_) => 0.0)),
+      eqGains: List<double>.from(
+        json['eqGains'] ?? List.generate(10, (_) => 0.0),
+      ),
       volumeOffset: (json['volumeOffset'] ?? 0.0).toDouble(),
     );
   }
@@ -153,7 +150,8 @@ class DeviceAudioProfile {
       profileName: profileName ?? this.profileName,
       powerSurround: powerSurround ?? this.powerSurround,
       powerNoiseReduction: powerNoiseReduction ?? this.powerNoiseReduction,
-      powerStereoEnhancement: powerStereoEnhancement ?? this.powerStereoEnhancement,
+      powerStereoEnhancement:
+          powerStereoEnhancement ?? this.powerStereoEnhancement,
       powerCompressor: powerCompressor ?? this.powerCompressor,
       powerLimiter: powerLimiter ?? this.powerLimiter,
       powerBassBoost: powerBassBoost ?? this.powerBassBoost,

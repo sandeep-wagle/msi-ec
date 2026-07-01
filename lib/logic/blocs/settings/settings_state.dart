@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
-import '../../../domain/entities/system_info.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
+import 'package:msi_controller/domain/entities/system_info.dart';
 
 class SettingsState extends Equatable {
   final GpuMode gpuMode;
@@ -43,6 +45,35 @@ class SettingsState extends Equatable {
       performanceLevel: PerformanceLevel.medium,
       userFanMode: null,
     );
+  }
+
+  factory SettingsState.fromPrefs(SharedPreferences prefs) {
+    try {
+      final jsonStr = prefs.getString('msi_settings');
+      if (jsonStr == null) return SettingsState.initial();
+      final map = json.decode(jsonStr);
+      final parsedPerformanceMode = PerformanceMode.fromString(
+        map['performanceMode'] ?? 'balanced',
+      );
+      return SettingsState(
+        gpuMode: GpuMode.fromString(map['gpuMode'] ?? 'hybrid'),
+        batteryLimit: map['batteryLimit'] ?? 100,
+        performanceMode: parsedPerformanceMode == PerformanceMode.unknown
+            ? PerformanceMode.balanced
+            : parsedPerformanceMode,
+        webcamEnabled: map['webcamEnabled'] ?? false,
+        superBatteryEnabled: map['superBatteryEnabled'] ?? false,
+        fanMode: FanMode.fromString(map['fanMode'] ?? 'auto'),
+        performanceLevel: PerformanceLevel.fromString(
+          map['performanceLevel'] ?? 'medium',
+        ),
+        userFanMode: map['userFanMode'] != null
+            ? FanMode.fromString(map['userFanMode'])
+            : null,
+      );
+    } catch (_) {
+      return SettingsState.initial();
+    }
   }
 
   SettingsState copyWith({

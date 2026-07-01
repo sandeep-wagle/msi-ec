@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../sound_tune_theme.dart';
+import 'package:msi_controller/screens/sound_tune/sound_tune_theme.dart';
 import 'painters.dart';
 
 class SmartProfileView extends StatelessWidget {

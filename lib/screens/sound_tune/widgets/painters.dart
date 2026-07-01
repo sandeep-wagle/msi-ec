@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../sound_tune_theme.dart';
+import 'package:msi_controller/screens/sound_tune/sound_tune_theme.dart';
 
 class NeuralHeadPainter extends CustomPainter {
   @override
@@ -27,19 +27,46 @@ class NeuralHeadPainter extends CustomPainter {
     ];
 
     for (var i = 0; i < points.length; i++) {
-      canvas.drawCircle(points[i], 3, paint..style = PaintingStyle.fill..color = kAccent);
-      canvas.drawLine(center, points[i], paint..style = PaintingStyle.stroke..color = kAccent.withValues(alpha: 0.2));
-      
+      canvas.drawCircle(
+        points[i],
+        3,
+        paint
+          ..style = PaintingStyle.fill
+          ..color = kAccent,
+      );
+      canvas.drawLine(
+        center,
+        points[i],
+        paint
+          ..style = PaintingStyle.stroke
+          ..color = kAccent.withValues(alpha: 0.2),
+      );
+
       final nextPoint = points[(i + 1) % points.length];
-      canvas.drawLine(points[i], nextPoint, paint..color = kAccent.withValues(alpha: 0.3));
+      canvas.drawLine(
+        points[i],
+        nextPoint,
+        paint..color = kAccent.withValues(alpha: 0.3),
+      );
     }
 
     // Person silhouette
-    final headPaint = Paint()..color = kTextSub.withValues(alpha: 0.3)..style = PaintingStyle.fill;
-    canvas.drawCircle(Offset(center.dx, center.dy - radius * 0.1), radius * 0.25, headPaint);
+    final headPaint = Paint()
+      ..color = kTextSub.withValues(alpha: 0.3)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(center.dx, center.dy - radius * 0.1),
+      radius * 0.25,
+      headPaint,
+    );
     final path = Path()
       ..moveTo(center.dx - radius * 0.4, center.dy + radius * 0.4)
-      ..quadraticBezierTo(center.dx, center.dy + radius * 0.2, center.dx + radius * 0.4, center.dy + radius * 0.4)
+      ..quadraticBezierTo(
+        center.dx,
+        center.dy + radius * 0.2,
+        center.dx + radius * 0.4,
+        center.dy + radius * 0.4,
+      )
       ..lineTo(center.dx + radius * 0.5, center.dy + radius)
       ..lineTo(center.dx - radius * 0.5, center.dy + radius)
       ..close();
@@ -88,23 +115,37 @@ class AtomicPainter extends CustomPainter {
       ..strokeWidth = 1.2;
 
     final center = Offset(size.width / 2, size.height / 2);
-    
+
     for (var i = 0; i < 3; i++) {
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(i * 1.047); // 60 degrees
-      final rect = Rect.fromCenter(center: Offset.zero, width: size.width, height: size.height * 0.4);
+      final rect = Rect.fromCenter(
+        center: Offset.zero,
+        width: size.width,
+        height: size.height * 0.4,
+      );
       canvas.drawOval(rect, paint);
-      
-      final dotPaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
+
+      final dotPaint = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill;
       canvas.drawCircle(Offset(size.width / 2, 0), 4, dotPaint);
-      canvas.drawCircle(Offset(size.width / 2, 0), 8, dotPaint..color = kAccent.withValues(alpha: 0.3));
-      
+      canvas.drawCircle(
+        Offset(size.width / 2, 0),
+        8,
+        dotPaint..color = kAccent.withValues(alpha: 0.3),
+      );
+
       canvas.restore();
     }
-    
+
     canvas.drawCircle(center, 4, Paint()..color = Colors.white);
-    canvas.drawCircle(center, 12, Paint()..color = kAccent.withValues(alpha: 0.2));
+    canvas.drawCircle(
+      center,
+      12,
+      Paint()..color = kAccent.withValues(alpha: 0.2),
+    );
   }
 
   @override

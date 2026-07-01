@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 // MSI Nahimic Color Palette (Cyan Theme)
-const kBg = Color(0xFF080B12); 
-const kPanel = Color(0xFF0D1117); 
-const kPanelBorder = Color(0xFF1C222D); 
+const kBg = Color(0xFF080B12);
+const kPanel = Color(0xFF0D1117);
+const kPanelBorder = Color(0xFF1C222D);
 const kAccent = Color(0xFF00F0FF); // Vibrant Cyan
 const kAccentGlow = Color(0x4400F0FF);
 const kTextPrimary = Color(0xFFFFFFFF);

@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../logic/blocs/audio/audio_bloc.dart';
-import '../logic/blocs/audio/audio_event.dart';
-import '../logic/blocs/audio/audio_state.dart';
+import 'package:msi_controller/logic/blocs/audio/audio_bloc.dart';
+import 'package:msi_controller/logic/blocs/audio/audio_event.dart';
+import 'package:msi_controller/logic/blocs/audio/audio_state.dart';
+import 'package:msi_controller/core/ui/widgets/effect_control.dart';
 
 class AudioDeviceControls extends StatelessWidget {
   const AudioDeviceControls({super.key});
+
+  IconData _getDeviceIcon(String deviceType) {
+    switch (deviceType) {
+      case 'headphones':
+        return Icons.headphones;
+      case 'earphones':
+        return Icons.earbuds;
+      case 'speakers':
+        return Icons.speaker;
+      default:
+        return Icons.volume_up;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +46,7 @@ class AudioDeviceControls extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(
-                      _getDeviceIcon(state.activeDevice!.type),
-                      size: 24,
-                    ),
+                    Icon(_getDeviceIcon(state.activeDevice!.type), size: 24),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -58,160 +69,148 @@ class AudioDeviceControls extends StatelessWidget {
                 const Text('DSP Effects'),
                 const SizedBox(height: 8),
 
-                // Surround Sound
-                _buildEffectControl(
-                  context,
-                  'Surround Sound',
-                  state.powerSurround,
-                  state.surroundLevel,
-                  (enabled) => context.read<AudioBloc>().add(
-                        ToggleDeviceEffectPower(
-                          state.activeDevice!.id,
-                          'surround',
-                          enabled,
-                        ),
-                      ),
-                  state.powerSurround
+                EffectControl(
+                  label: 'Surround Sound',
+                  isEnabled: state.activeProfile?.powerSurround ?? false,
+                  value: state.activeProfile?.surroundLevel ?? 0.5,
+                  onToggle: (enabled) => context.read<AudioBloc>().add(
+                    ToggleDeviceEffectPower(
+                      state.activeDevice!.id,
+                      'surround',
+                      enabled,
+                    ),
+                  ),
+                  onSliderChanged: (state.activeProfile?.powerSurround ?? false)
                       ? (value) => context.read<AudioBloc>().add(
-                            UpdateDeviceEffectLevel(
-                              state.activeDevice!.id,
-                              'surround',
-                              value,
-                            ),
-                          )
+                          UpdateDeviceEffectLevel(
+                            state.activeDevice!.id,
+                            'surround',
+                            value,
+                          ),
+                        )
                       : null,
-                  0.0,
-                  1.0,
+                  min: 0.0,
+                  max: 1.0,
                 ),
 
-                // Noise Reduction
-                _buildEffectControl(
-                  context,
-                  'Noise Reduction',
-                  state.powerNoiseReduction,
-                  state.noiseLevel,
-                  (enabled) => context.read<AudioBloc>().add(
-                        ToggleDeviceEffectPower(
-                          state.activeDevice!.id,
-                          'noise',
-                          enabled,
-                        ),
-                      ),
-                  state.powerNoiseReduction
+                EffectControl(
+                  label: 'Noise Reduction',
+                  isEnabled: state.activeProfile?.powerNoiseReduction ?? false,
+                  value: state.activeProfile?.noiseLevel ?? 0.3,
+                  onToggle: (enabled) => context.read<AudioBloc>().add(
+                    ToggleDeviceEffectPower(
+                      state.activeDevice!.id,
+                      'noise',
+                      enabled,
+                    ),
+                  ),
+                  onSliderChanged: (state.activeProfile?.powerNoiseReduction ?? false)
                       ? (value) => context.read<AudioBloc>().add(
-                            UpdateDeviceEffectLevel(
-                              state.activeDevice!.id,
-                              'noise',
-                              value,
-                            ),
-                          )
+                          UpdateDeviceEffectLevel(
+                            state.activeDevice!.id,
+                            'noise',
+                            value,
+                          ),
+                        )
                       : null,
-                  0.0,
-                  5.0,
+                  min: 0.0,
+                  max: 5.0,
                 ),
 
-                // Stereo Enhancement
-                _buildEffectControl(
-                  context,
-                  'Stereo Enhancement',
-                  state.powerStereoEnhancement,
-                  state.stereoWidth,
-                  (enabled) => context.read<AudioBloc>().add(
-                        ToggleDeviceEffectPower(
-                          state.activeDevice!.id,
-                          'stereo',
-                          enabled,
-                        ),
-                      ),
-                  state.powerStereoEnhancement
+                EffectControl(
+                  label: 'Stereo Enhancement',
+                  isEnabled: state.activeProfile?.powerStereoEnhancement ?? false,
+                  value: state.activeProfile?.stereoWidth ?? 0.8,
+                  onToggle: (enabled) => context.read<AudioBloc>().add(
+                    ToggleDeviceEffectPower(
+                      state.activeDevice!.id,
+                      'stereo',
+                      enabled,
+                    ),
+                  ),
+                  onSliderChanged: (state.activeProfile?.powerStereoEnhancement ?? false)
                       ? (value) => context.read<AudioBloc>().add(
-                            UpdateDeviceEffectLevel(
-                              state.activeDevice!.id,
-                              'stereo',
-                              value,
-                            ),
-                          )
+                          UpdateDeviceEffectLevel(
+                            state.activeDevice!.id,
+                            'stereo',
+                            value,
+                          ),
+                        )
                       : null,
-                  0.0,
-                  2.0,
+                  min: 0.0,
+                  max: 2.0,
                 ),
 
-                // Voice Clarity
-                _buildEffectControl(
-                  context,
-                  'Voice Clarity',
-                  state.powerVoiceClarity,
-                  state.voiceGain,
-                  (enabled) => context.read<AudioBloc>().add(
-                        ToggleDeviceEffectPower(
-                          state.activeDevice!.id,
-                          'voice',
-                          enabled,
-                        ),
-                      ),
-                  state.powerVoiceClarity
+                EffectControl(
+                  label: 'Voice Clarity',
+                  isEnabled: state.activeProfile?.powerVoiceClarity ?? false,
+                  value: state.activeProfile?.voiceGain ?? 3.0,
+                  onToggle: (enabled) => context.read<AudioBloc>().add(
+                    ToggleDeviceEffectPower(
+                      state.activeDevice!.id,
+                      'voice',
+                      enabled,
+                    ),
+                  ),
+                  onSliderChanged: (state.activeProfile?.powerVoiceClarity ?? false)
                       ? (value) => context.read<AudioBloc>().add(
-                            UpdateDeviceEffectLevel(
-                              state.activeDevice!.id,
-                              'voice',
-                              value,
-                            ),
-                          )
+                          UpdateDeviceEffectLevel(
+                            state.activeDevice!.id,
+                            'voice',
+                            value,
+                          ),
+                        )
                       : null,
-                  -20.0,
-                  20.0,
+                  min: -20.0,
+                  max: 20.0,
                 ),
 
-                // Bass Boost
-                _buildEffectControl(
-                  context,
-                  'Bass Boost',
-                  state.powerBassBoost,
-                  state.bassGain,
-                  (enabled) => context.read<AudioBloc>().add(
-                        ToggleDeviceEffectPower(
-                          state.activeDevice!.id,
-                          'bass',
-                          enabled,
-                        ),
-                      ),
-                  state.powerBassBoost
+                EffectControl(
+                  label: 'Bass Boost',
+                  isEnabled: state.activeProfile?.powerBassBoost ?? false,
+                  value: state.activeProfile?.bassGain ?? 2.0,
+                  onToggle: (enabled) => context.read<AudioBloc>().add(
+                    ToggleDeviceEffectPower(
+                      state.activeDevice!.id,
+                      'bass',
+                      enabled,
+                    ),
+                  ),
+                  onSliderChanged: (state.activeProfile?.powerBassBoost ?? false)
                       ? (value) => context.read<AudioBloc>().add(
-                            UpdateDeviceEffectLevel(
-                              state.activeDevice!.id,
-                              'bass',
-                              value,
-                            ),
-                          )
+                          UpdateDeviceEffectLevel(
+                            state.activeDevice!.id,
+                            'bass',
+                            value,
+                          ),
+                        )
                       : null,
-                  -20.0,
-                  20.0,
+                  min: -20.0,
+                  max: 20.0,
                 ),
 
-                // Treble Enhancer
-                _buildEffectControl(
-                  context,
-                  'Treble Enhancer',
-                  state.powerTrebleEnhancer,
-                  state.trebleGain,
-                  (enabled) => context.read<AudioBloc>().add(
-                        ToggleDeviceEffectPower(
-                          state.activeDevice!.id,
-                          'treble',
-                          enabled,
-                        ),
-                      ),
-                  state.powerTrebleEnhancer
+                EffectControl(
+                  label: 'Treble Enhancer',
+                  isEnabled: state.activeProfile?.powerTrebleEnhancer ?? false,
+                  value: state.activeProfile?.trebleGain ?? 1.0,
+                  onToggle: (enabled) => context.read<AudioBloc>().add(
+                    ToggleDeviceEffectPower(
+                      state.activeDevice!.id,
+                      'treble',
+                      enabled,
+                    ),
+                  ),
+                  onSliderChanged: (state.activeProfile?.powerTrebleEnhancer ?? false)
                       ? (value) => context.read<AudioBloc>().add(
-                            UpdateDeviceEffectLevel(
-                              state.activeDevice!.id,
-                              'treble',
-                              value,
-                            ),
-                          )
+                          UpdateDeviceEffectLevel(
+                            state.activeDevice!.id,
+                            'treble',
+                            value,
+                          ),
+                        )
                       : null,
-                  -20.0,
-                  20.0,
+                  min: -20.0,
+                  max: 20.0,
                 ),
 
                 if (state.error != null)
@@ -219,7 +218,9 @@ class AudioDeviceControls extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 8.0),
                     child: Text(
                       state.error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ),
               ],
@@ -227,60 +228,6 @@ class AudioDeviceControls extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  IconData _getDeviceIcon(String deviceType) {
-    switch (deviceType) {
-      case 'headphones':
-        return Icons.headphones;
-      case 'earphones':
-        return Icons.earbuds;
-      case 'speakers':
-        return Icons.speaker;
-      default:
-        return Icons.volume_up;
-    }
-  }
-
-  Widget _buildEffectControl(
-    BuildContext context,
-    String label,
-    bool isEnabled,
-    double value,
-    ValueChanged<bool> onToggle,
-    ValueChanged<double>? onSliderChanged,
-    double min,
-    double max,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            Switch(
-              value: isEnabled,
-              onChanged: onToggle,
-            ),
-          ],
-        ),
-        if (isEnabled && onSliderChanged != null)
-          Slider(
-            value: value.isNaN ? min : value.clamp(min, max),
-            min: min,
-            max: max,
-            divisions: (max - min) >= 10 ? 10 : null,
-            label: value.isNaN ? min.toStringAsFixed(1) : value.toStringAsFixed(1),
-            onChanged: onSliderChanged,
-          ),
-        const SizedBox(height: 8),
-      ],
     );
   }
 }

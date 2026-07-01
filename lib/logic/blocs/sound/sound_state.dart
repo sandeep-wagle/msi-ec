@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:equatable/equatable.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SoundState extends Equatable {
   final String profile;
@@ -62,12 +64,64 @@ class SoundState extends Equatable {
 
   factory SoundState.initial() => SoundState.defaultsFor('Gaming');
 
+  factory SoundState.fromPrefs(SharedPreferences prefs) {
+    try {
+      final jsonStr = prefs.getString('sound_settings');
+      if (jsonStr == null) return SoundState.initial();
+      final map = json.decode(jsonStr);
+      return SoundState(
+        profile: map['profile'] ?? 'Gaming',
+        eqGains:
+            (map['eqGains'] as List<dynamic>?)
+                ?.map((e) => (e as num).toDouble())
+                .toList() ??
+            List.generate(10, (_) => 0.0),
+        virtualSurround: map['virtualSurround'] ?? true,
+        bassBoost: map['bassBoost'] ?? true,
+        voiceClarity: map['voiceClarity'] ?? true,
+        trebleEnhancer: map['trebleEnhancer'] ?? true,
+        smartVolume: map['smartVolume'] ?? true,
+        stereoWidth: (map['stereoWidth'] as num?)?.toDouble() ?? 2.0,
+        volumeBoost: (map['volumeBoost'] as num?)?.toDouble() ?? 1.0,
+        sampleRate: map['sampleRate'] ?? 48000,
+        bassGain: (map['bassGain'] as num?)?.toDouble() ?? 4.0,
+        trebleGain: (map['trebleGain'] as num?)?.toDouble() ?? 4.0,
+        voiceGain: (map['voiceGain'] as num?)?.toDouble() ?? 6.0,
+        noiseLevel: (map['noiseLevel'] as num?)?.toDouble() ?? 0.0,
+        limiterEnabled: map['limiterEnabled'] ?? true,
+        compressorRatio: (map['compressorRatio'] as num?)?.toDouble() ?? 4.0,
+        trackerEnabled: map['trackerEnabled'] ?? false,
+        sharingEnabled: map['sharingEnabled'] ?? false,
+        nightMode: map['nightMode'] ?? false,
+        effectsEnabled: map['effectsEnabled'] ?? true,
+        micEnabled: map['micEnabled'] ?? true,
+        micNoiseSuppression: map['micNoiseSuppression'] ?? true,
+        echoCancellation: map['echoCancellation'] ?? true,
+        microphoneGain: (map['microphoneGain'] as num?)?.toDouble() ?? 1.0,
+        surroundVariation: map['surroundVariation'] ?? 'Surround',
+      );
+    } catch (_) {
+      return SoundState.initial();
+    }
+  }
+
   factory SoundState.defaultsFor(String profile) {
     switch (profile) {
       case 'Music':
         return SoundState(
           profile: 'Music',
-          eqGains: const [2.0, 1.5, 0.5, 0.0, 0.0, -1.0, -1.5, -2.0, -2.5, -3.0],
+          eqGains: const [
+            2.0,
+            1.5,
+            0.5,
+            0.0,
+            0.0,
+            -1.0,
+            -1.5,
+            -2.0,
+            -2.5,
+            -3.0,
+          ],
           virtualSurround: true,
           bassBoost: true,
           voiceClarity: true,
@@ -86,7 +140,18 @@ class SoundState extends Equatable {
       case 'Movie':
         return SoundState(
           profile: 'Movie',
-          eqGains: const [3.0, 2.0, 1.0, 0.5, 0.0, -0.5, -1.0, -1.5, -2.0, -2.5],
+          eqGains: const [
+            3.0,
+            2.0,
+            1.0,
+            0.5,
+            0.0,
+            -0.5,
+            -1.0,
+            -1.5,
+            -2.0,
+            -2.5,
+          ],
           virtualSurround: true,
           bassBoost: true,
           voiceClarity: true,

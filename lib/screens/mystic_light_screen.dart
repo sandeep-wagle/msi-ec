@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
-import '../core/di/injection.dart';
-import '../services/toast_service.dart';
+import 'package:msi_controller/core/app_colors.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/services/persistence_service.dart';
+import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/screens/mystic_light/widgets/mystic_light_apply_button.dart';
+import 'package:msi_controller/screens/mystic_light/widgets/mystic_light_color_slider.dart';
+import 'package:msi_controller/screens/mystic_light/widgets/effect_card.dart';
 
 class MysticLightScreen extends StatefulWidget {
   const MysticLightScreen({super.key});
@@ -12,292 +18,282 @@ class MysticLightScreen extends StatefulWidget {
 class _MysticLightScreenState extends State<MysticLightScreen>
     with SingleTickerProviderStateMixin {
   String _effect = 'Static';
-  Color _color = Colors.red;
+  Color _color = const Color(0xFFEB1D24);
   double _brightness = 1.0;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
+  final PersistenceService _storage = getIt<PersistenceService>();
 
-  final List<String> _effects = [
-    'Static',
-    'Breathing',
-    'Color Cycle',
-    'Wave',
-    'Flashing',
-    'Random',
+  final List<(String, IconData)> _effects = [
+    ('Static', Icons.stop_circle_outlined),
+    ('Breathing', Icons.air),
+    ('Color Cycle', Icons.loop),
+    ('Wave', Icons.waves),
+    ('Flashing', Icons.flash_on),
+    ('Random', Icons.shuffle),
   ];
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
-    );
-    _animationController.forward();
+    _effect = _storage.loadMysticEffect();
+    _color = Color(_storage.loadMysticColor());
+    _brightness = _storage.loadMysticBrightness();
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+  void _save() {
+    _storage.saveMysticLight(
+      effect: _effect,
+      color: _color.toARGB32(),
+      brightness: _brightness,
+      zone: 0,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final colors = theme.extension<AppColors>()!;
 
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: const Text(
+          'Mystic Light',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.xxxl,
+          AppSpacing.md,
+          AppSpacing.xxxl,
+          AppSpacing.xxxl,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
-                  'Mystic Light',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.black87,
+                Container(
+                  width: 3,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: colors.performance,
+                    borderRadius: AppRadius.xsAll,
                   ),
                 ),
-                const SizedBox(width: 16),
-                const Icon(Icons.lightbulb, color: Colors.redAccent, size: 28),
+                const SizedBox(width: AppSpacing.md),
+                const Text(
+                  'RGB Synchronization',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const Spacer(),
+                Icon(
+                  Icons.lightbulb_outline,
+                  color: colors.performance,
+                  size: 24,
+                ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
-              'Control RGB lighting effects on your MSI devices.',
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+              'Personalize your hardware with dynamic RGB lighting effects.',
+              style: TextStyle(color: colors.textTertiary, fontSize: 13),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
 
-            // Effect Selection
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Lighting Effect',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: _effects.map((effect) {
-                      final isSelected = _effect == effect;
-                      return GestureDetector(
-                        onTap: () => setState(() => _effect = effect),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.redAccent
-                                : (isDark
-                                      ? Colors.white10
-                                      : Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            effect,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? Colors.white70 : Colors.black87),
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+            // Effect Grid
+            Text(
+              'LIGHTING EFFECTS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: colors.textSecondary,
+                letterSpacing: 1.2,
               ),
             ),
+            const SizedBox(height: AppSpacing.md),
+            GridView.count(
+              crossAxisCount: MediaQuery.of(context).size.width > 800 ? 6 : 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: AppSpacing.md,
+              crossAxisSpacing: AppSpacing.md,
+              children: _effects
+                  .map((e) => EffectCard(
+                    name: e.$1,
+                    icon: e.$2,
+                    colors: colors,
+                    isSelected: _effect == e.$1,
+                    onTap: () {
+                      setState(() => _effect = e.$1);
+                      _save();
+                    },
+                  ))
+                  .toList(),
+            ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: AppSpacing.xxxl),
 
-            // Color Picker
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Color Selection',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+            // Color Selection
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Container(
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: _color,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _color.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'Preview',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Column(
-                        children: [
-                          const Text('Red'),
-                          Slider(
-                            value: _color.red / 255.0,
-                            onChanged: (value) => setState(
-                              () => _color = Color.fromARGB(
-                                _color.alpha,
-                                (value * 255).round(),
-                                _color.green,
-                                _color.blue,
-                              ),
-                            ),
-                            activeColor: Colors.red,
-                          ),
-                          const Text('Green'),
-                          Slider(
-                            value: _color.green / 255.0,
-                            onChanged: (value) => setState(
-                              () => _color = Color.fromARGB(
-                                _color.alpha,
-                                _color.red,
-                                (value * 255).round(),
-                                _color.blue,
-                              ),
-                            ),
-                            activeColor: Colors.green,
-                          ),
-                          const Text('Blue'),
-                          Slider(
-                            value: _color.blue / 255.0,
-                            onChanged: (value) => setState(
-                              () => _color = Color.fromARGB(
-                                _color.alpha,
-                                _color.red,
-                                _color.green,
-                                (value * 255).round(),
-                              ),
-                            ),
-                            activeColor: Colors.blue,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Brightness
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.03)
-                    : Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.black12,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Brightness',
+                      Text(
+                        'COLOR PALETTE',
                         style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textSecondary,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                      Text('${(_brightness * 100).round()}%'),
+                      const SizedBox(height: AppSpacing.md),
+                      GlassCard(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: _buildColorControls(colors),
+                      ),
                     ],
                   ),
-                  Slider(
-                    value: _brightness,
-                    onChanged: (value) => setState(() => _brightness = value),
-                    activeColor: Colors.redAccent,
+                ),
+                const SizedBox(width: AppSpacing.xl),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'BRIGHTNESS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: colors.textSecondary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      GlassCard(
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: _buildBrightnessControl(colors),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: AppSpacing.xxxl),
+
+            // Apply Section
+            MysticLightApplyButton(colors: colors),
+            const SizedBox(height: AppSpacing.xxxl),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorControls(AppColors colors) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: _color,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: colors.textPrimary.withValues(alpha: 0.2),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _color.withValues(alpha: 0.4),
+                    blurRadius: 12,
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 32),
-
-            // Apply Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  // Apply RGB settings
-                  getIt<ToastService>().showSuccess(
-                    'Applied Mystic Light: $_effect effect with brightness ${(_brightness * 100).round()}%',
-                  );
-                },
-                icon: const Icon(Icons.lightbulb),
-                label: const Text('Apply Settings'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.redAccent,
-                  foregroundColor: Colors.white,
-                ),
+            const SizedBox(width: AppSpacing.xl),
+            Expanded(
+              child: Column(
+                children: [
+                  MysticLightColorSlider(
+                    label: 'R',
+                    value: _color.r,
+                    color: Colors.red,
+                    onChanged: (v) => _updateColor(r: v),
+                  ),
+                  MysticLightColorSlider(
+                    label: 'G',
+                    value: _color.g,
+                    color: Colors.green,
+                    onChanged: (v) => _updateColor(g: v),
+                  ),
+                  MysticLightColorSlider(
+                    label: 'B',
+                    value: _color.b,
+                    color: Colors.blue,
+                    onChanged: (v) => _updateColor(b: v),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-      ),
+      ],
+    );
+  }
+
+  void _updateColor({double? r, double? g, double? b}) {
+    setState(() {
+      _color = Color.fromARGB(
+        255,
+        ((r ?? _color.r) * 255).round(),
+        ((g ?? _color.g) * 255).round(),
+        ((b ?? _color.b) * 255).round(),
+      );
+    });
+    _save();
+  }
+
+  Widget _buildBrightnessControl(AppColors colors) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          '${(_brightness * 100).round()}%',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'monospace',
+            color: colors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Slider(
+          value: _brightness,
+          onChanged: (v) {
+            setState(() => _brightness = v);
+            _save();
+          },
+          activeColor: colors.performance,
+        ),
+      ],
     );
   }
 }

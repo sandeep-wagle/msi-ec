@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../sound_tune_theme.dart';
-import '../../../logic/blocs/sound/sound_bloc.dart';
-import '../../../logic/blocs/sound/sound_event.dart';
+import 'package:msi_controller/screens/sound_tune/sound_tune_theme.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_bloc.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_event.dart';
 
 class NahimicPanel extends StatefulWidget {
   final Widget child;
@@ -27,16 +27,18 @@ class _NahimicPanelState extends State<NahimicPanel> {
         decoration: BoxDecoration(
           color: _isHovered ? const Color(0xFF10141C) : kPanel,
           border: Border.all(
-            color: _isHovered ? kAccent.withValues(alpha: 0.5) : kPanelBorder, 
-            width: 0.5
+            color: _isHovered ? kAccent.withValues(alpha: 0.5) : kPanelBorder,
+            width: 0.5,
           ),
-          boxShadow: _isHovered ? [
-            BoxShadow(
-              color: kAccent.withValues(alpha: 0.05),
-              blurRadius: 10,
-              spreadRadius: 2,
-            )
-          ] : null,
+          boxShadow: _isHovered
+              ? [
+                  BoxShadow(
+                    color: kAccent.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
         ),
         child: widget.child,
       ),
@@ -63,7 +65,8 @@ class PowerToggle extends StatelessWidget {
     });
 
     return Tooltip(
-      message: 'Toggle ${field.replaceAll(RegExp(r"(?=[A-Z])"), " ").toLowerCase()}',
+      message:
+          'Toggle ${field.replaceAll(RegExp(r"(?=[A-Z])"), " ").toLowerCase()}',
       child: GestureDetector(
         onTap: () =>
             context.read<SoundBloc>().add(ToggleEnhancement(field, !isActive)),
@@ -72,10 +75,21 @@ class PowerToggle extends StatelessWidget {
           height: 34,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive ? kAccent.withValues(alpha: 0.15) : Colors.transparent,
-            border: Border.all(color: isActive ? kAccent : kTextSub.withValues(alpha: 0.5), width: 1.5),
+            color: isActive
+                ? kAccent.withValues(alpha: 0.15)
+                : Colors.transparent,
+            border: Border.all(
+              color: isActive ? kAccent : kTextSub.withValues(alpha: 0.5),
+              width: 1.5,
+            ),
             boxShadow: isActive
-                ? [BoxShadow(color: kAccentGlow.withValues(alpha: 0.2), blurRadius: 10, spreadRadius: 2)]
+                ? [
+                    BoxShadow(
+                      color: kAccentGlow.withValues(alpha: 0.2),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ]
                 : null,
           ),
           child: Icon(
@@ -93,7 +107,12 @@ class SmallPill extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback? onTap;
-  const SmallPill({required this.label, required this.active, this.onTap, super.key});
+  const SmallPill({
+    required this.label,
+    required this.active,
+    this.onTap,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +122,9 @@ class SmallPill extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: active ? kAccent.withValues(alpha: 0.1) : Colors.transparent,
-          border: Border.all(color: active ? kAccent : kTextSub.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: active ? kAccent : kTextSub.withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(2),
         ),
         child: Text(
@@ -153,7 +174,10 @@ class _NahimicSliderState extends State<NahimicSlider> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalRange = widget.max - widget.min;
-        final progress = ((widget.value - widget.min) / totalRange).clamp(0.0, 1.0);
+        final progress = ((widget.value - widget.min) / totalRange).clamp(
+          0.0,
+          1.0,
+        );
         final isActive = widget.onChanged != null;
 
         return GestureDetector(
@@ -167,23 +191,29 @@ class _NahimicSliderState extends State<NahimicSlider> {
             if (!isActive) return;
             final box = context.findRenderObject() as RenderBox;
             final localPos = box.globalToLocal(details.globalPosition);
-            
+
             double newValue;
             if (widget.isVertical) {
-              newValue = widget.max - (localPos.dy / constraints.maxHeight) * totalRange;
+              newValue =
+                  widget.max -
+                  (localPos.dy / constraints.maxHeight) * totalRange;
             } else {
-              newValue = widget.min + (localPos.dx / constraints.maxWidth) * totalRange;
+              newValue =
+                  widget.min +
+                  (localPos.dx / constraints.maxWidth) * totalRange;
             }
             widget.onChanged!(newValue.clamp(widget.min, widget.max));
           },
           child: MouseRegion(
             onEnter: (_) => setState(() => _isInteracting = true),
             onExit: (_) => setState(() => _isInteracting = false),
-            cursor: isActive ? SystemMouseCursors.grab : SystemMouseCursors.basic,
+            cursor: isActive
+                ? SystemMouseCursors.grab
+                : SystemMouseCursors.basic,
             child: Container(
               width: widget.isVertical ? 40 : double.infinity,
               height: widget.isVertical ? double.infinity : 40,
-              color: Colors.transparent, 
+              color: Colors.transparent,
               child: Center(
                 child: Container(
                   width: widget.isVertical ? 6 : double.infinity,
@@ -193,7 +223,9 @@ class _NahimicSliderState extends State<NahimicSlider> {
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Stack(
-                    alignment: widget.isVertical ? Alignment.bottomCenter : Alignment.centerLeft,
+                    alignment: widget.isVertical
+                        ? Alignment.bottomCenter
+                        : Alignment.centerLeft,
                     clipBehavior: Clip.none,
                     children: [
                       if (widget.isVertical)
@@ -227,8 +259,12 @@ class _NahimicSliderState extends State<NahimicSlider> {
                           ),
                         ),
                       Positioned(
-                        bottom: widget.isVertical ? (progress * constraints.maxHeight) - 8 : -5,
-                        left: widget.isVertical ? -5 : (progress * constraints.maxWidth) - 8,
+                        bottom: widget.isVertical
+                            ? (progress * constraints.maxHeight) - 8
+                            : -5,
+                        left: widget.isVertical
+                            ? -5
+                            : (progress * constraints.maxWidth) - 8,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 100),
                           width: 16,
@@ -236,38 +272,65 @@ class _NahimicSliderState extends State<NahimicSlider> {
                           decoration: BoxDecoration(
                             color: isActive ? Colors.white : kTextSub,
                             shape: BoxShape.circle,
-                            border: Border.all(color: isActive ? kAccent : kTextSub, width: 2),
+                            border: Border.all(
+                              color: isActive ? kAccent : kTextSub,
+                              width: 2,
+                            ),
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2)),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
                               if (isActive && _isInteracting)
-                                BoxShadow(color: kAccent.withValues(alpha: 0.6), blurRadius: 12, spreadRadius: 4),
+                                BoxShadow(
+                                  color: kAccent.withValues(alpha: 0.6),
+                                  blurRadius: 12,
+                                  spreadRadius: 4,
+                                ),
                             ],
                           ),
                         ),
                       ),
                       if (isActive && _isInteracting)
                         Positioned(
-                          bottom: widget.isVertical ? (progress * constraints.maxHeight) + 24 : 28,
-                          left: widget.isVertical ? -38 : (progress * constraints.maxWidth) - 20,
+                          bottom: widget.isVertical
+                              ? (progress * constraints.maxHeight) + 24
+                              : 28,
+                          left: widget.isVertical
+                              ? -38
+                              : (progress * constraints.maxWidth) - 20,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               color: kPanel.withValues(alpha: 0.95),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: kAccent.withValues(alpha: 0.6), width: 1.5),
+                              border: Border.all(
+                                color: kAccent.withValues(alpha: 0.6),
+                                width: 1.5,
+                              ),
                               boxShadow: [
-                                BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 12),
-                                BoxShadow(color: kAccent.withValues(alpha: 0.2), blurRadius: 4),
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  blurRadius: 12,
+                                ),
+                                BoxShadow(
+                                  color: kAccent.withValues(alpha: 0.2),
+                                  blurRadius: 4,
+                                ),
                               ],
                             ),
                             child: Text(
                               widget.labelTransformer?.call(widget.value) ??
-                              (widget.max <= 1.5 
-                                ? '${(widget.value * 100).toInt()}%'
-                                : '${widget.value.toInt()} dB'),
+                                  (widget.max <= 1.5
+                                      ? '${(widget.value * 100).toInt()}%'
+                                      : '${widget.value.toInt()} dB'),
                               style: const TextStyle(
-                                color: Colors.white, 
-                                fontSize: 11, 
+                                color: Colors.white,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.5,
                               ),
@@ -315,7 +378,11 @@ class HeaderActionButton extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 label,
-                style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: color,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),

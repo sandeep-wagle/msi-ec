@@ -97,6 +97,26 @@ This app controls MSI laptop hardware (fan speed, GPU mode, keyboard LEDs). Prio
 - `const` constructors on every widget
 - NO heavy ops in `build()`
 
+---
+
+## Widget Decomposition — NO Helper Functions
+
+❌ **BANNED:** Private helper functions returning widgets (`Widget _buildXxx(...) { }`)
+✅ **REQUIRED:** Extract into dedicated `StatelessWidget`/`StatefulWidget` classes in separate files.
+
+```dart
+// BANNED
+Widget _buildSectionHeader(String title) { return Padding(...); }
+
+// REQUIRED
+class SectionHeader extends StatelessWidget {
+  const SectionHeader({super.key, required this.title});
+  final String title;
+  @override
+  Widget build(BuildContext context) { ... }
+}
+```
+
 ## Coding Standards
 
 - NO magic numbers/strings
@@ -105,20 +125,46 @@ This app controls MSI laptop hardware (fan speed, GPU mode, keyboard LEDs). Prio
 - NO dead code — zero TODO, zero commented blocks
 - const constructors with `super.key` on every widget
 
-## Import Order
+## Import Conventions
+
+### Package Imports Only — NO Relative Imports
+
+❌ **BANNED:** Relative imports (`../`, `./`)
+✅ **REQUIRED:** `package:msi_controller/` imports always
 
 ```dart
 // 1. dart:*
 // 2. package:flutter/*
 // 3. third-party (alpha)
 // 4. package:msi_controller/* (alpha)
-// 5. ../relative
+// (NO relative imports — banned)
 ```
+
+---
+
+## Button Conventions
+
+### ALWAYS Use `AppButton` — NO Raw Flutter Buttons
+
+❌ **BANNED:** `ElevatedButton`, `TextButton`, `OutlinedButton`, `FilledButton`
+✅ **REQUIRED:** `AppButton`
+
+| Raw Button | AppButton Props |
+|---|---|
+| `ElevatedButton` | `isElevated: true` (default) |
+| `FilledButton` | `isElevated: false, isFilled: true` |
+| `OutlinedButton` | `isOutline: true` |
+| `TextButton` | `isPrimary: false, isElevated: false, isFilled: false, isOutline: false` |
+
+---
 
 ## Validation
 
 ```
 [ ] HCR exclusion: no banned phrases
+[ ] All imports use package:msi_controller/ (no relative)
+[ ] All buttons use AppButton (no raw buttons)
+[ ] No helper functions returning widgets — dedicated widget classes only
 [ ] State: sealed + .when(), no casts
 [ ] Performance: builder, const, withValues
 [ ] Naming: snake_case files, PascalCase classes

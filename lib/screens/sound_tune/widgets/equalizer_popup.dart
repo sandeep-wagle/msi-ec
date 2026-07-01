@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../sound_tune_theme.dart';
+import 'package:msi_controller/screens/sound_tune/sound_tune_theme.dart';
 import 'shared_widgets.dart';
-import '../../../logic/blocs/sound/sound_bloc.dart';
-import '../../../logic/blocs/sound/sound_event.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_bloc.dart';
+import 'package:msi_controller/logic/blocs/sound/sound_event.dart';
 
 class EqualizerPopup extends StatelessWidget {
   const EqualizerPopup({super.key});
@@ -23,7 +23,11 @@ class EqualizerPopup extends StatelessWidget {
             color: kPanel,
             border: Border.all(color: kPanelBorder, width: 2),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 40, spreadRadius: 10),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 40,
+                spreadRadius: 10,
+              ),
             ],
           ),
           child: Column(
@@ -36,12 +40,21 @@ class EqualizerPopup extends StatelessWidget {
                     children: [
                       Text(
                         profile.toUpperCase(),
-                        style: const TextStyle(color: kAccent, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: kAccent,
+                          fontSize: 12,
+                          letterSpacing: 2,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 24),
                       GestureDetector(
                         onTap: () => Navigator.of(context).pop(),
-                        child: const Icon(Icons.close, color: kAccent, size: 24),
+                        child: const Icon(
+                          Icons.close,
+                          color: kAccent,
+                          size: 24,
+                        ),
                       ),
                     ],
                   ),
@@ -52,7 +65,18 @@ class EqualizerPopup extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(10, (i) {
-                    final labels = ['32Hz', '64Hz', '125Hz', '250Hz', '500Hz', '1kHz', '2kHz', '4kHz', '8kHz', '16kHz'];
+                    final labels = [
+                      '32Hz',
+                      '64Hz',
+                      '125Hz',
+                      '250Hz',
+                      '500Hz',
+                      '1kHz',
+                      '2kHz',
+                      '4kHz',
+                      '8kHz',
+                      '16kHz',
+                    ];
                     return EqBand(index: i, label: labels[i]);
                   }),
                 ),
@@ -63,11 +87,21 @@ class EqualizerPopup extends StatelessWidget {
                 children: [
                   Text(
                     'LOWEST NOTES (BASS)',
-                    style: TextStyle(color: kTextSub.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(
+                      color: kTextSub.withValues(alpha: 0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                   Text(
                     'HIGHEST NOTES (TREBLE)',
-                    style: TextStyle(color: kTextSub.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: TextStyle(
+                      color: kTextSub.withValues(alpha: 0.7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
                   ),
                 ],
               ),
@@ -94,7 +128,11 @@ class EqBand extends StatelessWidget {
         children: [
           Text(
             gain.toStringAsFixed(0),
-            style: const TextStyle(color: kAccent, fontSize: 12, fontWeight: FontWeight.w900),
+            style: const TextStyle(
+              color: kAccent,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -107,6 +145,12 @@ class EqBand extends StatelessWidget {
                 final bloc = context.read<SoundBloc>();
                 final newGains = List<double>.from(bloc.state.eqGains);
                 newGains[index] = v;
+                bloc.add(UpdateEQGainsPreview(newGains));
+              },
+              onChangedEnd: (v) {
+                final bloc = context.read<SoundBloc>();
+                final newGains = List<double>.from(bloc.state.eqGains);
+                newGains[index] = v;
                 bloc.add(UpdateEQGains(newGains));
               },
             ),
@@ -114,7 +158,11 @@ class EqBand extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             label,
-            style: TextStyle(color: kTextSub.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: kTextSub.withValues(alpha: 0.8),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
             textAlign: TextAlign.center,
           ),
         ],

@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../core/di/injection.dart';
-import '../domain/entities/system_info.dart';
-import '../domain/repositories/msi_repository.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/domain/entities/system_info.dart';
+import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/screens/hardware_monitoring/widgets/hardware_monitoring_widgets.dart';
 
 class HardwareMonitoringScreen extends StatefulWidget {
   const HardwareMonitoringScreen({super.key});
@@ -420,84 +421,38 @@ class _HardwareMonitoringScreenState extends State<HardwareMonitoringScreen>
             style: const TextStyle(fontSize: 13),
           ),
         ),
-        _buildSidebarRow('RAM', '$totalGb GB'),
-        _buildSidebarRow(
-          'VRAM',
-          '${_systemInfo?.vramUsage ?? 0} / ${_systemInfo?.vramTotal ?? 8192} MB',
+        SidebarRowWidget(label: 'RAM', value: '$totalGb GB'),
+        SidebarRowWidget(
+          label: 'VRAM',
+          value: '${_systemInfo?.vramUsage ?? 0} / ${_systemInfo?.vramTotal ?? 8192} MB',
           isAlt: true,
         ),
-        _buildSidebarRow(
-          'Fan 1',
-          '${fans.isNotEmpty ? fans[0].currentRpm : 0} RPM',
+        SidebarRowWidget(
+          label: 'Fan 1',
+          value: '${fans.isNotEmpty ? fans[0].currentRpm : 0} RPM',
         ),
-        _buildSidebarRow(
-          'Fan 2',
-          '${fans.length > 1 ? fans[1].currentRpm : 0} RPM',
+        SidebarRowWidget(
+          label: 'Fan 2',
+          value: '${fans.length > 1 ? fans[1].currentRpm : 0} RPM',
           isAlt: true,
         ),
-        _buildSidebarRow('GPU Clock', '${_systemInfo?.gpuCoreClock ?? 0} MHz'),
-        _buildSidebarRow(
-          'CPU Temp',
-          '${_systemInfo?.cpuTemperature ?? 0} °C',
+        SidebarRowWidget(label: 'GPU Clock', value: '${_systemInfo?.gpuCoreClock ?? 0} MHz'),
+        SidebarRowWidget(
+          label: 'CPU Temp',
+          value: '${_systemInfo?.cpuTemperature ?? 0} °C',
           isAlt: true,
         ),
-        _buildSidebarRow('GPU Temp', '${_systemInfo?.gpuTemperature ?? 0} °C'),
-        _buildSsdRow(),
-        _buildSidebarRow(
-          'Power Plan',
-          _systemInfo?.powerPlan ?? 'Balance',
+        SidebarRowWidget(label: 'GPU Temp', value: '${_systemInfo?.gpuTemperature ?? 0} °C'),
+        SsdRowWidget(diskUsage: 0.16),
+        SidebarRowWidget(
+          label: 'Power Plan',
+          value: _systemInfo?.powerPlan ?? 'Balance',
           isAlt: true,
         ),
       ],
     );
   }
 
-  Widget _buildSidebarRow(String label, String value, {bool isAlt = false}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: isAlt
-          ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
-          : null,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSsdRow() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          const Text('SSD', style: TextStyle(fontSize: 13, color: Colors.grey)),
-          const SizedBox(width: 8),
-          const Icon(Icons.storage, size: 14, color: Colors.grey),
-          const Spacer(),
-          const Text(
-            '400.67 GB available',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 80,
-            child: LinearProgressIndicator(
-              value: 0.16,
-              minHeight: 4,
-              backgroundColor: Colors.grey.withValues(alpha: 0.2),
-              color: Colors.blue.shade700,
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text('16 %', style: TextStyle(fontSize: 11)),
-        ],
-      ),
-    );
-  }
 }
+
+

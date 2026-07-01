@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../domain/entities/system_info.dart';
-import '../logic/blocs/settings/settings_bloc.dart';
-import '../logic/blocs/settings/settings_event.dart';
-import '../logic/blocs/settings/settings_state.dart';
+import 'package:msi_controller/core/app_colors.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/domain/entities/system_info.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_bloc.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_event.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_state.dart';
+import 'package:msi_controller/domain/repositories/msi_repository.dart';
+import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/screens/user_scenario/widgets/user_scenario_telemetry_item.dart';
 
 class UserScenarioScreen extends StatefulWidget {
   const UserScenarioScreen({super.key});
@@ -13,182 +19,246 @@ class UserScenarioScreen extends StatefulWidget {
   State<UserScenarioScreen> createState() => _UserScenarioScreenState();
 }
 
-class _UserScenarioScreenState extends State<UserScenarioScreen> {
-  bool _cpuSoftwareControl = true;
-  bool _fanSoftwareControl = true;
+class _UserScenarioScreenState extends State<UserScenarioScreen>
+    with AutomaticKeepAliveClientMixin {
+  final MsiRepository _repository = getIt<MsiRepository>();
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    final theme = Theme.of(context);
+    final colors = theme.extension<AppColors>()!;
+
     return BlocBuilder<SettingsBloc, SettingsState>(
       builder: (context, state) {
-        final width = MediaQuery.of(context).size.width;
-        final horizontalPadding = width < 900 ? 12.0 : 16.0;
-        final titleFontSize = width < 900 ? 32.0 : 40.0;
-        final gpuTitleFontSize = width < 900 ? 30.0 : 36.0;
-        final compactHeader = width < 1000;
-        final isApplying =
-            state.isPerformanceLoading ||
-            state.isGpuLoading ||
-            state.isFanLoading ||
-            state.isGpuSwitching;
-
-        String loadingText = 'Applying settings...';
-        if (state.isPerformanceLoading) {
-          loadingText = 'Applying performance mode...';
-        } else if (state.isGpuSwitching || state.isGpuLoading) {
-          loadingText = 'Switching GPU mode...';
-        } else if (state.isFanLoading) {
-          loadingText = 'Applying fan mode...';
-        }
-
         return Scaffold(
-          backgroundColor: const Color(0xFF0B0D12),
-          body: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: horizontalPadding,
-              vertical: 16,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  runSpacing: 10,
-                  spacing: 16,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      'User Scenario',
-                      style: TextStyle(
-                        color: const Color(0xFFE7E7E7),
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w700,
+          backgroundColor: Colors.transparent,
+          body: StreamBuilder<SystemInfo>(
+            stream: _repository.systemInfoStream,
+            initialData: _repository.lastSystemInfo,
+            builder: (context, sysSnapshot) {
+              final info = sysSnapshot.data;
+
+              return CustomScrollView(
+                slivers: [
+                  // Premium Header
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xxxl,
+                        AppSpacing.xxxl,
+                        AppSpacing.xxxl,
+                        AppSpacing.xl,
                       ),
-                    ),
-                    if (compactHeader) const SizedBox(width: 0),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Software Control Mode',
-                          style: TextStyle(
-                            color: Color(0xFF8D8D8D),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'CPU',
-                          style: TextStyle(
-                            color: Color(0xFFE7E7E7),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Transform.scale(
-                          scale: 0.75,
-                          child: Switch(
-                            value: _cpuSoftwareControl,
-                            onChanged: (value) {
-                              setState(() => _cpuSoftwareControl = value);
-                            },
-                            activeThumbColor: const Color(0xFFE53935),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Fan',
-                          style: TextStyle(
-                            color: Color(0xFFE7E7E7),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Transform.scale(
-                          scale: 0.75,
-                          child: Switch(
-                            value: _fanSoftwareControl,
-                            onChanged: (value) {
-                              setState(() => _fanSoftwareControl = value);
-                            },
-                            activeThumbColor: const Color(0xFFE53935),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: isApplying
-                      ? Container(
-                          key: const ValueKey('scenario-loading'),
-                          margin: const EdgeInsets.only(top: 10),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1A1D23),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0x55E53935)),
-                          ),
-                          child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
                             children: [
-                              const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFFE53935),
-                                  ),
+                              Container(
+                                width: 3,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: colors.performance,
+                                  borderRadius: AppRadius.xsAll,
                                 ),
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  loadingText,
-                                  style: const TextStyle(
-                                    color: Color(0xFFD7D7D7),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                              const SizedBox(width: AppSpacing.md),
+                              Text(
+                                'User Scenario',
+                                style: theme.textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.5,
                                 ),
                               ),
+                              const Spacer(),
+                              if (info != null)
+                                _buildTelemetryHeader(info, colors),
                             ],
                           ),
-                        )
-                      : const SizedBox.shrink(key: ValueKey('scenario-ready')),
-                ),
-                const SizedBox(height: 20),
-                _ScenarioCards(state: state),
-                if (state.performanceMode == PerformanceMode.user) ...[
-                  const SizedBox(height: 18),
-                  _CustomUserControls(state: state),
-                ],
-                const SizedBox(height: 28),
-                Text(
-                  'GPU Switch',
-                  style: TextStyle(
-                    color: Color(0xFFE3E3E3),
-                    fontSize: gpuTitleFontSize,
-                    fontWeight: FontWeight.w700,
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            'Select a performance profile to synchronize hardware protocols with your current mission.',
+                            style: TextStyle(
+                              color: colors.textTertiary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Choose the best GPU mode for your current workload.',
-                  style: TextStyle(color: Color(0xFF8E8E8E), fontSize: 16),
-                ),
-                const SizedBox(height: 14),
-                _GpuCards(state: state),
-              ],
-            ),
+
+                  // Applying Status (Only when active)
+                  if (state.isPerformanceLoading ||
+                      state.isGpuLoading ||
+                      state.isFanLoading)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xxxl,
+                          vertical: AppSpacing.md,
+                        ),
+                        child: _buildApplyingBanner(state, colors),
+                      ),
+                    ),
+
+                  // Mode Grid
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxxl,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: _ScenarioCards(state: state),
+                    ),
+                  ),
+
+                  // Manual Console (Only for User mode)
+                  if (state.performanceMode == PerformanceMode.user)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xxxl,
+                        AppSpacing.xxxl,
+                        AppSpacing.xxxl,
+                        0,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'MANUAL PROTOCOL OVERRIDE',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: colors.textSecondary,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            _CustomUserControls(state: state),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                  // GPU Console
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xxxl,
+                        AppSpacing.xxxl,
+                        AppSpacing.xxxl,
+                        AppSpacing.md,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'GRAPHICS ARCHITECTURE',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: colors.textSecondary,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Hardware-level GPU mode switching requires a display protocol restart.',
+                            style: TextStyle(
+                              color: colors.textTertiary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.xxxl,
+                    ),
+                    sliver: SliverToBoxAdapter(child: _GpuCards(state: state)),
+                  ),
+
+                  const SliverToBoxAdapter(
+                    child: SizedBox(height: AppSpacing.xxxl),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
+    );
+  }
+
+  Widget _buildTelemetryHeader(SystemInfo info, AppColors colors) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        UserScenarioTelemetryItem(
+          icon: Icons.thermostat,
+          value: '${info.cpuTemperature ?? "--"}°C',
+          color: colors.performance,
+        ),
+        const SizedBox(width: AppSpacing.xl),
+        UserScenarioTelemetryItem(
+          icon: Icons.bolt,
+          value: '${info.cpuUsage ?? "--"}%',
+          color: colors.balanced,
+        ),
+        const SizedBox(width: AppSpacing.xl),
+        UserScenarioTelemetryItem(
+          icon: Icons.battery_charging_full,
+          value: '${info.batteryLevel ?? "--"}%',
+          color: colors.success,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildApplyingBanner(SettingsState state, AppColors colors) {
+    String loadingText = 'SYNCING PROTOCOLS...';
+    if (state.isPerformanceLoading) {
+      loadingText = 'PUSHING PERFORMANCE CLOCK...';
+    } else if (state.isGpuLoading) {
+      loadingText = 'SWITCHING GRAPHICS BUS...';
+    } else if (state.isFanLoading) {
+      loadingText = 'ADJUSTING THERMAL CURVE...';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.performance.withValues(alpha: 0.1),
+        borderRadius: AppRadius.smAll,
+        border: Border.all(color: colors.performance.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            loadingText,
+            style: TextStyle(
+              color: colors.performance,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -200,32 +270,29 @@ class _ScenarioCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const cards = [
-      (PerformanceMode.extreme, 'Extreme Performance', Icons.speed),
-      (PerformanceMode.balanced, 'Balanced', Icons.balance),
-      (PerformanceMode.silent, 'Silent', Icons.graphic_eq),
-      (
-        PerformanceMode.superBattery,
-        'Super Battery',
-        Icons.battery_charging_full,
-      ),
-      (PerformanceMode.user, 'Customize', Icons.settings),
+      (PerformanceMode.extreme, 'PERFORMANCE', Icons.speed),
+      (PerformanceMode.balanced, 'BALANCED', Icons.balance),
+      (PerformanceMode.silent, 'SILENT', Icons.graphic_eq),
+      (PerformanceMode.superBattery, 'BATTERY', Icons.battery_charging_full),
+      (PerformanceMode.user, 'CONSOLE', Icons.terminal),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = 12.0;
-        const minCardWidth = 170.0;
-        final columns = (constraints.maxWidth / (minCardWidth + spacing))
-            .floor()
-            .clamp(1, cards.length);
+        final columns = constraints.maxWidth > 1000
+            ? 5
+            : (constraints.maxWidth > 600 ? 3 : 2);
         final cardWidth =
-            (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+            (constraints.maxWidth - ((columns - 1) * AppSpacing.xl)) / columns;
 
         return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: cards.map((item) {
+          spacing: AppSpacing.xl,
+          runSpacing: AppSpacing.xl,
+          children: cards.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
             final isSelected = state.performanceMode == item.$1;
+
             return SizedBox(
               width: cardWidth,
               child: AspectRatio(
@@ -234,6 +301,8 @@ class _ScenarioCards extends StatelessWidget {
                   title: item.$2,
                   icon: item.$3,
                   selected: isSelected,
+                  isApplying: isSelected && state.isPerformanceLoading,
+                  index: index,
                   onTap: state.isPerformanceLoading
                       ? null
                       : () => context.read<SettingsBloc>().add(
@@ -249,40 +318,120 @@ class _ScenarioCards extends StatelessWidget {
   }
 }
 
+class _ModeCard extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final bool selected;
+  final bool isApplying;
+  final int index;
+  final VoidCallback? onTap;
+
+  const _ModeCard({
+    required this.title,
+    required this.icon,
+    required this.selected,
+    this.isApplying = false,
+    required this.index,
+    required this.onTap,
+  });
+
+  @override
+  State<_ModeCard> createState() => _ModeCardState();
+}
+
+class _ModeCardState extends State<_ModeCard> with TickerProviderStateMixin {
+  bool _isHovering = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovering = true),
+      onExit: (_) => setState(() => _isHovering = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _isHovering ? 1.02 : 1.0,
+          duration: AppDurations.fast,
+          curve: Curves.easeOut,
+          child: GlassCard(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  widget.icon,
+                  color: widget.selected
+                      ? colors.performance
+                      : colors.textSecondary,
+                  size: 38,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  widget.title,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: widget.selected
+                        ? colors.textPrimary
+                        : colors.textTertiary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                if (widget.selected) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 4,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.performance,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+                if (widget.isApplying)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        borderRadius: AppRadius.mdAll,
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 3),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CustomUserControls extends StatelessWidget {
   final SettingsState state;
   const _CustomUserControls({required this.state});
 
   @override
   Widget build(BuildContext context) {
-    final perfValues = PerformanceLevel.values;
-    final fanValues = FanMode.values;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF181A20),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0x55E53935)),
-      ),
+    return GlassCard(
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Custom User Controls',
-            style: TextStyle(
-              color: Color(0xFFE7E7E7),
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
           _ControlRow<PerformanceLevel>(
-            label: 'Performance Level',
+            label: 'PERFORMANCE LEVEL',
             value: state.performanceLevel,
-            items: perfValues,
-            labelBuilder: (value) => value.displayName,
+            items: PerformanceLevel.values,
+            labelBuilder: (value) => value.displayName.toUpperCase(),
             onChanged: state.isPerformanceLoading
                 ? null
                 : (value) {
@@ -293,12 +442,12 @@ class _CustomUserControls extends StatelessWidget {
                     }
                   },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.xl),
           _ControlRow<FanMode>(
-            label: 'Fan Speed',
+            label: 'THERMAL PROTOCOL',
             value: state.fanMode,
-            items: fanValues,
-            labelBuilder: (value) => value.displayName,
+            items: FanMode.values,
+            labelBuilder: (value) => value.displayName.toUpperCase(),
             onChanged: state.isFanLoading
                 ? null
                 : (value) {
@@ -320,51 +469,36 @@ class _GpuCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const cards = [
-      (
-        GpuMode.dynamic,
-        'Dynamic',
-        'On-Demand GPU switching',
-        Icons.auto_awesome,
-      ),
-      (
-        GpuMode.discrete,
-        'Discrete',
-        'Maximum performance (dGPU)',
-        Icons.flash_on,
-      ),
-      (
-        GpuMode.integrated,
-        'Integrated',
-        'Super battery (iGPU only)',
-        Icons.energy_savings_leaf,
-      ),
-      (GpuMode.hybrid, 'MSI Smart', 'Intelligent Hybrid mode', Icons.layers),
+      (GpuMode.dynamic, 'DYNAMIC', 'SMART SWITCH', Icons.auto_awesome),
+      (GpuMode.discrete, 'DISCRETE', 'MAX POWER', Icons.flash_on),
+      (GpuMode.integrated, 'INTEGRATED', 'ECO MODE', Icons.energy_savings_leaf),
+      (GpuMode.hybrid, 'SMART', 'INTELLIGENT', Icons.layers),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const spacing = 12.0;
-        const minCardWidth = 220.0;
-        final columns = (constraints.maxWidth / (minCardWidth + spacing))
-            .floor()
-            .clamp(1, cards.length);
+        final columns = constraints.maxWidth > 900 ? 4 : 2;
         final cardWidth =
-            (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
+            (constraints.maxWidth - ((columns - 1) * AppSpacing.xl)) / columns;
 
         return Wrap(
-          spacing: spacing,
-          runSpacing: spacing,
-          children: cards.map((item) {
+          spacing: AppSpacing.xl,
+          runSpacing: AppSpacing.xl,
+          children: cards.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
             final isSelected = state.gpuMode == item.$1;
+
             return SizedBox(
               width: cardWidth,
               child: AspectRatio(
-                aspectRatio: 1.75,
+                aspectRatio: 2.2,
                 child: _GpuCard(
                   title: item.$2,
                   subtitle: item.$3,
                   icon: item.$4,
                   selected: isSelected,
+                  index: index,
                   onTap: state.isGpuLoading
                       ? null
                       : () => context.read<SettingsBloc>().add(
@@ -380,94 +514,12 @@ class _GpuCards extends StatelessWidget {
   }
 }
 
-class _ModeCard extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  const _ModeCard({
-    required this.title,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final shortest = constraints.biggest.shortestSide;
-        final iconSize = (shortest * 0.24).clamp(26.0, 52.0);
-        final titleSize = (shortest * 0.14).clamp(13.0, 24.0);
-        final padding = (shortest * 0.08).clamp(10.0, 16.0);
-
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18),
-            onTap: onTap,
-            child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                gradient: selected
-                    ? const LinearGradient(
-                        colors: [Color(0xAA9A1818), Color(0xAA5A0D0D)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : const LinearGradient(
-                        colors: [Color(0xFF1A1D23), Color(0xFF171A20)],
-                      ),
-                border: Border.all(
-                  color: selected
-                      ? const Color(0xFFE53935)
-                      : const Color(0xFF2B2F38),
-                  width: selected ? 2 : 1,
-                ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: const Color(0x66E53935),
-                          blurRadius: 20,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
-              ),
-              padding: EdgeInsets.all(padding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Spacer(),
-                  Icon(icon, color: const Color(0xFFCDCDCD), size: iconSize),
-                  SizedBox(height: padding * 0.8),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: selected ? Colors.white : const Color(0xFFBCBCBC),
-                      fontSize: titleSize,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _GpuCard extends StatelessWidget {
+class _GpuCard extends StatefulWidget {
   final String title;
   final String subtitle;
   final IconData icon;
   final bool selected;
+  final int index;
   final VoidCallback? onTap;
 
   const _GpuCard({
@@ -475,76 +527,80 @@ class _GpuCard extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.selected,
+    required this.index,
     required this.onTap,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final shortest = constraints.biggest.shortestSide;
-        final iconSize = (shortest * 0.18).clamp(22.0, 34.0);
-        final titleSize = (shortest * 0.12).clamp(13.0, 22.0);
-        final subtitleSize = (shortest * 0.075).clamp(10.0, 14.0);
-        final padding = (shortest * 0.09).clamp(10.0, 16.0);
+  State<_GpuCard> createState() => _GpuCardState();
+}
 
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onTap,
-            child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: selected
-                    ? const LinearGradient(
-                        colors: [Color(0xAA9A1818), Color(0xAA5A0D0D)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                    : const LinearGradient(
-                        colors: [Color(0xFF1A1D23), Color(0xFF171A20)],
-                      ),
-                border: Border.all(
-                  color: selected
-                      ? const Color(0xFFE53935)
-                      : const Color(0xFF2B2F38),
-                  width: selected ? 2 : 1,
+class _GpuCardState extends State<_GpuCard> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          scale: _hover ? 1.02 : 1.0,
+          duration: AppDurations.fast,
+          child: GlassCard(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Row(
+              children: [
+                Icon(
+                  widget.icon,
+                  color: widget.selected
+                      ? colors.performance
+                      : colors.textTertiary,
+                  size: 24,
                 ),
-              ),
-              padding: EdgeInsets.all(padding),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: const Color(0xFFC8C8C8), size: iconSize),
-                  SizedBox(height: padding * 0.5),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: selected ? Colors.white : const Color(0xFFD3D3D3),
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: TextStyle(
+                          color: widget.selected
+                              ? colors.textPrimary
+                              : colors.textSecondary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      Text(
+                        widget.subtitle,
+                        style: TextStyle(
+                          color: colors.textTertiary,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: const Color(0xFF888888),
-                      fontSize: subtitleSize,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                ),
+                if (widget.selected)
+                  Icon(
+                    Icons.check_circle_rounded,
+                    color: colors.performance,
+                    size: 16,
                   ),
-                ],
-              ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -566,59 +622,32 @@ class _ControlRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 640;
-
-        if (compact) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFFDFDFDF),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              _StyledDropdown<T>(
-                value: value,
-                items: items,
-                labelBuilder: labelBuilder,
-                onChanged: onChanged,
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(
-              flex: 3,
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Color(0xFFDFDFDF),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+    final colors = Theme.of(context).extension<AppColors>()!;
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: colors.textSecondary,
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.0,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              flex: 8,
-              child: _StyledDropdown<T>(
-                value: value,
-                items: items,
-                labelBuilder: labelBuilder,
-                onChanged: onChanged,
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+        const SizedBox(width: 24),
+        Expanded(
+          flex: 7,
+          child: _StyledDropdown<T>(
+            value: value,
+            items: items,
+            labelBuilder: labelBuilder,
+            onChanged: onChanged,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -628,7 +657,6 @@ class _StyledDropdown<T> extends StatelessWidget {
   final List<T> items;
   final String Function(T value) labelBuilder;
   final ValueChanged<T?>? onChanged;
-
   const _StyledDropdown({
     required this.value,
     required this.items,
@@ -638,25 +666,31 @@ class _StyledDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColors>()!;
     return DropdownButtonFormField<T>(
       initialValue: value,
-      dropdownColor: const Color(0xFF1D2026),
-      style: const TextStyle(color: Color(0xFFE8E8E8), fontSize: 15),
-      iconEnabledColor: const Color(0xFFCFCFCF),
+      dropdownColor: const Color(0xFF050510),
+      style: TextStyle(
+        color: colors.textPrimary,
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        fontFamily: 'monospace',
+      ),
+      iconEnabledColor: colors.performance,
       decoration: InputDecoration(
         filled: true,
-        fillColor: const Color(0xFF1D2026),
+        fillColor: Colors.black.withValues(alpha: 0.3),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
+          horizontal: 16,
+          vertical: 10,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: Color(0xFF736B6B)),
+          borderRadius: AppRadius.smAll,
+          borderSide: BorderSide(color: colors.border.withValues(alpha: 0.1)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: Color(0xFFE53935)),
+          borderRadius: AppRadius.smAll,
+          borderSide: BorderSide(color: colors.performance),
         ),
       ),
       items: items
