@@ -419,7 +419,6 @@ class SoundSharingView extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _SharingDeviceItem extends StatelessWidget {
@@ -686,4 +685,3 @@ class SoundTrackerView extends StatelessWidget {
     );
   }
 }
-

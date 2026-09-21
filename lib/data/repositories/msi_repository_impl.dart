@@ -124,17 +124,14 @@ class MsiRepositoryImpl implements MsiRepository {
           final msg = utf8.decode(data).trim();
           debugPrint('Repository: DSP response: $msg');
 
-          // Handle volume response from GET_VOLUME command
+          // Handle volume response from GET_VOLUME command (REAL sink
+          // level -> convert to DISPLAY units before emitting).
           if (msg.isNotEmpty &&
               !msg.startsWith('OK') &&
               !msg.startsWith('ERROR')) {
             final vol = double.tryParse(msg);
             if (vol != null) {
-              if (_lastVolume == null || (_lastVolume! - vol).abs() > 0.01) {
-                _lastVolume = vol;
-                _currentVolume = vol;
-                _volumeController.add(vol);
-              }
+              _emitVolumeDisplay(_toDisplayVolume(vol));
             }
           }
         },
@@ -263,8 +260,33 @@ class MsiRepositoryImpl implements MsiRepository {
   bool get hasMsiEcSupport => _hasMsiEc;
 
   double? _lastVolume;
+  DateTime _lastPollRequest = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _pollMinInterval = Duration(milliseconds: 120);
+
+  /// Inverse of the service temper (real 0.3-1.0 -> display 0-1). The
+  /// service reports REAL sink levels; the UI speaks DISPLAY units. Without
+  /// this conversion the slider shows tempered values and visibly fights
+  /// the user's drag (30 -> 44 -> 20 flicker).
+  double _toDisplayVolume(double real) {
+    if (real <= 0.01) return 0.0;
+    return ((real - 0.3) / 0.7).clamp(0.0, 1.0);
+  }
+
+  void _emitVolumeDisplay(double display) {
+    if (_lastVolume == null || (_lastVolume! - display).abs() > 0.005) {
+      _lastVolume = display;
+      _currentVolume = display;
+      _volumeController.add(display);
+    }
+  }
 
   Future<void> _pollVolume() async {
+    // Coalesce key-hold storms: only the latest level matters, and the
+    // socket roundtrip (~30ms) can't usefully run faster than this.
+    final now = DateTime.now();
+    if (now.difference(_lastPollRequest) < _pollMinInterval) return;
+    _lastPollRequest = now;
+
     // Prefer getting volume from DSP service if connected
     if (_dspSocket != null) {
       await _sendDspCommand('GET_VOLUME');
@@ -280,11 +302,7 @@ class MsiRepositoryImpl implements MsiRepository {
       final match = RegExp(r'(\d+)%').firstMatch(output);
       if (match != null) {
         final vol = int.parse(match.group(1)!) / 100.0;
-        if (_lastVolume == null || (_lastVolume! - vol).abs() > 0.01) {
-          _lastVolume = vol;
-          _currentVolume = vol;
-          _volumeController.add(vol);
-        }
+        _emitVolumeDisplay(_toDisplayVolume(vol));
       }
     } catch (e) {
       // Ignore volume poll errors
