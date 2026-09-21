@@ -392,11 +392,13 @@ fn get_sink_volume() -> f64 {
     match output {
         Ok(out) => {
             let stdout = String::from_utf8_lossy(&out.stdout);
-            if let Some(vol) = stdout.trim().split_whitespace().next() {
-                vol.parse::<f64>().unwrap_or(1.0)
-            } else {
-                1.0
-            }
+            // wpctl prints "Volume: 0.65" — take the first FLOAT token,
+            // not the first token ("Volume:" never parses).
+            stdout
+                .split_whitespace()
+                .filter_map(|t| t.parse::<f64>().ok())
+                .next()
+                .unwrap_or(1.0)
         }
         Err(_) => 1.0,
     }
@@ -417,10 +419,12 @@ fn temper_volume(display: f64) -> f64 {
 
 fn set_sink_volume(volume: f64) {
     let pct = (volume * 100.0).round() as i32;
-    // Drive BOTH the processing chain and the physical speaker: the app
-    // slider must mean "how loud is the room", not "how loud is one hop".
-    // (A speaker left at 33% while the chain sits at 100% is exactly why
-    // full volume used to feel quiet.)
+    // Single-knob design: the CHAIN carries all level changes (tempered
+    // 0.35-1.40), while the physical speaker is pinned at 100%. Two
+    // multiplied gains (chain x speaker) made every UI lie: the display
+    // could climb while loudness sat still, or vice versa. Now the
+    // displayed value always equals real loudness on every UI
+    // (app slider, Omarchy keys/OSD) with zero fighting between writers.
     // NOTE: wpctl only accepts numeric IDs (names fail) while pactl only
     // accepts names for over-100% values — hence one of each.
     let _ = Command::new("wpctl")
@@ -428,7 +432,7 @@ fn set_sink_volume(volume: f64) {
         .output();
     if let Some(speaker) = pick_physical_speaker() {
         let _ = Command::new("pactl")
-            .args(["set-sink-volume", &speaker, &format!("{}%", pct)])
+            .args(["set-sink-volume", &speaker, "100%"])
             .output();
     }
 }
@@ -1498,6 +1502,16 @@ async fn main() -> Result<()> {
                                         let status = if DSP_ENABLED.load(Ordering::SeqCst) && check_filter_chain_running() { "enabled" } else { "disabled" };
                                         let response = format!("{}\n", status);
                                         let _ = socket.write_all(response.as_bytes()).await;
+                                    } else if message == "GET_VOLUME" {
+                                        // The app polls this on every system volume
+                                        // change; answer with the live default-sink
+                                        // level as a bare number (no OK prefix —
+                                        // the app parses anything else as f64).
+                                        // Without this reply the app UI freezes.
+                                        let v = get_sink_volume();
+                                        let _ = socket
+                                            .write_all(format!("{:.4}\n", v).as_bytes())
+                                            .await;
                                     } else if message.starts_with("VOLUME") {
                                         info!("Received VOLUME command: {}", message);
                                         let vol_str = message.replace("VOLUME:", "").replace("VOLUME", "");
