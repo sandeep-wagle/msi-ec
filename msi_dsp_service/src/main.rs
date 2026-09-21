@@ -409,6 +409,40 @@ fn get_sink_volume() -> f64 {
     }
 }
 
+/// Persisted volume (DISPLAY units, plain text) so the level survives
+/// service restarts and daemon rebuilds: without this, a rebuild drops
+/// back to the daemon default and the room jumps. The app adopts live
+/// values on (re)connect instead of blasting stale prefs — the two
+/// together mean volume NEVER jumps on restart, only follows intent.
+static CURRENT_VOLUME: Mutex<f64> = Mutex::new(1.0);
+
+fn volume_file_path() -> String {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
+    format!("{}/.config/msi-center/msi-volume", home)
+}
+
+fn load_persisted_volume() -> f64 {
+    fs::read_to_string(volume_file_path())
+        .ok()
+        .and_then(|s| s.trim().parse::<f64>().ok())
+        .map(|v| v.clamp(0.0, 1.0))
+        .unwrap_or(1.0)
+}
+
+fn save_volume_setting(display: f64) {
+    *CURRENT_VOLUME.lock().unwrap() = display.clamp(0.0, 1.0);
+    if let Some(parent) = std::path::Path::new(&volume_file_path()).parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(volume_file_path(), format!("{:.4}", display.clamp(0.0, 1.0)));
+}
+
+fn apply_persisted_volume() {
+    let v = *CURRENT_VOLUME.lock().unwrap();
+    set_sink_volume(temper_volume(v));
+    info!("Volume restored to display {:.0}%", v * 100.0);
+}
+
 /// Display-to-real temper, the SINGLE mapping both UIs share: displays
 /// show 0-100%, real lands on 0.00-1.50 linearly (real = 1.5 * UI), so
 /// 100% sounds like 150%. True mute travels as a NEGATIVE volume
@@ -478,6 +512,9 @@ fn ensure_graph_running(profile: &AudioProfile) -> bool {
             error!("Daemon reload failed; staying on direct output");
             return false;
         }
+        // Fresh graph boots at daemon defaults: re-apply the persisted
+        // level immediately so there is no loud surprise.
+        apply_persisted_volume();
     } else if !check_filter_chain_running() {
         info!("Drop-in current but nodes missing — reloading daemon...");
         if !start_filter_chain() {
@@ -817,6 +854,7 @@ fn watchdog_once() {
         forget_node_id(&FILTER_NODE_ID);
         LAST_PARAMS.lock().unwrap().clear();
         if generate_filter_chain_config(&profile).is_ok() && start_filter_chain() {
+            apply_persisted_volume();
             link_filter_chain();
             set_default_sink_to_dsp();
             schedule_param_push(&profile);
@@ -1351,6 +1389,12 @@ async fn main() -> Result<()> {
     info!("Profile: {}", PROFILE_PATH);
 
     initialize_profiles();
+
+    *CURRENT_VOLUME.lock().unwrap() = load_persisted_volume();
+    info!(
+        "Persisted volume: display {:.0}%",
+        *CURRENT_VOLUME.lock().unwrap() * 100.0
+    );
     
     let saved_profile = load_saved_profile();
     info!("Initial profile loaded: {}", saved_profile.name);
@@ -1374,6 +1418,9 @@ async fn main() -> Result<()> {
     // Auto-apply saved profile on startup
     info!("Auto-applying saved DSP profile on service startup...");
     apply_dsp_settings(&saved_profile, false);
+    // ...then restore the persisted level on top (gapless volume set,
+    // no blast of anything stale — the file holds the last intent).
+    apply_persisted_volume();
 
     // Start background device monitor for seamless switching
     start_device_monitor();
@@ -1566,6 +1613,7 @@ async fn main() -> Result<()> {
                                                         .args(["set-sink-mute", &speaker, "false"])
                                                         .output();
                                                 }
+                                                save_volume_setting(vol);
                                                 set_sink_volume(temper_volume(vol));
                                             }
                                             let _ = socket.write_all(b"OK\n").await;

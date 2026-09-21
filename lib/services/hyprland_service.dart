@@ -19,8 +19,72 @@ class HyprlandService {
   static const String keywordAccelProfile = 'input:accel_profile';
 
   bool? _cachedAvailable;
+  String? _instanceSig;
+  String? _runtimeDir;
 
-  /// True when `hyprctl` exists and a Hyprland instance socket is reachable.
+  /// Resolve the Hyprland instance signature, preferring the environment
+  /// and falling back to scanning the runtime dir for live instances
+  /// (hyprland.lock marker). Null when no compositor is reachable — this
+  /// is what makes the tab work no matter how the app was launched
+  /// (desktop terminal, autostart without env, IDE debugger, ...).
+  Future<String?> _resolveInstance() async {
+    if (_instanceSig != null) return _instanceSig;
+    final envSig = Platform.environment['HYPRLAND_INSTANCE_SIGNATURE'];
+    if (envSig != null && envSig.isNotEmpty) {
+      _instanceSig = envSig;
+      return _instanceSig;
+    }
+    final runtime = await _runtimeDirPath();
+    if (runtime == null) return null;
+    try {
+      await for (final ent in Directory('$runtime/hypr').list()) {
+        if (ent is Directory &&
+            await File('${ent.path}/hyprland.lock').exists()) {
+          final sig = ent.uri.pathSegments
+              .where((s) => s.isNotEmpty)
+              .last;
+          // Verify it answers before trusting it.
+          final probe = await Process.run(
+              'hyprctl', ['-i', sig, 'version'],
+              runInShell: false);
+          if (probe.exitCode == 0) {
+            _instanceSig = sig;
+            return _instanceSig;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<String?> _runtimeDirPath() async {
+    if (_runtimeDir != null) return _runtimeDir;
+    final env = Platform.environment['XDG_RUNTIME_DIR'];
+    if (env != null && env.isNotEmpty) {
+      _runtimeDir = env;
+      return _runtimeDir;
+    }
+    try {
+      final id = await Process.run('id', ['-u'], runInShell: false);
+      if (id.exitCode == 0) {
+        final uid = id.stdout.toString().trim();
+        final dir = Directory('/run/user/$uid');
+        if (await dir.exists()) {
+          _runtimeDir = dir.path;
+          return _runtimeDir;
+        }
+      }
+    } catch (_) {}
+    if (await Directory('/run/user/1000').exists()) {
+      _runtimeDir = '/run/user/1000';
+      return _runtimeDir;
+    }
+    return null;
+  }
+
+  /// True when a Hyprland instance actually answers (not merely when the
+  /// binary exists — the old `hyprctl version` probe lied without a
+  /// reachable socket).
   Future<bool> isAvailable() async {
     if (_cachedAvailable != null) return _cachedAvailable!;
     try {
@@ -29,20 +93,7 @@ class HyprlandService {
         _cachedAvailable = false;
         return false;
       }
-      final sig = Platform.environment['HYPRLAND_INSTANCE_SIGNATURE'];
-      if (sig != null && sig.isNotEmpty) {
-        _cachedAvailable = true;
-        return true;
-      }
-      final runtime = Platform.environment['XDG_RUNTIME_DIR'];
-      if (runtime != null &&
-          await Directory('$runtime/hypr').exists()) {
-        _cachedAvailable = true;
-        return true;
-      }
-      // Last resort: ask hyprctl itself (runs unprivileged).
-      final probe = await Process.run('hyprctl', ['version']);
-      _cachedAvailable = probe.exitCode == 0;
+      _cachedAvailable = await _resolveInstance() != null;
       return _cachedAvailable!;
     } catch (_) {
       _cachedAvailable = false;
@@ -50,13 +101,19 @@ class HyprlandService {
     }
   }
 
-  void invalidateCache() => _cachedAvailable = null;
+  void invalidateCache() {
+    _cachedAvailable = null;
+    _instanceSig = null;
+  }
 
-  /// Runs `hyprctl` as the current user. Never elevated, never a shell.
+  /// Runs `hyprctl` as the current user against the resolved instance.
+  /// Never elevated, never a shell.
   Future<ProcessResult> _hyprctl(List<String> args) async {
+    final sig = await _resolveInstance();
+    final full = sig == null ? args : ['-i', sig, ...args];
     // Assigned (not returned directly) so the future always completes inside
     // this try block and failures surface as false from the callers.
-    final result = await Process.run('hyprctl', args, runInShell: false);
+    final result = await Process.run('hyprctl', full, runInShell: false);
     return result;
   }
 

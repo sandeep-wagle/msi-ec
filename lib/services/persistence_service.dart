@@ -148,4 +148,15 @@ class PersistenceService {
   double loadSensitivity() => _p.getDouble(_sensitivityKey) ?? 0.0;
   bool loadNaturalScroll() => _p.getBool(_naturalScrollKey) ?? false;
   String loadAccelProfile() => _p.getString(_accelProfileKey) ?? 'adaptive';
+
+  // Controls tab: battery charge threshold (display 0-100 matching the
+  // slider). Live sysfs is authoritative; this is the fallback shown
+  // before the first successful read (or on hardware without the node).
+  static const _batteryThresholdKey = 'controls_battery_threshold';
+
+  Future<void> saveBatteryThreshold(int limit) async {
+    await _p.setInt(_batteryThresholdKey, limit);
+  }
+
+  int loadBatteryThreshold() => _p.getInt(_batteryThresholdKey) ?? 80;
 }

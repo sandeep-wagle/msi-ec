@@ -70,6 +70,7 @@ class _ControlsScreenState extends State<ControlsScreen>
       _sensitivity = storage.loadSensitivity();
       _naturalScroll = storage.loadNaturalScroll();
       _accelProfile = storage.loadAccelProfile();
+      _batteryThreshold = storage.loadBatteryThreshold();
       _supportsCoolerBoost = _accessories.supportsCoolerBoost;
       _supportsBatteryThreshold = _accessories.supportsBatteryThreshold;
       _supportsFnKeySwap = _accessories.supportsFnKeySwap;
@@ -167,7 +168,9 @@ class _ControlsScreenState extends State<ControlsScreen>
     setState(() => _batteryThreshold = limit);
     final ok = await _accessories.setBatteryThreshold(limit);
     if (!mounted) return;
-    if (!ok) {
+    if (ok) {
+      await getIt<PersistenceService>().saveBatteryThreshold(limit);
+    } else {
       setState(() => _batteryThreshold = previous);
       _fail('FAILED TO SET CHARGE THRESHOLD');
     }
@@ -483,25 +486,83 @@ class _ControlsScreenState extends State<ControlsScreen>
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                        child: SegmentedButton<int>(
-                          segments: const [
-                            ButtonSegment(value: 60, label: Text('60%')),
-                            ButtonSegment(value: 80, label: Text('80%')),
-                            ButtonSegment(value: 100, label: Text('100%')),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '$_batteryThreshold%',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'monospace',
+                                  color: colors.success,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              _supportsBatteryThreshold
+                                  ? 'STOPS CHARGING HERE'
+                                  : 'READ-ONLY PRESET',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                                color: colors.textTertiary,
+                              ),
+                            ),
                           ],
-                          selected: {_batteryThreshold},
-                          showSelectedIcon: false,
-                          onSelectionChanged: _supportsBatteryThreshold
-                              ? (selected) =>
-                                  _onBatteryThresholdChanged(selected.first)
-                              : null,
-                          style: SegmentedButton.styleFrom(
-                            selectedBackgroundColor:
-                                colors.success.withValues(alpha: 0.2),
-                            selectedForegroundColor: colors.success,
-                            foregroundColor: colors.textSecondary,
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                        child: SliderTheme(
+                          data: SliderThemeData(
+                            trackHeight: 4,
+                            activeTrackColor: colors.success,
+                            thumbColor: colors.success,
+                            overlayColor:
+                                colors.success.withValues(alpha: 0.15),
+                            thumbShape: const RoundSliderThumbShape(
+                              enabledThumbRadius: 10,
+                            ),
                           ),
+                          child: Slider(
+                            value: _batteryThreshold.toDouble(),
+                            min: 30,
+                            max: 100,
+                            divisions: 14,
+                            label: '$_batteryThreshold%',
+                            onChanged: _supportsBatteryThreshold
+                                ? (v) => setState(
+                                      () => _batteryThreshold = v.round(),
+                                    )
+                                : null,
+                            onChangeEnd: (v) =>
+                                _onBatteryThresholdChanged(v.round()),
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Row(
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceBetween,
+                          children: [
+                            _ScaleLabel(
+                              text: '30% MAX-SAVER',
+                              colors: colors,
+                            ),
+                            _ScaleLabel(
+                              text: '80% BALANCED',
+                              colors: colors,
+                              highlight: true,
+                            ),
+                            _ScaleLabel(
+                              text: '100% FULL',
+                              colors: colors,
+                            ),
+                          ],
                         ),
                       ),
                       Divider(

@@ -86,7 +86,7 @@ class AccessoriesService {
   }
 
   Future<bool> setBatteryThreshold(int limit) async {
-    assert(limit == 60 || limit == 80 || limit == 100);
+    assert(limit >= 30 && limit <= 100);
     final path = batteryThresholdPath;
     if (path != null && await _writeSysfs(path, limit.toString())) {
       return true;

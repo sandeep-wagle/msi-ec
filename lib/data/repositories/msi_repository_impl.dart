@@ -146,9 +146,12 @@ class MsiRepositoryImpl implements MsiRepository {
         },
       );
 
-      // Restore volume from saved state (raw 0..1; the service tempers it).
-      final savedVolume = _currentVolume.clamp(0.0, 1.0);
-      _sendDspCommand('VOLUME:${savedVolume.toStringAsFixed(4)}');
+      // Adopt the live sink level instead of blasting the saved value:
+      // the sink (and the service-persisted volume) is the truth across
+      // service restarts, so restoring stale prefs here is exactly what
+      // made volume jump on every reconnect. The reply adopts through
+      // the shared listener below and the UI follows reality.
+      _sendDspCommand('GET_VOLUME');
     } catch (e) {
       debugPrint('Repository: Failed to connect to DSP socket: $e');
       _dspSocket = null;
