@@ -420,8 +420,8 @@ class _VerticalVolumeBar extends StatelessWidget {
           height: 180,
           child: NahimicSlider(
             value: boost,
-            min: 0.2,
-            max: 1.3,
+            min: 0.0,
+            max: 1.0,
             isVertical: true,
             labelTransformer: (v) => '${(v * 100).round()}%',
             onChanged: (v) {
@@ -435,7 +435,7 @@ class _VerticalVolumeBar extends StatelessWidget {
         const SizedBox(height: 20),
         IconButton(
           onPressed: () =>
-              context.read<SoundBloc>().add(const ChangeVolumeBoost(0.0)),
+              context.read<SoundBloc>().add(const ChangeVolumeBoost(-1.0)),
           icon: Icon(
             Icons.volume_off_rounded,
             color: colors.textTertiary,

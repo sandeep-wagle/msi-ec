@@ -381,7 +381,7 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
       'trebleEnhancer': state.trebleEnhancer,
       'smartVolume': state.smartVolume,
       'stereoWidth': state.stereoWidth,
-      'volumeBoost': state.volumeBoost.clamp(0.2, 1.0),
+      'volumeBoost': state.volumeBoost.clamp(0.0, 1.0),
       'sampleRate': state.sampleRate,
       'bassGain': state.bassGain,
       'trebleGain': state.trebleGain,
@@ -482,7 +482,15 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoost event,
     Emitter<SoundState> emit,
   ) async {
-    final clampedBoost = event.boost.clamp(0.0, 1.3);
+    // Display range is 0-100%; the service tempers it (0% -> 0.3 floor).
+    // Negative sentinel = mute button (true mute, not volume zero).
+    if (event.boost < 0) {
+      emit(state.copyWith(volumeBoost: 0.0));
+      await _repository.setSoundVolumeBoost(-1.0);
+      await _saveSettings();
+      return;
+    }
+    final clampedBoost = event.boost.clamp(0.0, 1.0);
     emit(state.copyWith(volumeBoost: clampedBoost));
     await _repository.setSoundVolumeBoost(clampedBoost);
     await _saveSettings();
@@ -492,7 +500,7 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoostPreview event,
     Emitter<SoundState> emit,
   ) async {
-    emit(state.copyWith(volumeBoost: event.boost.clamp(0.0, 1.3)));
+    emit(state.copyWith(volumeBoost: event.boost.clamp(0.0, 1.0)));
   }
 
   Future<void> _onChangeNoiseLevel(

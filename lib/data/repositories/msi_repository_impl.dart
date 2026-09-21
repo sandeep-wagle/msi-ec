@@ -149,8 +149,8 @@ class MsiRepositoryImpl implements MsiRepository {
         },
       );
 
-      // Restore volume from saved state (capped at 100% to avoid ear blast)
-      final savedVolume = _currentVolume.clamp(0.2, 1.0);
+      // Restore volume from saved state (raw 0..1; the service tempers it).
+      final savedVolume = _currentVolume.clamp(0.0, 1.0);
       _sendDspCommand('VOLUME:${savedVolume.toStringAsFixed(4)}');
     } catch (e) {
       debugPrint('Repository: Failed to connect to DSP socket: $e');
@@ -314,8 +314,27 @@ class MsiRepositoryImpl implements MsiRepository {
       }
 
       debugPrint('Starting DSP service...');
-      final dspPath =
-          '/home/sandy/development/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service';
+      // Resolve the binary relative to the current user's home instead of a
+      // hardcoded (and stale, wrong-case) absolute path, so this works on any
+      // machine / checkout location. Falls back to PATH lookup.
+      final home = Platform.environment['HOME'] ?? '';
+      final candidates = [
+        if (home.isNotEmpty)
+          '$home/Development/apps/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service',
+        '/home/sandy/development/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service',
+      ];
+      String? dspPath;
+      for (final c in candidates) {
+        if (await File(c).exists()) {
+          dspPath = c;
+          break;
+        }
+      }
+      dspPath ??= await _findOnPath('msi_dsp_service');
+      if (dspPath == null) {
+        debugPrint('DSP service binary not found; audio DSP disabled.');
+        return;
+      }
 
       await Process.start(dspPath, [], mode: ProcessStartMode.detached);
 
@@ -324,6 +343,17 @@ class MsiRepositoryImpl implements MsiRepository {
     } catch (e) {
       debugPrint('Failed to start DSP service: $e');
     }
+  }
+
+  Future<String?> _findOnPath(String binary) async {
+    try {
+      final result = await Process.run('which', [binary]);
+      if (result.exitCode == 0) {
+        final path = result.stdout.toString().trim().split('\n').first.trim();
+        if (path.isNotEmpty && await File(path).exists()) return path;
+      }
+    } catch (_) {}
+    return null;
   }
 
   bool _isInitialized = false;
@@ -640,10 +670,28 @@ class MsiRepositoryImpl implements MsiRepository {
 
   @override
   Future<DeviceSettings> getDeviceSettings() async {
+    // Always try the direct channel first: it probes each key independently,
+    // so user-space settings (mic via pactl) resolve correctly even on
+    // machines without msi-ec, where sysfs-backed keys simply read false.
     try {
-      final result = await _channel.invokeMethod<Map>(
-        _hasMsiEc ? 'getDeviceSettingsDirect' : 'getDeviceSettingsFallback',
-      );
+      final result =
+          await _channel.invokeMethod<Map>('getDeviceSettingsDirect');
+      if (result != null) {
+        return DeviceSettings(
+          webcamEnabled: result['webcam'] as bool? ?? false,
+          micEnabled: result['mic'] as bool? ?? false,
+          usbPowerShare: result['usbPowerShare'] as bool? ?? false,
+          coolerBoost: result['coolerBoost'] as bool? ?? false,
+          shiftModeOverride: result['shiftModeOverride'] as int? ?? 0,
+          keyboardBrightness: result['keyboardBrightness'] as int? ?? -1,
+        );
+      }
+    } on PlatformException catch (e) {
+      debugPrint('Direct device settings failed, using fallback: ${e.message}');
+    }
+    try {
+      final result =
+          await _channel.invokeMethod<Map>('getDeviceSettingsFallback');
       if (result != null) {
         return DeviceSettings(
           webcamEnabled: result['webcam'] as bool? ?? false,
@@ -665,9 +713,13 @@ class MsiRepositoryImpl implements MsiRepository {
     return setDeviceSetting('coolerBoost', enable);
   }
 
+  /// Settings applied in user space (no sysfs needed). These must work on
+  /// every Linux machine, not just msi-ec hardware.
+  static const _userSpaceKeys = {'mic'};
+
   @override
   Future<bool> setDeviceSetting(String key, dynamic value) async {
-    if (!_hasMsiEc) return false;
+    if (!_hasMsiEc && !_userSpaceKeys.contains(key)) return false;
 
     try {
       final result = await _channel.invokeMethod<bool>('setDeviceSetting', {
@@ -918,6 +970,12 @@ class MsiRepositoryImpl implements MsiRepository {
   }
 
   Future<void> setSoundVolume(double volume) async {
+    // Negative = mute sentinel from the mute button: forward it, but keep
+    // UI state on 0..1 (the service tempers display values to real ones).
+    if (volume < 0) {
+      await _sendDspCommand('VOLUME:${volume.toStringAsFixed(4)}');
+      return;
+    }
     _currentVolume = volume;
     _volumeController.add(volume);
 
