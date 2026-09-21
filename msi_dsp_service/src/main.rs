@@ -18,11 +18,86 @@ use tokio::net::UnixListener;
 const SOCKET_PATH: &str = "/tmp/msi_dsp.sock";
 const PROFILE_PATH: &str = "/tmp/msi_dsp_config/profile.json";
 const PROFILES_DIR: &str = "/tmp/msi_dsp_config/profiles";
-const FILTER_CHAIN_CONFIG_PATH: &str = "/tmp/msi_dsp_config/pw-filter-chain.conf";
+// Graph hosting: the filter graph runs INSIDE the main PipeWire daemon via
+// a drop-in (a nested `pipewire -c` host exposes nodes but, on PipeWire
+// >= 1.6, never exposes their ports — verified empirically). Structure is
+// therefore install/boot-time state; runtime changes are params-only and
+// can never pause audio.
+const FILTER_DROPIN_PATH: &str = ".config/pipewire/pipewire.conf.d/99-msi-dsp.conf";
+/// Bump whenever the graph TEMPLATE changes so a newer binary reloads the
+/// daemon exactly once (gain values are live params, not structure).
+const GRAPH_VERSION: u32 = 4;
+
+fn filter_dropin_path() -> String {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
+    format!("{}/{}", home, FILTER_DROPIN_PATH)
+}
 
 static FILTER_CHAIN_RUNNING: AtomicBool = AtomicBool::new(false);
 static LAST_PROFILE_NAME: Mutex<String> = Mutex::new(String::new());
 static DSP_ENABLED: AtomicBool = AtomicBool::new(true);
+
+// Audio path design (direct speaker, no virtual sinks):
+//   apps -> msi_dsp_input (persistent filter-chain sink) -> msi_dsp_output
+//       -> physical speaker (pw-linked, speaker stays the only HW output).
+// There is deliberately NO msi_dsp_sink null-sink and NO loopback hops:
+// every extra hop is latency plus a re-creation glitch source. The system
+// default sink points at the chain while enabled (one stream move, a single
+// brief gap only on enable/disable toggles) and NEVER moves on value
+// changes — those only touch live filter params on the persistent graph.
+
+/// Which optional processing stages are actually usable on this machine.
+/// The core EQ path is pure builtin biquads (always available); LADSPA
+/// stages are included only when their plugin files exist, so the service
+/// degrades gracefully instead of failing the whole graph.
+struct PluginProbe {
+    spatializer: bool,
+    compressor: bool,
+    limiter: bool,
+}
+
+static PLUGINS: LazyLock<PluginProbe> = LazyLock::new(|| {
+    fn exists(name: &str) -> bool {
+        const DIRS: [&str; 3] = [
+            "/usr/lib/ladspa",
+            "/usr/lib64/ladspa",
+            "/usr/local/lib/ladspa",
+        ];
+        DIRS.iter().any(|d| std::path::Path::new(d).join(name).exists())
+    }
+    let p = PluginProbe {
+        spatializer: exists("matrix_spatialiser_1422.so"),
+        compressor: exists("dyson_compress_1403.so"),
+        limiter: exists("fast_lookahead_limiter_1913.so"),
+    };
+    info!(
+        "LADSPA stages: spatializer={} compressor={} limiter={}",
+        p.spatializer, p.compressor, p.limiter
+    );
+    p
+});
+
+// Glitch-free live updates: params are diffed against the last-pushed
+// snapshot (slider drags mostly change 1-2 controls — the other ~30 are
+// skipped), pushed in ONE shell spawn, at most every PUSH_INTERVAL_MS.
+// The filter graph itself is NEVER restarted on value changes.
+static FILTER_NODE_ID: Mutex<Option<u32>> = Mutex::new(None);
+static LAST_PARAMS: LazyLock<Mutex<HashMap<String, f64>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+static PENDING_PROFILE: Mutex<Option<AudioProfile>> = Mutex::new(None);
+static PARAM_GEN: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+static LAST_PUSH: LazyLock<Mutex<std::time::Instant>> =
+    LazyLock::new(|| Mutex::new(std::time::Instant::now()));
+static FLUSH_LOCK: Mutex<()> = Mutex::new(());
+const PUSH_INTERVAL_MS: u64 = 100;
+
+/// Routing latch: once output→speaker is verified live, per-UPDATE work
+/// skips ALL routing syscalls (re-linking identical links would unplug and
+/// re-plug audio on every slider tick — an audible stutter source).
+/// Cleared by the device monitor (topology changed), the watchdog (link
+/// gone) and push failures (graph gone).
+static ROUTING_OK: AtomicBool = AtomicBool::new(false);
 
 static PROFILE_SETTINGS: LazyLock<Mutex<HashMap<String, AudioProfile>>> = 
     LazyLock::new(|| Mutex::new(HashMap::new()));
@@ -327,110 +402,208 @@ fn get_sink_volume() -> f64 {
     }
 }
 
+/// Display-to-real temper: UIs show 0-100%, but a displayed 0% lands on a
+/// 0.3 audible floor instead of true silence (mute is a separate, explicit
+/// action). True mute travels as a NEGATIVE volume sentinel.
+fn temper_volume(display: f64) -> f64 {
+    if display <= 0.01 {
+        0.3
+    } else {
+        0.3 + 0.7 * display.clamp(0.0, 1.0)
+    }
+}
+
 fn set_sink_volume(volume: f64) {
+    let pct = (volume * 100.0).round() as i32;
+    // Drive BOTH the processing chain and the physical speaker: the app
+    // slider must mean "how loud is the room", not "how loud is one hop".
+    // (A speaker left at 33% while the chain sits at 100% is exactly why
+    // full volume used to feel quiet.)
+    // NOTE: wpctl only accepts numeric IDs (names fail) while pactl only
+    // accepts names for over-100% values — hence one of each.
     let _ = Command::new("wpctl")
-        .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{}%", (volume * 100.0) as i32)])
+        .args(["set-volume", "@DEFAULT_AUDIO_SINK@", &format!("{}%", pct)])
         .output();
+    if let Some(speaker) = pick_physical_speaker() {
+        let _ = Command::new("pactl")
+            .args(["set-sink-volume", &speaker, &format!("{}%", pct)])
+            .output();
+    }
+}
+
+/// The chain is "running" iff its input sink node exists in the graph.
+/// Node presence (not process names) is the source of truth: it also covers
+/// PipeWire restarts and crashes, where the process may linger but the graph
+/// is gone.
+/// Structural signature the daemon should be running: template version +
+/// LADSPA stage presence. Gain values are live params, NOT structure.
+fn desired_signature() -> (u32, bool, bool, bool) {
+    (GRAPH_VERSION, PLUGINS.spatializer, PLUGINS.compressor, PLUGINS.limiter)
+}
+
+/// True iff the on-disk drop-in already describes exactly the graph this
+/// binary would generate (version + stages). Reads, never writes.
+fn dropin_matches() -> bool {
+    let (ver, sp, co, li) = desired_signature();
+    let path = filter_dropin_path();
+    let Ok(content) = fs::read_to_string(&path) else {
+        return false;
+    };
+    content.contains(&format!("# graph-version = {}", ver))
+        && content.contains("name = \"spatializer\"") == sp
+        && content.contains("name = \"compressor\"") == co
+        && content.contains("name = \"limiter\"") == li
+}
+
+/// Ensures the daemon runs THIS binary's graph, touching the daemon only
+/// when necessary (file rewrite + restart is the single audio-blip
+/// operation, confined to install/upgrade/recovery — never value changes).
+/// Returns true when the input node is present afterwards.
+fn ensure_graph_running(profile: &AudioProfile) -> bool {
+    if !dropin_matches() {
+        info!("Drop-in stale or missing — regenerating graph and reloading daemon...");
+        if let Err(e) = generate_filter_chain_config(profile) {
+            error!("Graph generation failed: {}", e);
+            return false;
+        }
+        if !start_filter_chain() {
+            error!("Daemon reload failed; staying on direct output");
+            return false;
+        }
+    } else if !check_filter_chain_running() {
+        info!("Drop-in current but nodes missing — reloading daemon...");
+        if !start_filter_chain() {
+            error!("Daemon reload failed; staying on direct output");
+            return false;
+        }
+    }
+    // (Re)loaded or already live: drop stale caches so ids/params resolve.
+    forget_node_id(&FILTER_NODE_ID);
+    LAST_PARAMS.lock().unwrap().clear();
+    check_filter_chain_running()
 }
 
 fn check_filter_chain_running() -> bool {
-    let output = Command::new("pgrep")
-        .args(["-f", "pw-filter-chain.*msi_dsp"])
-        .output();
-    
-    match output {
-        Ok(out) => !out.stdout.is_empty(),
-        Err(_) => false,
-    }
+    get_node_id_by_name("msi_dsp_input").is_some()
 }
 
+/// Engine lifecycle. The graph is main-daemon state (see FILTER_DROPIN_PATH):
+/// starting = write drop-in + restart user audio services ONCE. This is the
+/// ONLY operation that briefly interrupts audio, and it happens exclusively
+/// on install/recovery — never on value changes.
 fn kill_filter_chain() {
-    info!("Killing existing pw-filter-chain instances...");
-    let output = Command::new("pkill")
-        .args(["-f", "pw-filter-chain.*msi_dsp"])
+    info!("Removing DSP drop-in (full teardown)...");
+    let _ = fs::remove_file(filter_dropin_path());
+    let _ = Command::new("systemctl")
+        .args(["--user", "restart", "pipewire", "wireplumber"])
         .output();
-    
-    if let Err(e) = output {
-        warn!("Failed to kill filter chain: {}", e);
-    }
-    
-    std::thread::sleep(std::time::Duration::from_millis(500));
+    std::thread::sleep(std::time::Duration::from_millis(1500));
 }
 
-fn start_filter_chain() -> bool {
-    info!("Starting pw-filter-chain with config...");
-    
-    let child = Command::new("pw-filter-chain")
-        .args(["-c", FILTER_CHAIN_CONFIG_PATH])
-        .spawn();
-    
-    match child {
-        Ok(_) => {
-            info!("pw-filter-chain started, waiting for it to connect...");
-            std::thread::sleep(std::time::Duration::from_secs(2));
+fn restart_audio_services() -> bool {
+    info!("Restarting user PipeWire services to (re)load DSP graph...");
+    let out = Command::new("systemctl")
+        .args(["--user", "restart", "pipewire", "wireplumber"])
+        .output();
+    match out {
+        Ok(o) if o.status.success() => {
+            std::thread::sleep(std::time::Duration::from_millis(1500));
             true
         }
-        Err(e) => {
-            error!("Failed to start pw-filter-chain: {}", e);
+        _ => {
+            error!("Failed to restart PipeWire services");
             false
         }
     }
 }
 
-fn link_filter_chain() {
-    info!("Relinking filter chain output to physical audio sink...");
-    
-    // 1. Find the default physical sink (actual hardware)
-    let output = Command::new("pactl")
-        .args(["get-default-sink"])
-        .output();
-    
-    if let Ok(out) = output {
-        let default_sink = String::from_utf8_lossy(&out.stdout).trim().to_string();
-        
-        // If the default sink is ALREADY our DSP input, we need to find the REAL fallback sink
-        // to avoid a loop. Usually, this means we look at 'pactl list sinks' and find the first
-        // sink that isn't ours.
-        let mut target_sink = default_sink.clone();
-        if target_sink == "msi_dsp_input" {
-             let sink_list = Command::new("pactl")
-                .args(["list", "short", "sinks"])
-                .output();
-             if let Ok(sl_out) = sink_list {
-                 let sl_str = String::from_utf8_lossy(&sl_out.stdout);
-                 for line in sl_str.lines() {
-                     let parts: Vec<&str> = line.split(char::is_whitespace).filter(|s| !s.is_empty()).collect();
-                     if parts.len() > 1 {
-                         let name = parts[1];
-                         if name != "msi_dsp_input" && !name.contains("monitor") {
-                             target_sink = name.to_string();
-                             break;
-                         }
-                     }
-                 }
-             }
+fn start_filter_chain() -> bool {
+    // Drop-in must already be (re)generated by the caller; this only
+    // reloads the daemon and waits for the nodes. One audio blip here —
+    // install/recovery path only, never on value changes.
+    if !restart_audio_services() {
+        return false;
+    }
+
+    // Poll for the input node: fast machines proceed immediately.
+    for _ in 0..50 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if get_node_id_by_name("msi_dsp_input").is_some() {
+            info!("msi_dsp_input node online (main daemon)");
+            return true;
         }
+    }
+    error!("Drop-in loaded but msi_dsp_input never appeared");
+    false
+}
 
-        info!("Targeting physical sink: {}", target_sink);
+fn link_filter_chain() -> bool {
+    info!("Linking filter output straight to the physical speaker...");
 
-        // 2. Link msi_dsp_output (our chain's exit) to the physical sink
-        // Note: pw-link handles node:port syntax
-        // Use -d to disconnect existing links first for robustness
-        let _ = Command::new("pw-link")
-            .args(["-d", "msi_dsp_output:output_FL", "msi_dsp_output:output_FR"])
-            .output();
+    // Speaker picker (not the momentary pactl default: during daemon
+    // restarts the default can briefly be an HDMI sink, which misroutes us).
+    // Skips our own nodes so a loop is impossible.
+    let target_sink = match pick_physical_speaker() {
+        Some(s) => s,
+        None => {
+            warn!("No physical speaker found, skipping link");
+            return false;
+        }
+    };
 
-        let l1 = Command::new("pw-link")
-            .args(["msi_dsp_output:output_FL", &format!("{}:playback_FL", target_sink)])
+    info!("Targeting physical sink: {}", target_sink);
+
+    // Ports materialize a moment after the nodes do; poll briefly instead
+    // of one-shotting (otherwise the first link attempt always loses).
+    let mut ports_ready = false;
+    for _ in 0..30 {
+        let probe = Command::new("pw-link")
+            .args(["-o", "msi_dsp_output"])
             .output();
-        let l2 = Command::new("pw-link")
-            .args(["msi_dsp_output:output_FR", &format!("{}:playback_FR", target_sink)])
-            .output();
-        
-        if l1.is_ok() && l2.is_ok() {
-            info!("Links established to {}", target_sink);
-        } else {
-            warn!("Failed to establish links to {}", target_sink);
+        if let Ok(o) = probe {
+            let t = String::from_utf8_lossy(&o.stdout);
+            if t.contains("msi_dsp_output:output_FL")
+                && t.contains("msi_dsp_output:output_FR")
+            {
+                ports_ready = true;
+                break;
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    if !ports_ready {
+        warn!("Output ports never appeared; will retry via watchdog");
+        return false;
+    }
+
+    // Link msi_dsp_output (chain exit) to the physical sink. Disconnect
+    // each output port first (a two-port -d targets the wrong thing and
+    // leaves stale links behind).
+    for port in ["msi_dsp_output:output_FL", "msi_dsp_output:output_FR"] {
+        let _ = Command::new("pw-link").args(["-d", port]).output();
+    }
+
+    let l1 = Command::new("pw-link")
+        .args(["msi_dsp_output:output_FL", &format!("{}:playback_FL", target_sink)])
+        .output();
+    let l2 = Command::new("pw-link")
+        .args(["msi_dsp_output:output_FR", &format!("{}:playback_FR", target_sink)])
+        .output();
+
+    match (l1, l2) {
+        (Ok(o1), Ok(o2)) if o1.status.success() && o2.status.success() => {
+            info!("Output linked to {}", target_sink);
+            true
+        }
+        _ if output_linked() => {
+            // pw-link reports failure when the exact link already exists
+            // ("File exists") — verify instead of trusting exit codes.
+            info!("Output already linked to {}", target_sink);
+            true
+        }
+        _ => {
+            warn!("Failed to link output to {} (ports missing?)", target_sink);
+            false
         }
     }
 }
@@ -458,8 +631,11 @@ fn start_device_monitor() {
                         // NOT on property changes (which fire on every pw-cli set-param and would glitch audio)
                         if line.contains("Event 'new' on sink") || line.contains("Event 'remove' on sink") {
                             info!("Sink added or removed, re-linking...");
+                            ROUTING_OK.store(false, Ordering::SeqCst);
                             tokio::time::sleep(tokio::time::Duration::from_millis(600)).await;
-                            link_filter_chain();
+                            if link_filter_chain() {
+                                ROUTING_OK.store(true, Ordering::SeqCst);
+                            }
                         }
                     }
                 }
@@ -474,66 +650,248 @@ fn start_device_monitor() {
 
 fn set_default_sink_to_dsp() {
     info!("Setting MSI DSP as default audio sink...");
-    
-    let output = Command::new("pactl")
+
+    // NOTE: `pactl set-default-sink` exits 0 but silently does NOTHING for
+    // filter-chain sinks on PipeWire — the default must be written through
+    // the metadata store instead. Verified empirically.
+    let meta = Command::new("pw-metadata")
+        .args(["-n", "default", "0", "default.audio.sink", "{\"name\":\"msi_dsp_input\"}"])
+        .output();
+    std::thread::sleep(std::time::Duration::from_millis(300));
+
+    if meta.is_ok() {
+        if get_default_sink_name().as_deref() == Some("msi_dsp_input") {
+            info!("Default sink is msi_dsp_input (via pw-metadata)");
+            return;
+        }
+    }
+    warn!("pw-metadata did not stick, trying pactl fallback...");
+    let _ = Command::new("pactl")
         .args(["set-default-sink", "msi_dsp_input"])
         .output();
-    
-    match output {
-        Ok(out) if out.status.success() => {
-            info!("Successfully set msi_dsp_input as default sink");
+}
+
+/// True iff the chain output is actually linked to a physical (non-DSP)
+/// sink. `pw-link -l` prints each port followed by peer lines:
+///   msi_dsp_output:output_FL
+///     |-> <peer>:playback_FL
+/// A peer that is one of our own nodes does NOT count (loop guard).
+fn output_linked() -> bool {
+    // Simpler robust check: pw-link lists links as "out -> in" lines.
+    let lout = Command::new("pw-link").args(["-l"]).output();
+    if let Ok(lout) = lout {
+        let ltext = String::from_utf8_lossy(&lout.stdout);
+        let mut iter = ltext.lines().peekable();
+        while let Some(line) = iter.next() {
+            if line.contains("msi_dsp_output:output_") {
+                // Next non-empty lines show the peer with "<-" marker.
+                for peer in iter.by_ref().take(4) {
+                    if peer.contains("<-") && !peer.contains("msi_dsp_output") {
+                        return true;
+                    }
+                    if !peer.starts_with(' ') && !peer.starts_with('\t') && peer.contains(':') {
+                        break;
+                    }
+                }
+            }
         }
-        Ok(out) => {
-            let stderr = String::from_utf8_lossy(&out.stderr);
-            warn!("Failed to set default sink: {}", stderr);
+    }
+    false
+}
+fn pick_physical_speaker() -> Option<String> {
+    let out = Command::new("pactl").args(["list", "short", "sinks"]).output().ok()?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut fallback: Option<String> = None;
+    for line in text.lines() {
+        let parts: Vec<&str> = line.split(char::is_whitespace).filter(|s| !s.is_empty()).collect();
+        if parts.len() < 2 {
+            continue;
         }
-        Err(e) => {
-            warn!("Error setting default sink: {}", e);
+        let name = parts[1].to_string();
+        if name.starts_with("msi_dsp") || name.contains("monitor") {
+            continue;
         }
+        if fallback.is_none() {
+            fallback = Some(name.clone());
+        }
+        if name.contains("Speaker") {
+            return Some(name);
+        }
+    }
+    fallback
+}
+
+fn get_default_sink_name() -> Option<String> {
+    let out = Command::new("pactl").args(["get-default-sink"]).output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let name = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if name.is_empty() {
+        None
+    } else {
+        Some(name)
     }
 }
 
 fn disable_dsp_switch_to_direct() {
     info!("Switching to direct audio output (bypassing DSP)...");
-    
-    let output = Command::new("pactl")
-        .args(["list", "short", "sinks"])
-        .output();
-    
-    if let Ok(out) = output {
-        let sinks = String::from_utf8_lossy(&out.stdout);
-        
-        for line in sinks.lines() {
-            if line.contains("Speaker__sink") {
-                let name = line.split('\t').nth(1).unwrap_or("").trim();
-                if !name.is_empty() {
-                    let _ = Command::new("pactl")
-                        .args(["set-default-sink", name])
-                        .output();
-                    info!("Switched to speaker: {}", name);
-                    return;
-                }
-            }
-        }
-        
-        for line in sinks.lines() {
-            if line.contains("HiFi__") {
-                let name = line.split('\t').nth(1).unwrap_or("").trim();
-                if !name.is_empty() && !name.contains("HDMI") {
-                    let _ = Command::new("pactl")
-                        .args(["set-default-sink", name])
-                        .output();
-                    info!("Switched to audio output: {}", name);
-                    return;
-                }
-            }
+
+    // pw-metadata, NOT pactl: pactl set-default-sink silently no-ops here.
+    if let Some(name) = pick_physical_speaker() {
+        let _ = Command::new("pw-metadata")
+            .args(["-n", "default", "0", "default.audio.sink", &format!("{{\"name\":\"{}\"}}", name)])
+            .output();
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        if get_default_sink_name().as_deref() == Some(name.as_str()) {
+            info!("Switched to speaker: {}", name);
+            return;
         }
     }
-    
-    let _ = Command::new("pactl")
-        .args(["set-default-sink", "alsa_output.pci-0000_00_1f.3-platform-skl_hda_dsp_generic.HiFi__Speaker__sink"])
-        .output();
-    info!("Fallback: switched to default speaker");
+    warn!("No physical speaker found; leaving routing untouched");
+}
+
+/// Watchdog: guarantees the system can NEVER be left silent or unlinked.
+///  - Chain nodes gone + default still ours  -> move default back to speaker.
+///  - DSP enabled + chain nodes gone        -> rebuild + relink + default.
+///  - DSP enabled + output unlinked         -> relink live (daemon restarts
+///    silently drop links while node names survive — this was the actual
+///    cause of "controls do nothing audible").
+/// Runs every 10s; covers crashes and PipeWire restarts.
+fn watchdog_once() {
+    let chain_alive = get_node_id_by_name("msi_dsp_input").is_some();
+    let default = get_default_sink_name().unwrap_or_default();
+
+    if !chain_alive && default == "msi_dsp_input" {
+        warn!("Watchdog: chain dead while default — restoring speaker");
+        disable_dsp_switch_to_direct();
+    }
+
+    if DSP_ENABLED.load(Ordering::SeqCst) && chain_alive && !output_linked() {
+        warn!("Watchdog: output unlinked — relinking live (no restart, no gap)");
+        ROUTING_OK.store(false, Ordering::SeqCst);
+        if link_filter_chain() {
+            ROUTING_OK.store(true, Ordering::SeqCst);
+        }
+    }
+
+    if DSP_ENABLED.load(Ordering::SeqCst) && !chain_alive {
+        warn!("Watchdog: rebuilding missing filter graph...");
+        ROUTING_OK.store(false, Ordering::SeqCst);
+        warn!("Watchdog: rebuilding missing filter graph...");
+        let profile = load_saved_profile();
+        // Reuse the structural path; never touches volume.
+        forget_node_id(&FILTER_NODE_ID);
+        LAST_PARAMS.lock().unwrap().clear();
+        if generate_filter_chain_config(&profile).is_ok() && start_filter_chain() {
+            link_filter_chain();
+            set_default_sink_to_dsp();
+            schedule_param_push(&profile);
+        } else {
+            error!("Watchdog: rebuild failed; system stays on direct output");
+        }
+    }
+}
+
+fn start_watchdog() {
+    info!("Starting DSP watchdog (10s interval)...");
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+            watchdog_once();
+        }
+    });
+}
+
+/// Fully-resolved DSP controls: the SINGLE source of truth shared by graph
+/// generation (initial values) and the live param pusher, so the two can
+/// never disagree about what a profile means.
+struct ResolvedControls {
+    eq: [f64; 10],
+    bass: f64,
+    treble: f64,
+    voice: f64,
+    width: f64,
+    limiter_threshold: f64,
+    compress_ratio: f64,
+}
+
+fn resolve_controls(profile: &AudioProfile) -> ResolvedControls {
+    let (mut bass, mut treble, mut voice, mut eq, width_base) = if profile.effects_enabled {
+        let mut e = [0.0f64; 10];
+        for (i, v) in e.iter_mut().enumerate() {
+            *v = *profile.eq_gains.get(i).unwrap_or(&0.0);
+        }
+        (
+            if profile.bass_boost { profile.bass } else { 0.0 },
+            if profile.treble_enhancer { profile.treble } else { 0.0 },
+            if profile.voice_clarity { profile.voice } else { 0.0 },
+            e,
+            profile.stereo_width,
+        )
+    } else {
+        (0.0, 0.0, 0.0, [0.0; 10], 1.0)
+    };
+
+    // Surround width variations (neutral 1.0 when off).
+    let width = if profile.surround {
+        match profile.surround_variation.as_str() {
+            "Headset" => width_base * 0.8,
+            "Virtual" | "Surround" => width_base * 1.4,
+            "3D" => width_base * 1.8,
+            "Wide" => width_base * 2.5,
+            _ => width_base,
+        }
+    } else {
+        1.0
+    };
+
+    // Night mode + volume stabilizer targets for the compressor stage.
+    let night_mode_active = profile.night_mode && profile.effects_enabled;
+    let stabilizer_active = profile.limiter_enabled && profile.effects_enabled;
+    let limiter_threshold = if night_mode_active {
+        -12.0
+    } else if stabilizer_active {
+        -1.0
+    } else {
+        -0.1
+    };
+    let compress_ratio = if night_mode_active {
+        8.0
+    } else {
+        profile.compressor_ratio.max(1.0)
+    };
+
+    // Headroom pre-trim (clip protection without a limiter stage): series
+    // biquads stack, so cap the worst-case stacked boost at +6 dB. The
+    // correction is spread (/3: overlapping skirts mean a per-band cut
+    // bites ~3x overall) to preserve tone shape. With a real limiter
+    // stage present the trim is unnecessary — it absorbs excess
+    // transparently — so it is skipped. Night mode without a compressor
+    // stage additionally calms peaks statically (+3 dB into the excess).
+    let max_band = eq.iter().fold(0.0f64, |m, v| m.max(*v));
+    let stacked = max_band + bass.max(0.0) * 0.7 + treble.max(0.0) * 0.5 + voice.max(0.0) * 0.5;
+    let mut excess = (stacked - 6.0).max(0.0);
+    if night_mode_active && !PLUGINS.compressor {
+        excess += 3.0;
+        info!("Night mode via static fallback (no compressor stage)");
+    }
+    let trim = if PLUGINS.limiter {
+        0.0
+    } else {
+        excess / 3.0
+    };
+    if trim > 0.05 {
+        info!("Headroom pre-trim engaged: -{:.1} dB (stacked boost was +{:.1} dB)", trim, stacked);
+        for v in eq.iter_mut() {
+            *v -= trim;
+        }
+        bass -= trim;
+        treble -= trim;
+        voice -= trim;
+    }
+
+    ResolvedControls { eq, bass, treble, voice, width, limiter_threshold, compress_ratio }
 }
 
 fn generate_filter_chain_config(profile: &AudioProfile) -> Result<()> {
@@ -542,71 +900,116 @@ fn generate_filter_chain_config(profile: &AudioProfile) -> Result<()> {
         (1000, "eq5"), (2000, "eq6"), (4000, "eq7"), (8000, "eq8"), (16000, "eq9")
     ];
     
+    // Mono chain, duplicated per channel by PipeWire (see module docs:
+    // "the graph will then be duplicated as many times to match the number
+    // of input/output channels"). NEVER split L/R manually: fanning one
+    // stereo stream into two mono chains without a `copy` node yields a
+    // graph with no inputs and total silence.
     let mut eq_nodes = String::new();
+    // Resolved once so all 10 bands share the same trim decision.
+    let eq_resolved = resolve_controls(profile);
     for (i, (freq, name)) in eq_bands.iter().enumerate() {
-        let gain = profile.eq_gains.get(i).unwrap_or(&0.0);
+        let gain = eq_resolved.eq[i];
         eq_nodes.push_str(&format!(
-            r#"            {{ type = builtin label = bq_peaking name = "{}L" control = {{ "Freq" = {} "Gain" = {} "Q" = 1.41 }} }}
-            {{ type = builtin label = bq_peaking name = "{}R" control = {{ "Freq" = {} "Gain" = {} "Q" = 1.41 }} }}
+            r#"            {{ type = builtin label = bq_peaking name = "{}" control = {{ "Freq" = {} "Gain" = {} "Q" = 1.41 }} }}
 "#,
-            name, freq, gain, name, freq, gain
+            name, freq, gain
         ));
     }
-    // Base gains from profile
-    let bass_gain = profile.bass;
-    let treble_gain = profile.treble;
-    let voice_gain = profile.voice;
+    // Base gains + all variation math resolve through ONE function shared
+    // with the live pusher, so initial and live values can never disagree.
+    let ctl = resolve_controls(profile);
+    let bass_gain = ctl.bass;
+    let treble_gain = ctl.treble;
+    let voice_gain = ctl.voice;
+    let stereo_width = ctl.width;
+    let limiter_threshold = ctl.limiter_threshold;
+    let compress_ratio = ctl.compress_ratio;
 
-    // Advanced Logic
-    let mut stereo_width = profile.stereo_width;
-    
-    // Surround Variations
-    if profile.surround {
-        match profile.surround_variation.as_str() {
-            "Headset" => {
-                stereo_width *= 0.8; // Tighter for headphones
-            }
-            "Virtual" | "Surround" => {
-                stereo_width *= 1.4; // Wider for virtual speakers
-            }
-            "3D" => {
-                stereo_width *= 2.0; // Very wide for cinematic feel
-            }
-            "Wide" => {
-                stereo_width *= 2.8; // Maximum expansion
-            }
-            _ => {}
-        }
-    } else {
-        stereo_width = 1.0; // Neutral
+    // --- Dynamic stage assembly -------------------------------------------
+    // Core EQ/tone path is always present (builtin biquads). LADSPA stages
+    // are spliced in only when probed present; otherwise the voice stage
+    // feeds the outputs directly. Links are rebuilt to match, so the graph
+    // is always valid on any machine.
+    let have_spatial = PLUGINS.spatializer;
+    let have_compress = PLUGINS.compressor;
+    let have_limiter = PLUGINS.limiter;
+
+    let mut stage_nodes = String::new();
+    if have_spatial {
+        stage_nodes.push_str(&format!(
+            r#"            {{
+                type = ladspa
+                name = "spatializer"
+                plugin = "/usr/lib/ladspa/matrix_spatialiser_1422.so"
+                label = "matrixSpatialiser"
+                control = {{ "Width" = {stereo_width} }}
+            }}
+"#,
+        ));
+    }
+    if have_compress {
+        stage_nodes.push_str(&format!(
+            r#"            {{
+                type = ladspa
+                name = "compressor"
+                plugin = "/usr/lib/ladspa/dyson_compress_1403.so"
+                label = "dysonCompress"
+                control = {{ "Peak limit (dB)" = {limiter_threshold} "Release time (s)" = 0.5 "Compression ratio" = {compress_ratio} }}
+            }}
+"#,
+        ));
+    }
+    if have_limiter {
+        stage_nodes.push_str(
+            r#"            {{
+                type = ladspa
+                name = "limiter"
+                plugin = "/usr/lib/ladspa/fast_lookahead_limiter_1913.so"
+                label = "fastLookaheadLimiter"
+                control = {{ "Input gain (dB)" = 0 "Limit (dB)" = -0.1 "Release time (s)" = 0.1 }}
+            }}
+"#,
+        );
     }
 
-    // Night Mode & Volume Stabilizer (Dynamic Range Compression)
-    // We use dysonCompress for Night Mode (soft compression)
-    // and fastLookaheadLimiter for Volume Stabilizer (hard limiting)
-    let night_mode_active = profile.night_mode && profile.effects_enabled;
-    let _volume_stabilizer_active = profile.limiter_enabled && profile.effects_enabled;
-    
-    let limiter_threshold = if night_mode_active { -12.0 } else { -1.0 };
-    let compress_ratio = if night_mode_active { 8.0 } else { profile.compressor_ratio.max(1.0) };
+    // Ordered single-port stages; PipeWire duplicates them per channel.
+    // (Multi-port stereo LADSPA nodes would need explicit per-channel
+    // links — revisit if plugins are ever installed.)
+    let mut chain: Vec<(&str, &str)> = Vec::new();
+    if have_spatial {
+        // NOTE: spatializer is genuinely stereo; wiring it correctly needs
+        // per-channel links. Not reachable while the plugin is absent.
+        chain.push(("spatializer:Output", "spatializer:Input"));
+    }
+    if have_compress {
+        chain.push(("compressor:Output", "compressor:Input"));
+    }
+    if have_limiter {
+        chain.push(("limiter:Output", "limiter:Input"));
+    }
 
-    // Effects Toggle
-    let _global_effects_enabled = profile.effects_enabled;
+    let mut stage_links = String::new();
+    let mut prev = "voice:Out".to_string();
+    for (out_port, in_port) in &chain {
+        stage_links.push_str(&format!(
+            "                    {{{{ output = \"{}\" input = \"{}\" }}}}\n",
+            prev, in_port
+        ));
+        prev = out_port.to_string();
+    }
+    let stage_outputs = format!("\"{}\"", prev);
+    info!(
+        "Graph stages: spatializer={} compressor={} limiter={} (core EQ always on)",
+        have_spatial, have_compress, have_limiter
+    );
 
-    
-    let config = format!(r#"context.properties = {{
-    log.level = 3
-}}
-
+    let config = format!(r#"# MSI Center DSP graph (managed — do not hand-edit; rewritten on profile save).
+# graph-version = {GRAPH_VERSION}
+# Merged into the main PipeWire daemon via pipewire.conf.d. The daemon
+# already provides rt/protocol/client/adapter modules, so only our chains
+# are declared here.
 context.modules = [
-    {{ name = libpipewire-module-rt
-        args = {{ rt.prio = 83 }}
-        flags = [ ifexists nofail ]
-    }}
-    {{ name = libpipewire-module-protocol-native }}
-    {{ name = libpipewire-module-client-node }}
-    {{ name = libpipewire-module-adapter }}
-    
     {{ name = libpipewire-module-filter-chain
         args = {{
             node.name        = "msi_dsp_filter"
@@ -616,75 +1019,26 @@ context.modules = [
             audio.position   = [ "FL" "FR" ]
             filter.graph = {{
                 nodes = [
-{eq_nodes}            {{ type = builtin label = bq_lowshelf name = "bassL" control = {{ "Freq" = 100 "Gain" = {bass_gain} "Q" = 0.707 }} }}
-            {{ type = builtin label = bq_lowshelf name = "bassR" control = {{ "Freq" = 100 "Gain" = {bass_gain} "Q" = 0.707 }} }}
-            {{ type = builtin label = bq_highshelf name = "trebleL" control = {{ "Freq" = 5000 "Gain" = {treble_gain} "Q" = 0.707 }} }}
-            {{ type = builtin label = bq_highshelf name = "trebleR" control = {{ "Freq" = 5000 "Gain" = {treble_gain} "Q" = 0.707 }} }}
-            {{ type = builtin label = bq_peaking name = "voiceL" control = {{ "Freq" = 2000 "Gain" = {voice_gain} "Q" = 0.5 }} }}
-            {{ type = builtin label = bq_peaking name = "voiceR" control = {{ "Freq" = 2000 "Gain" = {voice_gain} "Q" = 0.5 }} }}
-            {{
-                type = ladspa
-                name = "spatializer"
-                plugin = "/usr/lib/ladspa/matrix_spatialiser_1422.so"
-                label = "matrixSpatialiser"
-                control = {{ "Width" = {stereo_width} }}
-            }}
-            {{
-                type = ladspa
-                name = "compressorL"
-                plugin = "/usr/lib/ladspa/dyson_compress_1403.so"
-                label = "dysonCompress"
-                control = {{ "Peak limit (dB)" = {limiter_threshold} "Release time (s)" = 0.5 "Compression ratio" = {compress_ratio} }}
-            }}
-            {{
-                type = ladspa
-                name = "compressorR"
-                plugin = "/usr/lib/ladspa/dyson_compress_1403.so"
-                label = "dysonCompress"
-                control = {{ "Peak limit (dB)" = {limiter_threshold} "Release time (s)" = 0.5 "Compression ratio" = {compress_ratio} }}
-            }}
-            {{
-                type = ladspa
-                name = "limiter"
-                plugin = "/usr/lib/ladspa/fast_lookahead_limiter_1913.so"
-                label = "fastLookaheadLimiter"
-                control = {{ "Input gain (dB)" = 0 "Limit (dB)" = -0.1 "Release time (s)" = 0.1 }}
-            }}
-                ]
+{eq_nodes}            {{ type = builtin label = bq_lowshelf name = "bass" control = {{ "Freq" = 100 "Gain" = {bass_gain} "Q" = 0.707 }} }}
+            {{ type = builtin label = bq_highshelf name = "treble" control = {{ "Freq" = 5000 "Gain" = {treble_gain} "Q" = 0.707 }} }}
+            {{ type = builtin label = bq_peaking name = "voice" control = {{ "Freq" = 2000 "Gain" = {voice_gain} "Q" = 0.5 }} }}
+{stage_nodes}                ]
                 links = [
-                    {{ output = "eq0L:Out" input = "eq1L:In" }}
-                    {{ output = "eq0R:Out" input = "eq1R:In" }}
-                    {{ output = "eq1L:Out" input = "eq2L:In" }}
-                    {{ output = "eq1R:Out" input = "eq2R:In" }}
-                    {{ output = "eq2L:Out" input = "eq3L:In" }}
-                    {{ output = "eq2R:Out" input = "eq3R:In" }}
-                    {{ output = "eq3L:Out" input = "eq4L:In" }}
-                    {{ output = "eq3R:Out" input = "eq4R:In" }}
-                    {{ output = "eq4L:Out" input = "eq5L:In" }}
-                    {{ output = "eq4R:Out" input = "eq5R:In" }}
-                    {{ output = "eq5L:Out" input = "eq6L:In" }}
-                    {{ output = "eq5R:Out" input = "eq6R:In" }}
-                    {{ output = "eq6L:Out" input = "eq7L:In" }}
-                    {{ output = "eq6R:Out" input = "eq7R:In" }}
-                    {{ output = "eq7L:Out" input = "eq8L:In" }}
-                    {{ output = "eq7R:Out" input = "eq8R:In" }}
-                    {{ output = "eq8L:Out" input = "eq9L:In" }}
-                    {{ output = "eq8R:Out" input = "eq9R:In" }}
-                    {{ output = "eq9L:Out" input = "bassL:In" }}
-                    {{ output = "eq9R:Out" input = "bassR:In" }}
-                    {{ output = "bassL:Out" input = "trebleL:In" }}
-                    {{ output = "bassR:Out" input = "trebleR:In" }}
-                    {{ output = "trebleL:Out" input = "voiceL:In" }}
-                    {{ output = "trebleR:Out" input = "voiceR:In" }}
-                    {{ output = "voiceL:Out" input = "spatializer:Input L" }}
-                    {{ output = "voiceR:Out" input = "spatializer:Input R" }}
-                    {{ output = "spatializer:Output L" input = "compressorL:Input" }}
-                    {{ output = "spatializer:Output R" input = "compressorR:Input" }}
-                    {{ output = "compressorL:Output" input = "limiter:Input 1" }}
-                    {{ output = "compressorR:Output" input = "limiter:Input 2" }}
-                ]
-                inputs  = [ "eq0L:In" "eq0R:In" ]
-                outputs = [ "limiter:Output 1" "limiter:Output 2" ]
+                    {{ output = "eq0:Out" input = "eq1:In" }}
+                    {{ output = "eq1:Out" input = "eq2:In" }}
+                    {{ output = "eq2:Out" input = "eq3:In" }}
+                    {{ output = "eq3:Out" input = "eq4:In" }}
+                    {{ output = "eq4:Out" input = "eq5:In" }}
+                    {{ output = "eq5:Out" input = "eq6:In" }}
+                    {{ output = "eq6:Out" input = "eq7:In" }}
+                    {{ output = "eq7:Out" input = "eq8:In" }}
+                    {{ output = "eq8:Out" input = "eq9:In" }}
+                    {{ output = "eq9:Out" input = "bass:In" }}
+                    {{ output = "bass:Out" input = "treble:In" }}
+                    {{ output = "treble:Out" input = "voice:In" }}
+{stage_links}                ]
+                inputs  = [ "eq0:In" ]
+                outputs = [ {stage_outputs} ]
             }}
             capture.props = {{
                 node.name      = "msi_dsp_input"
@@ -699,39 +1053,8 @@ context.modules = [
             }}
         }}
     }}
-    {{ name = libpipewire-module-filter-chain
-        args = {{
-            node.name        = "msi_dsp_mic_filter"
-            node.description = "MSI DSP Microphone"
-            media.name       = "MSI DSP Microphone Engine"
-            audio.channels   = 1
-            audio.position   = [ "MONO" ]
-            filter.graph = {{
-                nodes = [
-                    {{
-                        type = builtin
-                        label = bq_highpass
-                        name = "mic_hp"
-                        control = {{ "Freq" = 100 "Q" = 0.707 }}
-                    }}
-                ]
-                inputs  = [ "mic_hp:In" ]
-                outputs = [ "mic_hp:Out" ]
-            }}
-            capture.props = {{
-                node.name      = "msi_dsp_mic_input"
-                media.class    = "Audio/Source"
-                audio.channels = 1
-                audio.position = [ "MONO" ]
-            }}
-            playback.props = {{
-                node.name      = "msi_dsp_mic_output"
-                audio.channels = 1
-                audio.position = [ "MONO" ]
-            }}
-        }}
-    }}
     {{ name = libpipewire-module-echo-cancel
+        flags = [ ifexists nofail ]
         args = {{
             monitor.mode = true
             capture.props = {{
@@ -744,9 +1067,13 @@ context.modules = [
 ]
 "#);
     
-    fs::write(FILTER_CHAIN_CONFIG_PATH, config)?;
-    info!("Filter chain config written: Name={}, Mode={}, Width={:.2}", 
-        profile.name, profile.surround_variation, stereo_width);
+    let path = filter_dropin_path();
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        fs::create_dir_all(parent)?;
+    }
+    fs::write(&path, config)?;
+    info!("Filter graph drop-in written: {} (Name={}, stages spatial={} compress={} limiter={})",
+        path, profile.name, have_spatial, have_compress, have_limiter);
     Ok(())
 }
 
@@ -779,84 +1106,174 @@ fn get_node_id_by_name(name: &str) -> Option<u32> {
     None
 }
 
-fn send_single_param(node_id: u32, param: &str, value: f64) {
-    let cmd = format!("pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}'", node_id, param, value);
-    let _ = Command::new("sh").args(["-c", &cmd]).output();
+/// Flat (control, value) list for live pushes, resolved through the same
+/// function as graph generation (trim included), gated to stages present
+/// in the running graph.
+fn compute_params(profile: &AudioProfile) -> Vec<(String, f64)> {
+    let ctl = resolve_controls(profile);
+    let mut out = Vec::with_capacity(20);
+
+    let eq_bands = ["eq0", "eq1", "eq2", "eq3", "eq4", "eq5", "eq6", "eq7", "eq8", "eq9"];
+    for (i, band) in eq_bands.iter().enumerate() {
+        // Mono names: the graph is duplicated per channel by PipeWire, so
+        // one control addresses every duplicate at once.
+        out.push((format!("{}:Gain", band), ctl.eq[i]));
+    }
+
+    out.push(("bass:Gain".into(), ctl.bass));
+    out.push(("treble:Gain".into(), ctl.treble));
+    out.push(("voice:Gain".into(), ctl.voice));
+
+    // Only address stages that exist in the running graph; anything else is
+    // a failed set-param (harmless but noisy) — skip it.
+    if PLUGINS.spatializer {
+        out.push(("spatializer:Width".into(), ctl.width));
+    }
+
+    if PLUGINS.compressor {
+        out.push(("compressor:Peak limit (dB)".into(), ctl.limiter_threshold));
+        out.push(("compressor:Compression ratio".into(), ctl.compress_ratio));
+    }
+
+    if PLUGINS.limiter {
+        out.push(("limiter:Limit (dB)".into(), -0.1));
+    }
+
+    out
 }
 
-fn update_filter_params(profile: &AudioProfile) {
-    // 1. Playback Node Updates
-    if let Some(playback_id) = get_node_id_by_name("msi_dsp_input") {
-        info!("Updating playback filter params for node {}", playback_id);
-        
-        // Bypass logic
-        let (bass, treble, voice, eq_gains, spatializer_width) = if profile.effects_enabled {
-            (
-                if profile.bass_boost { profile.bass } else { 0.0 },
-                if profile.treble_enhancer { profile.treble } else { 0.0 },
-                if profile.voice_clarity { profile.voice } else { 0.0 },
-                profile.eq_gains.clone(),
-                profile.stereo_width
-            )
-        } else {
-            (0.0, 0.0, 0.0, vec![0.0; 10], 1.0)
-        };
+fn cached_node_id(name: &str, cache: &Mutex<Option<u32>>) -> Option<u32> {
+    if let Some(id) = *cache.lock().unwrap() {
+        return Some(id);
+    }
+    let id = get_node_id_by_name(name)?;
+    *cache.lock().unwrap() = Some(id);
+    Some(id)
+}
 
-        // Apply each param individually — avoids a massive atomic batch that can glitch audio
-        // Send EQs in one batch (they need to change together for balanced sound)
-        let eq_bands = ["eq0", "eq1", "eq2", "eq3", "eq4", "eq5", "eq6", "eq7", "eq8", "eq9"];
-        for (i, band) in eq_bands.iter().enumerate() {
-            let gain = eq_gains.get(i).unwrap_or(&0.0);
-            send_single_param(playback_id, &format!("{}L:Gain", band), *gain);
-            send_single_param(playback_id, &format!("{}R:Gain", band), *gain);
+fn forget_node_id(cache: &Mutex<Option<u32>>) {
+    *cache.lock().unwrap() = None;
+}
+
+/// Pushes ONLY changed controls in a SINGLE shell spawn (one fork per
+/// UPDATE instead of ~40). Identical values are skipped entirely, so a
+/// no-op UPDATE costs zero syscalls and zero graph negotiation.
+fn push_params_diffed(node_id: u32, params: &[(String, f64)]) -> bool {
+    const EPS: f64 = 1e-6;
+    let mut last = LAST_PARAMS.lock().unwrap();
+    let mut script = String::new();
+    let mut count = 0;
+    for (name, value) in params {
+        let prev = last.get(name).copied().unwrap_or(f64::NAN);
+        if (prev - value).abs() <= EPS {
+            continue;
         }
-        
-        // Basic Gains
-        send_single_param(playback_id, "bassL:Gain", bass);
-        send_single_param(playback_id, "bassR:Gain", bass);
-        send_single_param(playback_id, "trebleL:Gain", treble);
-        send_single_param(playback_id, "trebleR:Gain", treble);
-        send_single_param(playback_id, "voiceL:Gain", voice);
-        send_single_param(playback_id, "voiceR:Gain", voice);
-        
-        // Spatializer
-        let mut width = spatializer_width;
-        if profile.surround {
-            match profile.surround_variation.as_str() {
-                "Headset" => width *= 0.8,
-                "Virtual" | "Surround" => width *= 1.4,
-                "3D" => width *= 1.8,
-                "Wide" => width *= 2.5,
-                _ => {}
+        last.insert(name.clone(), *value);
+        // Quote the control name: several contain spaces and parentheses.
+        script.push_str(&format!(
+            "pw-cli set-param {} Props '{{ params = [ \"{}\" {} ] }}' >/dev/null 2>&1; ",
+            node_id, name, value
+        ));
+        count += 1;
+    }
+    drop(last);
+    if count == 0 {
+        return true;
+    }
+    debug!("Pushing {} changed params to node {}", count, node_id);
+    Command::new("sh")
+        .args(["-c", &script])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+fn push_profile_params(profile: &AudioProfile) {
+    let params = compute_params(profile);
+    // Drop the flush serialization lock quickly; the actual push is short.
+    let _guard = FLUSH_LOCK.lock().unwrap();
+    for attempt in 0..2 {
+        if let Some(id) = cached_node_id("msi_dsp_input", &FILTER_NODE_ID) {
+            if push_params_diffed(id, &params) {
+                return;
             }
+            // Push failed (stale id after a graph rebuild?) — re-resolve once.
+            warn!("Param push failed (attempt {}), re-resolving node id", attempt);
+            forget_node_id(&FILTER_NODE_ID);
         } else {
-            width = 1.0;
+            warn!("msi_dsp_input node not found, skipping param push");
+            // Graph is gone: force full recovery on the next apply.
+            ROUTING_OK.store(false, Ordering::SeqCst);
+            return;
         }
-        send_single_param(playback_id, "spatializer:Width", width);
-        
-        // Limiter & Night Mode
-        let night_mode_active = profile.night_mode && profile.effects_enabled;
-        let volume_stabilizer_active = profile.limiter_enabled && profile.effects_enabled;
-        let limiter_threshold = if night_mode_active { -12.0 } else if volume_stabilizer_active { -1.0 } else { -0.1 };
-        let compress_ratio = if night_mode_active { 8.0 } else { profile.compressor_ratio.max(1.0) };
-        
-        send_single_param(playback_id, "compressorL:Peak limit (dB)", limiter_threshold);
-        send_single_param(playback_id, "compressorR:Peak limit (dB)", limiter_threshold);
-        send_single_param(playback_id, "compressorL:Compression ratio", compress_ratio);
-        send_single_param(playback_id, "compressorR:Compression ratio", compress_ratio);
-        send_single_param(playback_id, "limiter:Limit (dB)", -0.1);
     }
+    // Both attempts failed: graph likely gone; force recovery next time.
+    ROUTING_OK.store(false, Ordering::SeqCst);
+}
 
-    // 2. Microphone Node Updates
-    if let Some(mic_id) = get_node_id_by_name("msi_dsp_mic_input") {
-        info!("Updating microphone filter params for node {}", mic_id);
-        let mic_gain = if profile.mic_enabled { profile.mic_gain } else { 0.0 };
-        send_single_param(mic_id, "mic_hp:Gain", mic_gain);
+/// Coalescing entry point: rapid UPDATE storms (EQ slider drags) collapse
+/// into at most one graph push per PUSH_INTERVAL_MS, always the LATEST
+/// values. The graph is never restarted — only params move.
+fn schedule_param_push(profile: &AudioProfile) {
+    use std::sync::atomic::Ordering;
+    let generation = PARAM_GEN.fetch_add(1, Ordering::SeqCst) + 1;
+    *PENDING_PROFILE.lock().unwrap() = Some(profile.clone());
+
+    let elapsed = LAST_PUSH.lock().unwrap().elapsed().as_millis() as u64;
+    if elapsed >= PUSH_INTERVAL_MS {
+        flush_pending(generation);
+    } else {
+        let wait = PUSH_INTERVAL_MS - elapsed;
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_millis(wait));
+            if PARAM_GEN.load(Ordering::SeqCst) == generation {
+                flush_pending(generation);
+            }
+            // Else: a newer generation arrived; it owns the flush.
+        });
     }
 }
 
+fn flush_pending(generation: u64) {
+    let profile = PENDING_PROFILE.lock().unwrap().clone();
+    if let Some(p) = profile {
+        push_profile_params(&p);
+        *LAST_PUSH.lock().unwrap() = std::time::Instant::now();
+        debug!("Flushed param generation {}", generation);
+    }
+}
+
+
+/// Microphone side-effects. These act on the real capture device via pactl
+/// (user space, no graph needed), so they apply even when DSP processing
+/// itself is bypassed. Echo-cancellation/noise-suppression toggles need a
+/// WebRTC backend that this system does not provide; the echo-cancel
+/// module stays loaded for its monitor plumbing and the flags are logged
+/// honestly instead of pretending.
+fn apply_mic_settings(profile: &AudioProfile) {
+    let mute = if profile.mic_enabled { "false" } else { "true" };
+    let _ = Command::new("pactl")
+        .args(["set-source-mute", "@DEFAULT_SOURCE@", mute])
+        .output();
+
+    // mic_gain is a linear multiplier roughly in 0.0..2.0.
+    let pct = (profile.mic_gain.clamp(0.0, 2.0) * 100.0).round() as i32;
+    let _ = Command::new("pactl")
+        .args(["set-source-volume", "@DEFAULT_SOURCE@", &format!("{}%", pct)])
+        .output();
+
+    if profile.echo_cancellation || profile.mic_noise_suppression {
+        info!(
+            "Mic FX requested (echo-cancel={}, noise-suppression={}): no WebRTC backend on this system — mic stays dry apart from mute/gain",
+            profile.echo_cancellation, profile.mic_noise_suppression
+        );
+    }
+}
 
 fn apply_dsp_settings(profile: &AudioProfile, update_volume: bool) {
+    // Mic first: independent of the playback graph state.
+    apply_mic_settings(profile);
+
     if !DSP_ENABLED.load(Ordering::SeqCst) {
         info!("DSP is disabled, skipping settings application");
         return;
@@ -879,34 +1296,36 @@ fn apply_dsp_settings(profile: &AudioProfile, update_volume: bool) {
         settings.insert(profile.name.clone(), profile.clone());
     }
     
-    // EasyEffects-style: Always use persistent filter chain, never restart
-    // Only update parameters dynamically
-    if !check_filter_chain_running() {
-        info!("Filter chain not running, starting persistent chain...");
-        if let Err(e) = generate_filter_chain_config(profile) {
-            error!("Failed to generate filter chain config: {}", e);
+    // Persistent-graph policy: the daemon runs this binary's structure
+    // (reloaded only on version/stage change or vanished nodes — the only
+    // audio blip, never on value changes). Routing (link + default) runs
+    // once per topology via the ROUTING_OK latch; values go through the
+    // coalesced param pusher. Steady-state UPDATEs touch NOTHING but
+    // changed filter params: no relink, no default move, no pause.
+    let mut routed = ROUTING_OK.load(Ordering::SeqCst);
+    if !routed || !dropin_matches() {
+        if !ensure_graph_running(profile) {
+            error!("Graph unavailable; staying on direct output");
             return;
         }
-        
-        if !start_filter_chain() {
-            error!("Failed to start filter chain");
+        if link_filter_chain() {
+            routed = true;
+            ROUTING_OK.store(true, Ordering::SeqCst);
+            if DSP_ENABLED.load(Ordering::SeqCst) {
+                set_default_sink_to_dsp();
+            }
+        } else {
+            ROUTING_OK.store(false, Ordering::SeqCst);
+            error!("Routing unavailable; staying on direct output");
             return;
         }
-        
-        std::thread::sleep(std::time::Duration::from_millis(300));
-        link_filter_chain();
-        
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    } else {
-        // Filter chain is already running - just update parameters
-        info!("Updating filter parameters dynamically (persistent chain)...");
-        update_filter_params(profile);
     }
+    schedule_param_push(profile);
     
     if update_volume {
-        let new_volume = profile.volume.max(0.01);
-        set_sink_volume(new_volume);
-        info!("Volume set to {}%", (new_volume * 100.0) as i32);
+        let applied = temper_volume(profile.volume);
+        set_sink_volume(applied);
+        info!("Volume set to {}% (tempered)", (applied * 100.0) as i32);
     }
     
     // Only persist profile.json when the profile name actually changed
@@ -949,17 +1368,29 @@ async fn main() -> Result<()> {
         *last = saved_profile.name.clone();
     }
     
+    // Always (re)generate the drop-in at startup: the binary may be newer
+    // than the on-disk graph (updates must reach the daemon). Cheap when
+    // unchanged; runtime UPDATEs never touch structure.
+    if let Err(e) = generate_filter_chain_config(&saved_profile) {
+        error!("Startup graph generation failed: {}", e);
+    }
+
     // Auto-apply saved profile on startup
     info!("Auto-applying saved DSP profile on service startup...");
     apply_dsp_settings(&saved_profile, false);
 
     // Start background device monitor for seamless switching
     start_device_monitor();
-    
+
+    // Watchdog: rebuilds a dead graph, never leaves a dead default sink.
+    start_watchdog();
+
     // Auto-set default sink to DSP if DSP is enabled
     if DSP_ENABLED.load(Ordering::SeqCst) && check_filter_chain_running() {
         set_default_sink_to_dsp();
         info!("Auto-set default sink to MSI DSP");
+    } else if DSP_ENABLED.load(Ordering::SeqCst) {
+        warn!("Filter graph unavailable at startup; audio stays direct until it can start");
     }
 
     let _ = fs::remove_file(SOCKET_PATH);
@@ -985,18 +1416,25 @@ async fn main() -> Result<()> {
                                 for message in raw_msg.split('\n').map(|s| s.trim()).filter(|s| !s.is_empty()) {
                                     if message == "ENABLE" {
                                         info!("Received ENABLE command");
+                                        DSP_ENABLED.store(true, Ordering::SeqCst);
+                                        ROUTING_OK.store(false, Ordering::SeqCst);
                                         if !check_filter_chain_running() {
                                             let profile = load_saved_profile();
                                             apply_dsp_settings(&profile, false);
+                                        } else {
+                                            // Warm graph: relink + default only, no restart, no gap.
+                                            if link_filter_chain() {
+                                                ROUTING_OK.store(true, Ordering::SeqCst);
+                                            }
+                                            set_default_sink_to_dsp();
                                         }
-                                        // Always set DSP as default sink on enable (handles the case where chain was stopped)
-                                        set_default_sink_to_dsp();
                                         let _ = socket.write_all(b"OK\n").await;
                                     } else if message == "DISABLE" {
                                         info!("Received DISABLE command");
+                                        DSP_ENABLED.store(false, Ordering::SeqCst);
                                         disable_dsp_switch_to_direct();
-                                        // Also stop the filter chain so it restarts cleanly on next ENABLE
-                                        kill_filter_chain();
+                                        // Graph stays warm on purpose: re-enable is
+                                        // instant (relink + default) with no 2s rebuild.
                                         let _ = socket.write_all(b"OK\n").await;
                                     } else if message.starts_with("LOAD:") {
                                         let profile_name = message.replace("LOAD:", "").trim().to_string();
@@ -1062,8 +1500,34 @@ async fn main() -> Result<()> {
                                         info!("Received VOLUME command: {}", message);
                                         let vol_str = message.replace("VOLUME:", "").replace("VOLUME", "");
                                         if let Ok(vol) = vol_str.trim().parse::<f64>() {
-                                            let new_vol: f64 = vol.clamp(0.2, 1.3);
-                                            set_sink_volume(new_vol);
+                                            if vol < 0.0 {
+                                                // Mute sentinel from the app mute button.
+                                                // NOTE: pactl only resolves @DEFAULT_SINK@
+                                                // (@DEFAULT_AUDIO_SINK@ is wpctl-only).
+                                                for target in ["@DEFAULT_SINK@"] {
+                                                    let _ = Command::new("pactl")
+                                                        .args(["set-sink-mute", target, "true"])
+                                                        .output();
+                                                }
+                                                if let Some(speaker) = pick_physical_speaker() {
+                                                    let _ = Command::new("pactl")
+                                                        .args(["set-sink-mute", &speaker, "true"])
+                                                        .output();
+                                                }
+                                            } else {
+                                                // Any real volume drag unmutes first.
+                                                for target in ["@DEFAULT_SINK@"] {
+                                                    let _ = Command::new("pactl")
+                                                        .args(["set-sink-mute", target, "false"])
+                                                        .output();
+                                                }
+                                                if let Some(speaker) = pick_physical_speaker() {
+                                                    let _ = Command::new("pactl")
+                                                        .args(["set-sink-mute", &speaker, "false"])
+                                                        .output();
+                                                }
+                                                set_sink_volume(temper_volume(vol));
+                                            }
                                             let _ = socket.write_all(b"OK\n").await;
                                         } else {
                                             let _ = socket.write_all(b"ERROR: invalid volume\n").await;
@@ -1102,6 +1566,6 @@ fn clamp_profile(profile: &mut AudioProfile) {
     for gain in profile.eq_gains.iter_mut() {
         *gain = gain.clamp(-15.0, 15.0);
     }
-    profile.volume = profile.volume.clamp(0.0, 1.3);
+    profile.volume = temper_volume(profile.volume);
     profile.stereo_width = profile.stereo_width.clamp(0.0, 2.0);
 }
