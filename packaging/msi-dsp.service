@@ -1,0 +1,15 @@
+[Unit]
+Description=MSI DSP Service (PipeWire audio processing for MSI Center)
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire.service
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/Development/apps/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service
+Restart=on-failure
+RestartSec=3
+Nice=-5
+
+[Install]
+WantedBy=default.target

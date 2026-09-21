@@ -776,6 +776,9 @@ fn disable_dsp_switch_to_direct() {
 ///  - DSP enabled + output unlinked         -> relink live (daemon restarts
 ///    silently drop links while node names survive — this was the actual
 ///    cause of "controls do nothing audible").
+///  - DSP enabled                           -> pin the physical speaker at
+///    100% unmuted (single-knob design: the chain carries ALL level, so a
+///    stray/legacy speaker level can never mute the room again).
 /// Runs every 10s; covers crashes and PipeWire restarts.
 fn watchdog_once() {
     let chain_alive = get_node_id_by_name("msi_dsp_input").is_some();
@@ -791,6 +794,18 @@ fn watchdog_once() {
         ROUTING_OK.store(false, Ordering::SeqCst);
         if link_filter_chain() {
             ROUTING_OK.store(true, Ordering::SeqCst);
+        }
+    }
+
+    if DSP_ENABLED.load(Ordering::SeqCst) {
+        // Single-knob guard: chain holds the level, speaker stays wide open.
+        if let Some(speaker) = pick_physical_speaker() {
+            let _ = Command::new("pactl")
+                .args(["set-sink-volume", &speaker, "100%"])
+                .output();
+            let _ = Command::new("pactl")
+                .args(["set-sink-mute", &speaker, "false"])
+                .output();
         }
     }
 
