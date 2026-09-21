@@ -1,0 +1,24 @@
+# MSI Center Linux — passwordless sudo fallback (all distros)
+#
+# Install:  sudo cp msi-center-sudoers /etc/sudoers.d/msi-center && sudo chmod 0440 /etc/sudoers.d/msi-center && sudo visudo -c
+#
+# Design: the app NEVER prompts. Native code always tries a direct write
+# first (works with packaging/99-msi-ec.rules). Only when that fails does it
+# use `sudo -n <cmd>` (non-interactive): with this file in place sudo
+# succeeds silently; without it `sudo -n` fails silently — in neither case
+# does the user see a password dialog.
+#
+# `%sudo` covers Debian/Ubuntu, `%wheel` covers Arch/Fedora. Hosts using
+# neither group can append their own group or `username ALL=(root) NOPASSWD: ...`.
+# Commands are pinned to exact binaries/args (no wildcards on modifiable
+# paths) to keep the NOPASSWD surface minimal.
+
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/tee /sys/devices/platform/msi-ec/*
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/tee /sys/class/power_supply/BAT*/charge_control_end_threshold
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/tee /sys/class/leds/*kbd_backlight/brightness
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/tee /proc/sys/vm/drop_caches
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/renice -n -10 *
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/sbin/tc qdisc * , /usr/bin/tc qdisc *
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/sbin/nft *, /usr/bin/nft *
+%sudo, %wheel ALL=(root) NOPASSWD: /usr/bin/prime-select *
