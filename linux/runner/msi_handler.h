@@ -28,7 +28,24 @@
 #include <condition_variable>
 #include <queue>
 
-// Sequential Background Worker to prevent pkexec conflicts
+// Passwordless privileged-write policy (applies to ALL Linux devices):
+//
+//  1. ALWAYS try a direct user-space write first. On machines with the
+//     shipped udev rule (packaging/99-msi-ec.rules) the sysfs attributes are
+//     group/world-writable, so no elevation is needed at all and no prompt
+//     can ever appear.
+//  2. If the direct write fails (udev rule missing, read-only attr), fall
+//     back to `sudo -n` (non-interactive). `sudo -n` NEVER prompts: it either
+//     succeeds via the shipped sudoers drop-in
+//     (packaging/msi-center-sudoers) or fails silently in the background.
+//  3. `pkexec` is intentionally NOT used anywhere: it always pops up an
+//     authentication dialog, which is exactly what this app must avoid.
+//  4. Hyprland (`hyprctl`) must NEVER go through this path at all — it has
+//     to run as the normal user so it can reach the Wayland socket in
+//     $XDG_RUNTIME_DIR/hypr. All hyprctl calls live in the Flutter layer
+//     (HyprlandService) and run without any prefix.
+//
+// Sequential Background Worker to prevent overlapping privileged writes.
 class BgWorker {
 public:
   static BgWorker& instance() {
@@ -161,13 +178,31 @@ bool setSoundVolumeBoost(double boost) {
   return _send_dsp_cmd("VOLUME:" + std::to_string(boost));
 }
 
+bool file_exists(const std::string &path);
+
 bool write_sysfs_root(const std::string &path, const std::string &value) {
-  // Use pkexec tee for writing to sysfs as root
-  // We fire this in the background now to prevent UI lockup
+  // Honest failure first: if the sysfs node doesn't exist (e.g. no msi-ec
+  // on non-MSI hardware, no charge threshold on this firmware), report
+  // false immediately so the UI reverts the toggle instead of pretending
+  // success while nothing physically happens.
+  if (!file_exists(path)) {
+    KLOG("write_sysfs_root: node missing, refusing phantom write: %s", path.c_str());
+    return false;
+  }
+  // Fast path: direct write (works when the udev rule made the attr
+  // writable, or when running with sufficient rights). Never prompts.
+  if (write_sysfs_file(path, value)) {
+    return true;
+  }
+  // Slow path: passwordless `sudo -n` via tee. The `-n` flag makes sudo fail
+  // immediately instead of prompting when no rule matches. Queued in the
+  // background so the UI never blocks.
+  // NOTE: value is constrained by callers to simple tokens (on/off,
+  // integers, governor names), so shell interpolation is safe here.
   std::string cmd =
-      "echo \"" + value + "\" | pkexec tee " + path + " > /dev/null";
+      "echo \"" + value + "\" | sudo -n tee " + path + " > /dev/null 2>&1 || true";
   run_bg(cmd);
-  return true; // Optimistic return
+  return true; // Optimistic return (node exists; only perms are unknown)
 }
 
 int read_int_sysfs(const std::string &path, int default_val = 0) {
@@ -195,9 +230,26 @@ void ensureMsiDspServiceRunning() {
   }
 
   KLOG("Starting msi_dsp_service...");
-  std::string home = std::getenv("HOME");
-  std::string dsp_binary = home + "/development/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service";
-  std::string cmd = "RUST_LOG=info " + dsp_binary + " > /tmp/msi_dsp_service.log 2>&1 &";
+  // Resolve relative to $HOME (correct case) with legacy fallbacks, so this
+  // works from any checkout location. Skips silently if nothing is built.
+  const char *home_env = std::getenv("HOME");
+  std::string home = home_env ? home_env : "";
+  std::vector<std::string> candidates = {
+      home + "/Development/apps/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service",
+      "/home/sandy/development/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service",
+  };
+  std::string dsp_binary;
+  for (const auto &c : candidates) {
+    if (std::ifstream(c).good()) {
+      dsp_binary = c;
+      break;
+    }
+  }
+  if (dsp_binary.empty()) {
+    KLOG("msi_dsp_service binary not found; audio DSP disabled.");
+    return;
+  }
+  std::string cmd = "RUST_LOG=info \"" + dsp_binary + "\" > /tmp/msi_dsp_service.log 2>&1 &";
   system(cmd.c_str());
 }
 
@@ -391,6 +443,16 @@ FlValue *getDeviceSettingsDirect() {
   fl_value_set_take(result, fl_value_new_string("coolerBoost"),
                     fl_value_new_bool(cooler == "on"));
 
+  // Win/Fn key swap (msi-ec `fn_key` attribute). Firmware variants expose
+  // different encodings ("left"/"right" upstream, "on"/"off" or "1"/"0" on
+  // older maps). Normalize to bool here. Missing file (non-MSI hardware)
+  // -> report false; Dart layer shows the toggle as unavailable.
+  std::string fn_key = read_sysfs_file(MSI_EC_PATH + "/fn_key");
+  bool fn_swapped = (fn_key == "right" || fn_key == "on" || fn_key == "1" ||
+                     fn_key == "swapped" || fn_key == "left_win");
+  fl_value_set_take(result, fl_value_new_string("fnKeySwap"),
+                    fl_value_new_bool(fn_swapped));
+
   fl_value_set_take(result, fl_value_new_string("usbPowerShare"),
                     fl_value_new_bool(false));
 
@@ -546,7 +608,7 @@ bool setShiftMode(const std::string &mode) {
 
   std::string gov_cmd =
       "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do "
-      "echo " + governor + " | pkexec tee $f > /dev/null 2>&1; done";
+      "echo " + governor + " | sudo -n tee $f > /dev/null 2>&1 || true; done";
   run_bg(gov_cmd);
 
   KLOG("setShiftMode(%s) -> triggered governor=%s in background", mode.c_str(), governor.c_str());
@@ -581,7 +643,23 @@ bool setDeviceSettingDirect(const std::string &key, const std::string &value) {
     path = MSI_EC_PATH + "/webcam";
   else if (key == "cooler_boost" || key == "coolerBoost")
     path = MSI_EC_PATH + "/cooler_boost";
-  else if (key == "extreme_perf" || key == "extremePerf") {
+  else if (key == "fn_key" || key == "fnKeySwap" || key == "fn_key_swap") {
+    // Preserve the firmware's existing encoding: read the current value and
+    // write back in the same format so every msi-ec variant keeps working.
+    // Upstream left/right nodes flip sides (flipping IS the swap).
+    std::string current = read_sysfs_file(MSI_EC_PATH + "/fn_key");
+    std::string out = value;
+    if (current == "left" || current == "right") {
+      out = (value == "on" || value == "1" || value == "right") ? "right" : "left";
+    } else if (value == "on" || value == "off") {
+      if (current == "1" || current == "0") out = (value == "on") ? "1" : "0";
+    } else if (value == "1" || value == "0") {
+      if (current == "on" || current == "off") out = (value == "1") ? "on" : "off";
+    }
+    path = MSI_EC_PATH + "/fn_key";
+    write_sysfs_root(path, out);
+    return true;
+  } else if (key == "extreme_perf" || key == "extremePerf") {
     return setShiftMode(value == "on" ? "turbo" : "comfort");
   } else if (key == "gaming_audio" || key == "gamingAudio") {
     return setSoundEffectsEnabled(value == "on");
@@ -613,19 +691,53 @@ FlValue *getSystemInfoFallback() {
   std::string status = read_sysfs_file(BATTERY_PATH + "/status");
   fl_value_set_take(result, fl_value_new_string("isCharging"), fl_value_new_bool(status == "Charging" || status == "Full"));
 
-  int cpu_temp = 0;
-  for (int i = 0; i < 15; i++) {
-    int temp = read_int_sysfs("/sys/class/hwmon/hwmon" + std::to_string(i) + "/temp1_input", 0);
-    if (temp > 0 && cpu_temp == 0) cpu_temp = temp / 1000;
+  // Generic thermal pickup: max across all hwmon temp inputs (coretemp,
+  // acpitz, k10temp, ...). Works on any laptop, not just msi-ec machines.
+  int cpu_temp_mc = 0;
+  for (int i = 0; i < 20; i++) {
+    std::string base = "/sys/class/hwmon/hwmon" + std::to_string(i);
+    if (!file_exists(base + "/name")) continue;
+    for (int t = 1; t <= 8; t++) {
+      int temp = read_int_sysfs(base + "/temp" + std::to_string(t) + "_input", 0);
+      if (temp > cpu_temp_mc) cpu_temp_mc = temp;
+    }
   }
-  fl_value_set_take(result, fl_value_new_string("cpuTemp"), fl_value_new_int(cpu_temp));
+  fl_value_set_take(result, fl_value_new_string("cpuTemp"), fl_value_new_int(cpu_temp_mc / 1000));
   fl_value_set_take(result, fl_value_new_string("cpuUsage"), fl_value_new_int((int)calculate_cpu_usage()));
   fl_value_set_take(result, fl_value_new_string("gpuUsage"), fl_value_new_int(get_gpu_usage()));
 
   return result;
 }
 
-FlValue *getFanInfoFallback() { return fl_value_new_list(); }
+FlValue *getFanInfoFallback() {
+  // Generic fan pickup: every hwmon fanN_input (thinkpad_acpi, dell_smm,
+  // asus, msi_wmi_platform, nct6775, ...). Values are already RPM, unlike
+  // the msi-ec RPS readings scaled in getFanInfoDirect().
+  FlValue *result = fl_value_new_list();
+  int index = 0;
+  for (int i = 0; i < 20 && index < 6; i++) {
+    std::string base = "/sys/class/hwmon/hwmon" + std::to_string(i);
+    if (!file_exists(base + "/name")) continue;
+    for (int f = 1; f <= 6 && index < 6; f++) {
+      std::string fan_path =
+          base + "/fan" + std::to_string(f) + "_input";
+      if (!file_exists(fan_path)) continue;
+      int rpm = read_int_sysfs(fan_path, -1);
+      if (rpm < 0) continue;
+      int max_rpm = read_int_sysfs(
+          base + "/fan" + std::to_string(f) + "_max", 6000);
+      FlValue *fan = fl_value_new_map();
+      fl_value_set_take(fan, fl_value_new_string("index"), fl_value_new_int(index));
+      fl_value_set_take(fan, fl_value_new_string("currentRpm"), fl_value_new_int(rpm));
+      fl_value_set_take(fan, fl_value_new_string("minRpm"), fl_value_new_int(0));
+      fl_value_set_take(fan, fl_value_new_string("maxRpm"), fl_value_new_int(max_rpm > 0 ? max_rpm : 6000));
+      fl_value_set_take(fan, fl_value_new_string("autoMode"), fl_value_new_bool(true));
+      fl_value_append(result, fan);
+      index++;
+    }
+  }
+  return result;
+}
 FlValue *getDeviceSettingsFallback() {
   FlValue *result = fl_value_new_map();
   fl_value_set_take(result, fl_value_new_string("webcam"), fl_value_new_bool(false));
@@ -635,7 +747,7 @@ FlValue *getDeviceSettingsFallback() {
 }
 
 bool freeUpMemory() {
-  run_bg("sync && echo 3 | pkexec tee /proc/sys/vm/drop_caches");
+  run_bg("sync && echo 3 | sudo -n tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true");
   return true;
 }
 
@@ -646,14 +758,14 @@ bool setAiLanPriority(bool enable) {
 
   std::thread([enable, iface]() {
     if (enable) {
-      system(("pkexec tc qdisc del dev " + iface + " root 2>/dev/null || true").c_str());
-      system(("pkexec tc qdisc add dev " + iface + " root cake bandwidth 1gbit flowblind").c_str());
-      system("pkexec nft add table inet msi_lan_manager 2>/dev/null || true");
-      system("pkexec nft add chain inet msi_lan_manager postrouting { type filter hook postrouting priority 0; policy accept; } 2>/dev/null || true");
-      system("pkexec nft add rule inet msi_lan_manager postrouting udp dport { 27015, 27016, 27017, 27018, 27019, 27020, 3074, 3478, 4379, 4380 } mark set 1 2>/dev/null || true");
+      system(("sudo -n tc qdisc del dev " + iface + " root 2>/dev/null || true").c_str());
+      system(("sudo -n tc qdisc add dev " + iface + " root cake bandwidth 1gbit flowblind 2>/dev/null || true").c_str());
+      system("sudo -n nft add table inet msi_lan_manager 2>/dev/null || true");
+      system("sudo -n nft 'add chain inet msi_lan_manager postrouting { type filter hook postrouting priority 0 ; policy accept ; }' 2>/dev/null || true");
+      system("sudo -n nft add rule inet msi_lan_manager postrouting udp dport { 27015, 27016, 27017, 27018, 27019, 27020, 3074, 3478, 4379, 4380 } mark set 1 2>/dev/null || true");
     } else {
-      system(("pkexec tc qdisc del dev " + iface + " root 2>/dev/null || true").c_str());
-      system("pkexec nft delete table inet msi_lan_manager 2>/dev/null || true");
+      system(("sudo -n tc qdisc del dev " + iface + " root 2>/dev/null || true").c_str());
+      system("sudo -n nft delete table inet msi_lan_manager 2>/dev/null || true");
     }
   }).detach();
   return true;
@@ -662,13 +774,13 @@ bool setAiLanPriority(bool enable) {
 bool setGpuMode(const std::string &mode) {
   std::string target = (mode == "discrete") ? "nvidia" : (mode == "integrated") ? "intel" : "on-demand";
   KLOG("setGpuMode: switching to %s in background", target.c_str());
-  run_bg("pkexec prime-select " + target);
+  run_bg("sudo -n prime-select " + target + " 2>/dev/null || true");
   return true;
 }
 
 bool cleanUpDisk() {
   // Production-grade cleanup: clear system logs, temporary files, and package cache in background
-  std::string cmd = "pkexec bash -c 'journalctl --vacuum-time=1d && apt-get clean && rm -rf /tmp/*'";
+  std::string cmd = "sudo -n bash -c 'journalctl --vacuum-time=1d && apt-get clean && rm -rf /tmp/*' 2>/dev/null || true";
   run_bg(cmd);
   return true;
 }
@@ -679,9 +791,9 @@ bool setSmartPriority(const std::vector<std::string> &apps) {
   KLOG("Setting Smart Priority for %zu apps", apps.size());
   
   for (const auto& app : apps) {
-    // Increase priority (renice -10) for selected apps
-    // We use pkexec to ensure we have permission to renice processes we don't own
-    std::string cmd = "pkexec renice -n -10 $(pgrep -f \"" + app + "\") > /dev/null 2>&1";
+    // Increase priority (renice -10) for selected apps.
+    // `sudo -n` never prompts: succeeds only with the sudoers drop-in.
+    std::string cmd = "sudo -n renice -n -10 $(pgrep -f \"" + app + "\") > /dev/null 2>&1 || true";
     run_bg(cmd);
   }
   return true;
@@ -693,10 +805,10 @@ bool setGamingMode(bool enable, bool perf = true, bool audio = true, bool cooler
       if (perf) {
         setShiftMode("turbo");
         system("powerprofilesctl set performance 2>/dev/null || true");
-        system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done");
+        system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | sudo -n tee $f > /dev/null 2>&1 || true; done");
       }
       if (cooler) write_sysfs_root(MSI_EC_PATH + "/cooler_boost", "on");
-      system("sync && echo 3 | pkexec tee /proc/sys/vm/drop_caches > /dev/null 2>&1");
+      system("sync && echo 3 | sudo -n tee /proc/sys/vm/drop_caches > /dev/null 2>&1 || true");
       if (audio) {
         system("pactl set-sink-volume @DEFAULT_SINK@ 100% > /dev/null 2>&1");
         system("pactl set-sink-mute @DEFAULT_SINK@ false > /dev/null 2>&1");
@@ -705,7 +817,7 @@ bool setGamingMode(bool enable, bool perf = true, bool audio = true, bool cooler
       setShiftMode("comfort");
       system("powerprofilesctl set balanced 2>/dev/null || true");
       if (cooler) write_sysfs_root(MSI_EC_PATH + "/cooler_boost", "off");
-      system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo powersave | pkexec tee $f > /dev/null 2>&1; done");
+      system("for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo powersave | sudo -n tee $f > /dev/null 2>&1 || true; done");
     }
   }).detach();
   return true;
