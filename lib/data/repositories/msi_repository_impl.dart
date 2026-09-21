@@ -263,13 +263,14 @@ class MsiRepositoryImpl implements MsiRepository {
   DateTime _lastPollRequest = DateTime.fromMillisecondsSinceEpoch(0);
   static const _pollMinInterval = Duration(milliseconds: 120);
 
-  /// Inverse of the service temper (real 0.3-1.0 -> display 0-1). The
+  /// Inverse of the service temper (real 0.4-1.4 -> display 0-1). The
   /// service reports REAL sink levels; the UI speaks DISPLAY units. Without
   /// this conversion the slider shows tempered values and visibly fights
-  /// the user's drag (30 -> 44 -> 20 flicker).
+  /// the user's drag (30 -> 44 -> 20 flicker). Read-only: polls never
+  /// write back, so the two UIs can't fight each other.
   double _toDisplayVolume(double real) {
     if (real <= 0.01) return 0.0;
-    return ((real - 0.3) / 0.7).clamp(0.0, 1.0);
+    return ((real - 0.4) / 1.0).clamp(0.0, 1.0);
   }
 
   void _emitVolumeDisplay(double display) {

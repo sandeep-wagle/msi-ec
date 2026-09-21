@@ -409,16 +409,16 @@ fn get_sink_volume() -> f64 {
     }
 }
 
-/// Display-to-real temper: UIs show 0-100%, but the range is stretched
-/// smoothly onto real 0.35-1.40: a displayed 0% lands on a 0.35 audible
-/// floor, 100% lands on a 1.40 boost, linear in between
-/// (real = 0.35 + 1.05 * display). True mute travels as a NEGATIVE
-/// volume sentinel, never as zero.
+/// Display-to-real temper, the SINGLE mapping both UIs share: displays
+/// show 0-100%, real lands on 0.40-1.40 linearly (real = 0.4 + 1.0 * UI).
+/// Neither UI writes the other: the app sends display values here, system
+/// keys write the sink directly, and polls convert back with the inverse.
+/// True mute travels as a NEGATIVE volume sentinel, never as zero.
 fn temper_volume(display: f64) -> f64 {
     if display <= 0.01 {
-        0.35
+        0.4
     } else {
-        0.35 + 1.05 * display.clamp(0.0, 1.0)
+        0.4 + 1.0 * display.clamp(0.0, 1.0)
     }
 }
 
