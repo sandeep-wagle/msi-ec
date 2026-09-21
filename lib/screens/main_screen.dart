@@ -14,6 +14,7 @@ import 'user_scenario_screen.dart';
 import 'system_diagnosis_screen.dart';
 import 'notification_screen.dart';
 import 'settings_screen.dart';
+import 'controls_screen.dart';
 import 'package:msi_controller/widgets/sdk_initialization_loader.dart';
 import 'package:msi_controller/widgets/glass_bottom_nav.dart';
 
@@ -38,6 +39,7 @@ class _MainScreenState extends State<MainScreen> {
     NotificationScreen(),
     SystemDiagnosisScreen(),
     FeaturesScreen(),
+    ControlsScreen(),
   ];
 
   @override
@@ -241,6 +243,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icons.dashboard_outlined,
             selectedIcon: Icons.dashboard,
             label: 'Features',
+          ),
+          GlassBottomNavDestination(
+            icon: Icons.tune_outlined,
+            selectedIcon: Icons.tune,
+            label: 'Controls',
           ),
         ],
       ),

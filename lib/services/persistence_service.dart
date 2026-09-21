@@ -126,4 +126,26 @@ class PersistenceService {
   List<String> loadVaultItems() {
     return _p.getStringList(_vaultItemsKey) ?? [];
   }
+
+  // Controls tab: Hyprland pointer / touchpad preferences.
+  // Live values are applied via hyprctl and persisted to
+  // ~/.config/hypr/input.lua; these prefs act as the UI restore cache so
+  // the tab renders instantly (and sanely on non-Hyprland machines).
+  static const _sensitivityKey = 'controls_sensitivity';
+  static const _naturalScrollKey = 'controls_natural_scroll';
+  static const _accelProfileKey = 'controls_accel_profile';
+
+  Future<void> saveControlsInput({
+    double? sensitivity,
+    bool? naturalScroll,
+    String? accelProfile,
+  }) async {
+    if (sensitivity != null) await _p.setDouble(_sensitivityKey, sensitivity);
+    if (naturalScroll != null) await _p.setBool(_naturalScrollKey, naturalScroll);
+    if (accelProfile != null) await _p.setString(_accelProfileKey, accelProfile);
+  }
+
+  double loadSensitivity() => _p.getDouble(_sensitivityKey) ?? 0.0;
+  bool loadNaturalScroll() => _p.getBool(_naturalScrollKey) ?? false;
+  String loadAccelProfile() => _p.getString(_accelProfileKey) ?? 'adaptive';
 }
