@@ -1,0 +1,114 @@
+#!/bin/bash
+
+# omarchy:summary=Adjust output volume and show the Omarchy OSD
+# omarchy:args=<raise|lower|mute-toggle|+N|-N>
+# omarchy:examples=omarchy audio output volume raise | omarchy audio output volume lower | omarchy audio output volume +1
+#
+# *** MSI CENTER TEMPERED BUILD ***
+# Display <-> real mapping shared with MSI Controller (single contract):
+#   display 0-100  <-->  real 40-140  (real = 40 + display)
+# The OSD always shows DISPLAY values and steps in display space; only the
+# value written to the sink is tempered. True mute travels via mute-toggle.
+# Original backed up by packaging/install-omarchy-volume.sh before install.
+
+action="${1:-}"
+
+if [[ -z $action ]]; then
+  echo "Usage: omarchy-audio-output-volume <raise|lower|mute-toggle|+N|-N>"
+  exit 1
+fi
+
+# Resolve through any DSP sink to the physical one, so the keys always move real
+# loudness and the processing always sees full-scale input. Shared with the audio
+# panel and the output switcher.
+sink="$(omarchy-audio-output-sink)"
+if [[ -z $sink ]]; then
+  echo "Could not resolve an audio sink to control." >&2
+  exit 1
+fi
+
+# pactl reports the same percentage scale wpctl does (both are the raw volume
+# over PA_VOLUME_NORM), so the OSD reads identically either way.
+volume_percent() {
+  pactl get-sink-volume "$sink" 2>/dev/null |
+    awk 'NR == 1 {
+      for (i = 1; i <= NF; i++)
+        if ($i ~ /%$/) {sub("%", "", $i); print $i; exit}
+    }'
+}
+
+volume_muted() {
+  [[ $(pactl get-sink-mute "$sink" 2>/dev/null) == *yes ]]
+}
+
+# MSI temper helpers (integer percent units): display 0-100 <-> real 40-140.
+# NOTE: assignments split across lines — `local a=$1 b=$((a-40))` would
+# expand b before a is assigned.
+to_display() {
+  local real=$1
+  local d=$((real - 40))
+  ((d < 0)) && d=0
+  ((d > 100)) && d=100
+  printf '%s\n' "$d"
+}
+
+to_real() {
+  local display=$1
+  ((display < 0)) && display=0
+  ((display > 100)) && display=100
+  printf '%s\n' "$((40 + display))"
+}
+
+case "$action" in
+  raise) action="+5" ;;
+  lower) action="-5" ;;
+esac
+
+if [[ $action == "mute-toggle" ]]; then
+  runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+  debounce_file="$runtime_dir/omarchy-audio-output-volume-mute-toggle.last"
+  now=$(date +%s%3N)
+  last=0
+  [[ -r $debounce_file ]] && read -r last <"$debounce_file" || true
+  if ((now - last < 250)); then
+    exit 0
+  fi
+  printf '%s\n' "$now" >"$debounce_file"
+
+  pactl set-sink-mute "$sink" toggle
+  display=$(to_display "$(volume_percent)")
+elif [[ $action =~ ^([+-])([0-9]+)$ ]]; then
+  direction="${BASH_REMATCH[1]}"
+  step="${BASH_REMATCH[2]}"
+
+  # ATOMIC server-side step (no read-modify-write race between overlapping
+  # key-repeat invocations — that race swallowed steps and stuck the UI).
+  # Deltas are 1:1 display<->real (real = 40 + display), so a relative step
+  # moves both scales identically; bounds are enforced after.
+  pactl set-sink-mute "$sink" 0
+  pactl set-sink-volume "$sink" "${direction}${step}%"
+
+  # Clamp real into the temper band so repeated raises can't creep past
+  # 140 (which would feel stuck: display pinned at 100 while real climbs).
+  current="$(volume_percent)"
+  if [[ -n $current ]]; then
+    if ((current > 140)); then
+      pactl set-sink-volume "$sink" "140%"
+    elif ((current < 40)); then
+      pactl set-sink-volume "$sink" "40%"
+    fi
+  fi
+else
+  echo "Unknown volume action: $action"
+  exit 1
+fi
+
+if volume_muted; then
+  icon="volume-muted"
+  display=0
+else
+  icon="volume-high"
+  display=$(to_display "$(volume_percent)")
+fi
+
+omarchy-osd -i "$icon" -p "${display:-0}"

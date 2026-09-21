@@ -12,6 +12,14 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
   final MsiRepository _repository;
   static const String _prefKey = 'sound_settings';
 
+  /// Volume echo-suppression: the last value WE sent plus when the user
+  /// last touched volume. Polled levels matching our echo, arriving
+  /// mid-drag, or while self-muted are ignored so the slider never
+  /// jumps under the finger.
+  double _lastSentVolume = -1.0;
+  DateTime _lastUserVolumeChange = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _mutedByUs = false;
+
   SoundBloc(this._repository, SoundState initialState) : super(initialState) {
     on<SetSoundProfile>(_onSetSoundProfile, transformer: restartable());
     on<UpdateEQGains>(_onUpdateEQGains, transformer: restartable());
@@ -71,7 +79,15 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
   }
 
   Future<void> _onSyncVolume(SyncVolume event, Emitter<SoundState> emit) async {
-    emit(state.copyWith(volumeBoost: event.volume));
+    // Polled levels (system keys, other apps) follow into the slider —
+    // EXCEPT our own echoes and in-flight storms while the user drags:
+    // stale poll replies landing mid-drag are what made the readout jump
+    // 30 -> 04 -> 20. Muted state is sticky until the user drags.
+    if (_mutedByUs) return;
+    final now = DateTime.now();
+    if (now.difference(_lastUserVolumeChange).inMilliseconds < 500) return;
+    if ((event.volume - _lastSentVolume).abs() < 0.005) return;
+    emit(state.copyWith(volumeBoost: event.volume.clamp(0.0, 1.0)));
   }
 
   void applyInitialSettings() {
@@ -482,15 +498,19 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoost event,
     Emitter<SoundState> emit,
   ) async {
-    // Display range is 0-100%; the service tempers it (0% -> 0.3 floor).
+    // Display range is 0-100%; the service tempers it onto real 0.4-1.4.
     // Negative sentinel = mute button (true mute, not volume zero).
+    _lastUserVolumeChange = DateTime.now();
     if (event.boost < 0) {
+      _mutedByUs = true;
       emit(state.copyWith(volumeBoost: 0.0));
       await _repository.setSoundVolumeBoost(-1.0);
       await _saveSettings();
       return;
     }
     final clampedBoost = event.boost.clamp(0.0, 1.0);
+    _mutedByUs = false;
+    _lastSentVolume = clampedBoost;
     emit(state.copyWith(volumeBoost: clampedBoost));
     await _repository.setSoundVolumeBoost(clampedBoost);
     await _saveSettings();
@@ -500,6 +520,7 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     ChangeVolumeBoostPreview event,
     Emitter<SoundState> emit,
   ) async {
+    _lastUserVolumeChange = DateTime.now();
     emit(state.copyWith(volumeBoost: event.boost.clamp(0.0, 1.0)));
   }
 
