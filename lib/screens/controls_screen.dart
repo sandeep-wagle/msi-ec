@@ -47,6 +47,8 @@ class _ControlsScreenState extends State<ControlsScreen>
   bool _supportsFnKeySwap = false;
 
   Timer? _sensitivityDebounce;
+  Timer? _refreshTimer;
+  bool _sliderActive = false;
 
   @override
   bool get wantKeepAlive => true;
@@ -55,12 +57,57 @@ class _ControlsScreenState extends State<ControlsScreen>
   void initState() {
     super.initState();
     _loadAll();
+    // Silent live refresh: values changed outside the tab (hyprctl CLI,
+    // fn-key presses, EC writes from other tools, driver state) must flow
+    // back in, or the UI and the system permanently disagree after any
+    // tab switch or external tweak. Skipped while the user drags.
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (mounted && !_loading && !_sliderActive) _refreshLive();
+    });
   }
 
   @override
   void dispose() {
     _sensitivityDebounce?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
+  }
+
+  /// Re-reads every live source without touching user interaction state.
+  /// Only applies values that actually changed, so sliders never jump.
+  Future<void> _refreshLive() async {
+    final results = await Future.wait([
+      _hyprland.getSensitivity(),
+      _hyprland.getNaturalScroll(),
+      _hyprland.getAccelProfile(),
+      _accessories.readCoolerBoost(),
+      _accessories.readBatteryThreshold(),
+      _accessories.readFnKeySwap(),
+    ]);
+    if (!mounted || _sliderActive) return;
+    setState(() {
+      final sensitivity = results[0] as double?;
+      final natural = results[1] as bool?;
+      final accel = results[2] as String?;
+      final cooler = results[3] as bool?;
+      final threshold = results[4] as int?;
+      final fnSwap = results[5] as bool?;
+      if (sensitivity != null &&
+          (sensitivity - _sensitivity).abs() > 0.005) {
+        _sensitivity = sensitivity;
+      }
+      if (natural != null && natural != _naturalScroll) {
+        _naturalScroll = natural;
+      }
+      if (accel != null && accel != _accelProfile) {
+        _accelProfile = accel;
+      }
+      if (cooler != null && cooler != _coolerBoost) _coolerBoost = cooler;
+      if (threshold != null && threshold != _batteryThreshold) {
+        _batteryThreshold = threshold;
+      }
+      if (fnSwap != null && fnSwap != _fnKeySwap) _fnKeySwap = fnSwap;
+    });
   }
 
   Future<void> _loadAll() async {
@@ -112,9 +159,11 @@ class _ControlsScreenState extends State<ControlsScreen>
   void _onSensitivityChanged(double value) {
     setState(() => _sensitivity = value);
     _sensitivityDebounce?.cancel();
+    _sliderActive = true;
     _sensitivityDebounce = Timer(const Duration(milliseconds: 120), () async {
       final ok = await _hyprland.setSensitivity(_sensitivity);
       if (!mounted) return;
+      _sliderActive = false;
       if (ok) {
         await getIt<PersistenceService>().saveControlsInput(
           sensitivity: _sensitivity,
@@ -534,12 +583,17 @@ class _ControlsScreenState extends State<ControlsScreen>
                             divisions: 14,
                             label: '$_batteryThreshold%',
                             onChanged: _supportsBatteryThreshold
-                                ? (v) => setState(
+                                ? (v) {
+                                    _sliderActive = true;
+                                    setState(
                                       () => _batteryThreshold = v.round(),
-                                    )
+                                    );
+                                  }
                                 : null,
-                            onChangeEnd: (v) =>
-                                _onBatteryThresholdChanged(v.round()),
+                            onChangeEnd: (v) {
+                              _sliderActive = false;
+                              _onBatteryThresholdChanged(v.round());
+                            },
                           ),
                         ),
                       ),

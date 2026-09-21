@@ -87,6 +87,14 @@ class AccessoriesService {
 
   Future<bool> setBatteryThreshold(int limit) async {
     assert(limit >= 30 && limit <= 100);
+    // Write, then READ BACK: sysfs writes can fail silently (perms,
+    // driver clamps). Only report success when the file holds the value.
+    if (!await _writeThreshold(limit)) return false;
+    await Future.delayed(const Duration(milliseconds: 150));
+    return await readBatteryThreshold() == limit;
+  }
+
+  Future<bool> _writeThreshold(int limit) async {
     final path = batteryThresholdPath;
     if (path != null && await _writeSysfs(path, limit.toString())) {
       return true;

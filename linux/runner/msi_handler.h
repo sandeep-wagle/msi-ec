@@ -192,17 +192,28 @@ bool write_sysfs_root(const std::string &path, const std::string &value) {
   // Fast path: direct write (works when the udev rule made the attr
   // writable, or when running with sufficient rights). Never prompts.
   if (write_sysfs_file(path, value)) {
-    return true;
+    if (read_sysfs_file(path) == value) {
+      return true;
+    }
+    KLOG("write_sysfs_root: direct write unverified for %s", path.c_str());
   }
-  // Slow path: passwordless `sudo -n` via tee. The `-n` flag makes sudo fail
-  // immediately instead of prompting when no rule matches. Queued in the
-  // background so the UI never blocks.
+  // Slow path: passwordless `sudo -n` via tee, run SYNCHRONOUSLY so the
+  // result is truthful. `-n` fails fast instead of prompting; a retry
+  // covers transient fork failures (system() == -1) seen under rapid
+  // slider drags. No `|| true` anywhere — the exit code must mean it.
   // NOTE: value is constrained by callers to simple tokens (on/off,
   // integers, governor names), so shell interpolation is safe here.
-  std::string cmd =
-      "echo \"" + value + "\" | sudo -n tee " + path + " > /dev/null 2>&1 || true";
-  run_bg(cmd);
-  return true; // Optimistic return (node exists; only perms are unknown)
+  for (int attempt = 0; attempt < 2; attempt++) {
+    std::string cmd =
+        "echo \"" + value + "\" | sudo -n tee " + path + " > /dev/null 2>&1";
+    int rc = system(cmd.c_str());
+    if (rc == 0 && read_sysfs_file(path) == value) {
+      return true;
+    }
+    KLOG("write_sysfs_root: sudo fallback attempt %d failed (rc=%d) for %s",
+         attempt, rc, path.c_str());
+  }
+  return false;
 }
 
 int read_int_sysfs(const std::string &path, int default_val = 0) {
