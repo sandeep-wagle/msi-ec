@@ -402,14 +402,16 @@ fn get_sink_volume() -> f64 {
     }
 }
 
-/// Display-to-real temper: UIs show 0-100%, but a displayed 0% lands on a
-/// 0.3 audible floor instead of true silence (mute is a separate, explicit
-/// action). True mute travels as a NEGATIVE volume sentinel.
+/// Display-to-real temper: UIs show 0-100%, but the range is stretched
+/// smoothly onto real 0.35-1.40: a displayed 0% lands on a 0.35 audible
+/// floor, 100% lands on a 1.40 boost, linear in between
+/// (real = 0.35 + 1.05 * display). True mute travels as a NEGATIVE
+/// volume sentinel, never as zero.
 fn temper_volume(display: f64) -> f64 {
     if display <= 0.01 {
-        0.3
+        0.35
     } else {
-        0.3 + 0.7 * display.clamp(0.0, 1.0)
+        0.35 + 1.05 * display.clamp(0.0, 1.0)
     }
 }
 
