@@ -49,6 +49,15 @@ class _ControlsScreenState extends State<ControlsScreen>
   Timer? _sensitivityDebounce;
   Timer? _refreshTimer;
   bool _sliderActive = false;
+  DateTime _lastUserEdit = DateTime.fromMillisecondsSinceEpoch(0);
+
+  /// Marks a user-driven change. The periodic refresh ignores everything
+  /// newer than this window, so slow hardware writes (sudo sysfs round
+  /// trips) can land without the UI snapping back mid-write.
+  void _markUserEdit() {
+    _lastUserEdit = DateTime.now();
+    _sliderActive = true;
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -60,9 +69,12 @@ class _ControlsScreenState extends State<ControlsScreen>
     // Silent live refresh: values changed outside the tab (hyprctl CLI,
     // fn-key presses, EC writes from other tools, driver state) must flow
     // back in, or the UI and the system permanently disagree after any
-    // tab switch or external tweak. Skipped while the user drags.
+    // tab switch or external tweak. Skipped while the user drags and for
+    // a grace window after any edit (slow writes landing late must win).
     _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (mounted && !_loading && !_sliderActive) _refreshLive();
+      if (!mounted || _loading || _sliderActive) return;
+      if (DateTime.now().difference(_lastUserEdit).inSeconds < 3) return;
+      _refreshLive();
     });
   }
 
@@ -159,7 +171,7 @@ class _ControlsScreenState extends State<ControlsScreen>
   void _onSensitivityChanged(double value) {
     setState(() => _sensitivity = value);
     _sensitivityDebounce?.cancel();
-    _sliderActive = true;
+    _markUserEdit();
     _sensitivityDebounce = Timer(const Duration(milliseconds: 120), () async {
       final ok = await _hyprland.setSensitivity(_sensitivity);
       if (!mounted) return;
@@ -175,6 +187,7 @@ class _ControlsScreenState extends State<ControlsScreen>
   }
 
   Future<void> _onNaturalScrollChanged(bool value) async {
+    _markUserEdit();
     setState(() => _naturalScroll = value);
     final ok = await _hyprland.setNaturalScroll(value);
     if (!mounted) return;
@@ -188,6 +201,7 @@ class _ControlsScreenState extends State<ControlsScreen>
 
   Future<void> _onAccelProfileChanged(String profile) async {
     final previous = _accelProfile;
+    _markUserEdit();
     setState(() => _accelProfile = profile);
     final ok = await _hyprland.setAccelProfile(profile);
     if (!mounted) return;
@@ -203,6 +217,7 @@ class _ControlsScreenState extends State<ControlsScreen>
   // Section B handlers (MSI hardware — passwordless sysfs writes).
   // ------------------------------------------------------------------
   Future<void> _onCoolerBoostChanged(bool value) async {
+    _markUserEdit();
     setState(() => _coolerBoost = value);
     final ok = await _accessories.setCoolerBoost(value);
     if (!mounted) return;
@@ -214,6 +229,7 @@ class _ControlsScreenState extends State<ControlsScreen>
 
   Future<void> _onBatteryThresholdChanged(int limit) async {
     final previous = _batteryThreshold;
+    _markUserEdit();
     setState(() => _batteryThreshold = limit);
     final ok = await _accessories.setBatteryThreshold(limit);
     if (!mounted) return;
@@ -226,6 +242,7 @@ class _ControlsScreenState extends State<ControlsScreen>
   }
 
   Future<void> _onFnKeySwapChanged(bool value) async {
+    _markUserEdit();
     setState(() => _fnKeySwap = value);
     final ok = await _accessories.setFnKeySwap(value);
     if (!mounted) return;
@@ -584,7 +601,7 @@ class _ControlsScreenState extends State<ControlsScreen>
                             label: '$_batteryThreshold%',
                             onChanged: _supportsBatteryThreshold
                                 ? (v) {
-                                    _sliderActive = true;
+                                    _markUserEdit();
                                     setState(
                                       () => _batteryThreshold = v.round(),
                                     );
