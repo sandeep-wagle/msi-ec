@@ -6,7 +6,7 @@
 #
 # *** MSI CENTER TEMPERED BUILD ***
 # Display <-> real mapping shared with MSI Controller (single contract):
-#   display 0-100  <-->  real 40-140  (real = 40 + display)
+#   display 0-100  <-->  real 30-130  (real = 30 + display)
 # The OSD always shows DISPLAY values and steps in display space; only the
 # value written to the sink is tempered. True mute travels via mute-toggle.
 # Original backed up by packaging/install-omarchy-volume.sh before install.
@@ -41,12 +41,12 @@ volume_muted() {
   [[ $(pactl get-sink-mute "$sink" 2>/dev/null) == *yes ]]
 }
 
-# MSI temper helpers (integer percent units): display 0-100 <-> real 40-140.
+# MSI temper helpers (integer percent units): display 0-100 <-> real 30-130.
 # NOTE: assignments split across lines — `local a=$1 b=$((a-40))` would
 # expand b before a is assigned.
 to_display() {
   local real=$1
-  local d=$((real - 40))
+  local d=$((real - 30))
   ((d < 0)) && d=0
   ((d > 100)) && d=100
   printf '%s\n' "$d"
@@ -56,7 +56,7 @@ to_real() {
   local display=$1
   ((display < 0)) && display=0
   ((display > 100)) && display=100
-  printf '%s\n' "$((40 + display))"
+  printf '%s\n' "$((30 + display))"
 }
 
 case "$action" in
@@ -83,19 +83,19 @@ elif [[ $action =~ ^([+-])([0-9]+)$ ]]; then
 
   # ATOMIC server-side step (no read-modify-write race between overlapping
   # key-repeat invocations — that race swallowed steps and stuck the UI).
-  # Deltas are 1:1 display<->real (real = 40 + display), so a relative step
+  # Deltas are 1:1 display<->real (real = 30 + display), so a relative step
   # moves both scales identically; bounds are enforced after.
   pactl set-sink-mute "$sink" 0
   pactl set-sink-volume "$sink" "${direction}${step}%"
 
   # Clamp real into the temper band so repeated raises can't creep past
-  # 140 (which would feel stuck: display pinned at 100 while real climbs).
+  # 130 (which would feel stuck: display pinned at 100 while real climbs).
   current="$(volume_percent)"
   if [[ -n $current ]]; then
-    if ((current > 140)); then
-      pactl set-sink-volume "$sink" "140%"
-    elif ((current < 40)); then
-      pactl set-sink-volume "$sink" "40%"
+    if ((current > 130)); then
+      pactl set-sink-volume "$sink" "130%"
+    elif ((current < 30)); then
+      pactl set-sink-volume "$sink" "30%"
     fi
   fi
 else
