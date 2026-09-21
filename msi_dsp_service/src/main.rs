@@ -47,13 +47,13 @@ static DSP_ENABLED: AtomicBool = AtomicBool::new(true);
 // changes — those only touch live filter params on the persistent graph.
 
 /// Which optional processing stages are actually usable on this machine.
-/// The core EQ path is pure builtin biquads (always available); LADSPA
-/// stages are included only when their plugin files exist, so the service
-/// degrades gracefully instead of failing the whole graph.
+/// The core EQ path is pure builtin biquads (always available). ONLY mono
+/// LADSPA stages can join the per-channel-duplicated graph: stereo nodes
+/// (spatializer, stereo limiters) need explicit cross-channel links that
+/// a duplicated mono flow cannot express, so they stay out (logged) until
+/// a dedicated stereo module is built for them.
 struct PluginProbe {
-    spatializer: bool,
     compressor: bool,
-    limiter: bool,
 }
 
 static PLUGINS: LazyLock<PluginProbe> = LazyLock::new(|| {
@@ -66,14 +66,19 @@ static PLUGINS: LazyLock<PluginProbe> = LazyLock::new(|| {
         DIRS.iter().any(|d| std::path::Path::new(d).join(name).exists())
     }
     let p = PluginProbe {
-        spatializer: exists("matrix_spatialiser_1422.so"),
         compressor: exists("dyson_compress_1403.so"),
-        limiter: exists("fast_lookahead_limiter_1913.so"),
     };
-    info!(
-        "LADSPA stages: spatializer={} compressor={} limiter={}",
-        p.spatializer, p.compressor, p.limiter
-    );
+    if !exists("matrix_spatialiser_1422.so") {
+        info!("Surround width: no spatializer plugin — width control degraded (logged, harmless)");
+    } else {
+        info!("Surround width: spatializer present but stereo-incompatible with duplicated graph — width control degraded (logged, harmless)");
+    }
+    if !exists("fast_lookahead_limiter_1913.so") {
+        info!("Stabiliser ceiling: no limiter plugin — compressor threshold covers dynamics");
+    } else {
+        info!("Stabiliser ceiling: limiter present but stereo-incompatible with duplicated graph — compressor threshold covers dynamics");
+    }
+    info!("LADSPA compressor stage: {}", p.compressor);
     p
 });
 
@@ -443,22 +448,20 @@ fn set_sink_volume(volume: f64) {
 /// is gone.
 /// Structural signature the daemon should be running: template version +
 /// LADSPA stage presence. Gain values are live params, NOT structure.
-fn desired_signature() -> (u32, bool, bool, bool) {
-    (GRAPH_VERSION, PLUGINS.spatializer, PLUGINS.compressor, PLUGINS.limiter)
+fn desired_signature() -> (u32, bool) {
+    (GRAPH_VERSION, PLUGINS.compressor)
 }
 
 /// True iff the on-disk drop-in already describes exactly the graph this
 /// binary would generate (version + stages). Reads, never writes.
 fn dropin_matches() -> bool {
-    let (ver, sp, co, li) = desired_signature();
+    let (ver, co) = desired_signature();
     let path = filter_dropin_path();
     let Ok(content) = fs::read_to_string(&path) else {
         return false;
     };
     content.contains(&format!("# graph-version = {}", ver))
-        && content.contains("name = \"spatializer\"") == sp
         && content.contains("name = \"compressor\"") == co
-        && content.contains("name = \"limiter\"") == li
 }
 
 /// Ensures the daemon runs THIS binary's graph, touching the daemon only
@@ -607,8 +610,13 @@ fn link_filter_chain() -> bool {
             info!("Output already linked to {}", target_sink);
             true
         }
-        _ => {
-            warn!("Failed to link output to {} (ports missing?)", target_sink);
+        (a, b) => {
+            let e1 = a.map(|o| String::from_utf8_lossy(&o.stderr).into_owned());
+            let e2 = b.map(|o| String::from_utf8_lossy(&o.stderr).into_owned());
+            warn!(
+                "Failed to link output to {} (l1={:?} l2={:?})",
+                target_sink, e1, e2
+            );
             false
         }
     }
@@ -683,21 +691,26 @@ fn set_default_sink_to_dsp() {
 ///     |-> <peer>:playback_FL
 /// A peer that is one of our own nodes does NOT count (loop guard).
 fn output_linked() -> bool {
-    // Simpler robust check: pw-link lists links as "out -> in" lines.
+    // Verified against live `pw-link -l` output: our port header is
+    // followed by indented peer lines marked "|->" (outgoing). NOTE:
+    // the marker is "|->", NOT "<-" (that one appears on the peer's
+    // own block alongside our node name, which the guard excludes).
     let lout = Command::new("pw-link").args(["-l"]).output();
     if let Ok(lout) = lout {
         let ltext = String::from_utf8_lossy(&lout.stdout);
-        let mut iter = ltext.lines().peekable();
-        while let Some(line) = iter.next() {
-            if line.contains("msi_dsp_output:output_") {
-                // Next non-empty lines show the peer with "<-" marker.
-                for peer in iter.by_ref().take(4) {
-                    if peer.contains("<-") && !peer.contains("msi_dsp_output") {
+        let mut in_block = false;
+        for line in ltext.lines() {
+            if line.starts_with("msi_dsp_output:output_") {
+                in_block = true;
+                continue;
+            }
+            if in_block {
+                if line.starts_with(' ') || line.starts_with('\t') {
+                    if line.contains("|->") && !line.contains("msi_dsp_output") {
                         return true;
                     }
-                    if !peer.starts_with(' ') && !peer.starts_with('\t') && peer.contains(':') {
-                        break;
-                    }
+                } else {
+                    in_block = false;
                 }
             }
         }
@@ -862,10 +875,14 @@ fn resolve_controls(profile: &AudioProfile) -> ResolvedControls {
     } else {
         -0.1
     };
-    let compress_ratio = if night_mode_active {
-        8.0
+    // dyson_compress wants its ratio NORMALIZED to 0.0-1.0 (it is a
+    // fractional amount, not an N:1 ratio — larger values are silently
+    // clamped to 1.0 by the plugin, verified live). Map our 1..10 UI
+    // range onto it.
+    let compress_ratio: f64 = if night_mode_active {
+        ((8.0f64 - 1.0) / 9.0).clamp(0.0, 1.0)
     } else {
-        profile.compressor_ratio.max(1.0)
+        ((profile.compressor_ratio.max(1.0) - 1.0) / 9.0).clamp(0.0, 1.0)
     };
 
     // Headroom pre-trim (clip protection without a limiter stage): series
@@ -882,11 +899,9 @@ fn resolve_controls(profile: &AudioProfile) -> ResolvedControls {
         excess += 3.0;
         info!("Night mode via static fallback (no compressor stage)");
     }
-    let trim = if PLUGINS.limiter {
-        0.0
-    } else {
-        excess / 3.0
-    };
+    // No hard-limiter stage in the mono graph: always pre-trim (the
+    // compressor threshold handles dynamics on top).
+    let trim = excess / 3.0;
     if trim > 0.05 {
         info!("Headroom pre-trim engaged: -{:.1} dB (stacked boost was +{:.1} dB)", trim, stacked);
         for v in eq.iter_mut() {
@@ -937,23 +952,9 @@ fn generate_filter_chain_config(profile: &AudioProfile) -> Result<()> {
     // are spliced in only when probed present; otherwise the voice stage
     // feeds the outputs directly. Links are rebuilt to match, so the graph
     // is always valid on any machine.
-    let have_spatial = PLUGINS.spatializer;
     let have_compress = PLUGINS.compressor;
-    let have_limiter = PLUGINS.limiter;
 
     let mut stage_nodes = String::new();
-    if have_spatial {
-        stage_nodes.push_str(&format!(
-            r#"            {{
-                type = ladspa
-                name = "spatializer"
-                plugin = "/usr/lib/ladspa/matrix_spatialiser_1422.so"
-                label = "matrixSpatialiser"
-                control = {{ "Width" = {stereo_width} }}
-            }}
-"#,
-        ));
-    }
     if have_compress {
         stage_nodes.push_str(&format!(
             r#"            {{
@@ -966,48 +967,31 @@ fn generate_filter_chain_config(profile: &AudioProfile) -> Result<()> {
 "#,
         ));
     }
-    if have_limiter {
-        stage_nodes.push_str(
-            r#"            {{
-                type = ladspa
-                name = "limiter"
-                plugin = "/usr/lib/ladspa/fast_lookahead_limiter_1913.so"
-                label = "fastLookaheadLimiter"
-                control = {{ "Input gain (dB)" = 0 "Limit (dB)" = -0.1 "Release time (s)" = 0.1 }}
-            }}
-"#,
-        );
-    }
 
     // Ordered single-port stages; PipeWire duplicates them per channel.
     // (Multi-port stereo LADSPA nodes would need explicit per-channel
     // links — revisit if plugins are ever installed.)
     let mut chain: Vec<(&str, &str)> = Vec::new();
-    if have_spatial {
-        // NOTE: spatializer is genuinely stereo; wiring it correctly needs
-        // per-channel links. Not reachable while the plugin is absent.
-        chain.push(("spatializer:Output", "spatializer:Input"));
-    }
     if have_compress {
         chain.push(("compressor:Output", "compressor:Input"));
-    }
-    if have_limiter {
-        chain.push(("limiter:Output", "limiter:Input"));
     }
 
     let mut stage_links = String::new();
     let mut prev = "voice:Out".to_string();
     for (out_port, in_port) in &chain {
+        // NOTE: single braces here — this is a live format! string, not a
+        // raw template (double braces would emit literal "{{ }}" and the
+        // whole drop-in would fail to parse, killing all DSP silently).
         stage_links.push_str(&format!(
-            "                    {{{{ output = \"{}\" input = \"{}\" }}}}\n",
+            "                    {{ output = \"{}\" input = \"{}\" }}\n",
             prev, in_port
         ));
         prev = out_port.to_string();
     }
     let stage_outputs = format!("\"{}\"", prev);
     info!(
-        "Graph stages: spatializer={} compressor={} limiter={} (core EQ always on)",
-        have_spatial, have_compress, have_limiter
+        "Graph stages: compressor={} (core EQ always on)",
+        have_compress
     );
 
     let config = format!(r#"# MSI Center DSP graph (managed — do not hand-edit; rewritten on profile save).
@@ -1078,8 +1062,8 @@ context.modules = [
         fs::create_dir_all(parent)?;
     }
     fs::write(&path, config)?;
-    info!("Filter graph drop-in written: {} (Name={}, stages spatial={} compress={} limiter={})",
-        path, profile.name, have_spatial, have_compress, have_limiter);
+    info!("Filter graph drop-in written: {} (Name={}, stages compressor={})",
+        path, profile.name, have_compress);
     Ok(())
 }
 
@@ -1132,17 +1116,9 @@ fn compute_params(profile: &AudioProfile) -> Vec<(String, f64)> {
 
     // Only address stages that exist in the running graph; anything else is
     // a failed set-param (harmless but noisy) — skip it.
-    if PLUGINS.spatializer {
-        out.push(("spatializer:Width".into(), ctl.width));
-    }
-
     if PLUGINS.compressor {
         out.push(("compressor:Peak limit (dB)".into(), ctl.limiter_threshold));
         out.push(("compressor:Compression ratio".into(), ctl.compress_ratio));
-    }
-
-    if PLUGINS.limiter {
-        out.push(("limiter:Limit (dB)".into(), -0.1));
     }
 
     out
@@ -1502,6 +1478,40 @@ async fn main() -> Result<()> {
                                         let status = if DSP_ENABLED.load(Ordering::SeqCst) && check_filter_chain_running() { "enabled" } else { "disabled" };
                                         let response = format!("{}\n", status);
                                         let _ = socket.write_all(response.as_bytes()).await;
+                                    } else if message == "DIAG_LINKS" {
+                                        // Ground-truth routing diagnostics from
+                                        // inside the service process.
+                                        let probe = Command::new("pw-link")
+                                            .args(["-o", "msi_dsp_output"])
+                                            .output();
+                                        let (po_code, po_len, po_head) = match &probe {
+                                            Ok(o) => (
+                                                o.status.code().unwrap_or(-1),
+                                                o.stdout.len(),
+                                                String::from_utf8_lossy(&o.stdout[..o.stdout.len().min(160)]).into_owned(),
+                                            ),
+                                            Err(e) => (-99, 0, format!("ERR: {}", e)),
+                                        };
+                                        let full = Command::new("pw-link").args(["-l"]).output();
+                                        let (fl_code, fl_len, fl_msi) = match &full {
+                                            Ok(o) => (
+                                                o.status.code().unwrap_or(-1),
+                                                o.stdout.len(),
+                                                String::from_utf8_lossy(&o.stdout)
+                                                    .lines()
+                                                    .filter(|l| l.contains("msi_dsp_output"))
+                                                    .take(6)
+                                                    .collect::<Vec<_>>()
+                                                    .join(" | "),
+                                            ),
+                                            Err(e) => (-99, 0, format!("ERR: {}", e)),
+                                        };
+                                        let linked = output_linked();
+                                        let resp = format!(
+                                            "probe_exit={} probe_bytes={} probe_head=[{}] full_exit={} full_bytes={} msi_lines=[{}] linked={}\n",
+                                            po_code, po_len, po_head, fl_code, fl_len, fl_msi, linked
+                                        );
+                                        let _ = socket.write_all(resp.as_bytes()).await;
                                     } else if message == "GET_VOLUME" {
                                         // The app polls this on every system volume
                                         // change; answer with the live default-sink
