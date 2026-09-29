@@ -6,7 +6,10 @@ PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=%h/Development/apps/flutter/apps/msi_controller/msi_dsp_service/target/release/msi_dsp_service
+# Stable path: the Cargo target/ dir vanishes on `cargo clean`, which would
+# leave this unit pointing at nothing. The release binary is (re)installed
+# to ~/.local/bin on every service update (see install-all.sh step 4).
+ExecStart=%h/.local/bin/msi_dsp_service
 Restart=on-failure
 RestartSec=3
 Nice=-5

@@ -67,6 +67,11 @@ else
   echo "Install Rust (rustup) and re-run this script."
   fail=1
 fi
+if [ -x "$DSP_BIN" ]; then
+  mkdir -p ~/.local/bin
+  cp "$DSP_BIN" ~/.local/bin/msi_dsp_service
+  echo "Installed DSP binary to ~/.local/bin (stable unit path)."
+fi
 
 step 5 "msi-dsp.service user unit (audio without the app open)"
 if [ -x "$DSP_BIN" ]; then

@@ -16,8 +16,72 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixListener;
 
 const SOCKET_PATH: &str = "/tmp/msi_dsp.sock";
-const PROFILE_PATH: &str = "/tmp/msi_dsp_config/profile.json";
-const PROFILES_DIR: &str = "/tmp/msi_dsp_config/profiles";
+// Persistent state lives under ~/.config (survives reboot); /tmp copies
+// are only a one-time migration source from older versions. The socket
+// itself stays in /tmp (sockets don't belong in config dirs).
+const PROFILE_PATH: &str = ".config/msi-center/profile.json";
+const PROFILES_DIR: &str = ".config/msi-center/profiles";
+const LEGACY_PROFILE_PATH: &str = "/tmp/msi_dsp_config/profile.json";
+const LEGACY_PROFILES_DIR: &str = "/tmp/msi_dsp_config/profiles";
+const ENABLED_PATH: &str = ".config/msi-center/dsp-enabled";
+
+fn config_path(rel: &str) -> String {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
+    format!("{}/{}", home, rel)
+}
+
+/// One-time migration: adopt state written by older /tmp-based versions
+/// so an upgrade never loses the tuned profile.
+fn migrate_legacy_state() {
+    for (legacy, current) in [
+        (LEGACY_PROFILE_PATH, PROFILE_PATH),
+        (LEGACY_PROFILES_DIR, PROFILES_DIR),
+    ] {
+        let dst = config_path(current);
+        if std::path::Path::new(&dst).exists() {
+            continue;
+        }
+        if current.ends_with(".json") {
+            if let Ok(content) = fs::read_to_string(legacy) {
+                if let Some(parent) = std::path::Path::new(&dst).parent() {
+                    let _ = fs::create_dir_all(parent);
+                }
+                let _ = fs::write(&dst, content);
+                info!("Migrated legacy state {} -> {}", legacy, dst);
+            }
+        } else if std::path::Path::new(legacy).is_dir() {
+            if let Ok(entries) = fs::read_dir(legacy) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name();
+                    if entry.path().extension().and_then(|e| e.to_str()) == Some("json") {
+                        if let Ok(content) = fs::read_to_string(entry.path()) {
+                            let dst_file = format!("{}/{}", config_path(current), name.to_string_lossy());
+                            if let Some(parent) = std::path::Path::new(&dst_file).parent() {
+                                let _ = fs::create_dir_all(parent);
+                            }
+                            let _ = fs::write(&dst_file, content);
+                        }
+                    }
+                }
+                info!("Migrated legacy profiles {} -> {}", legacy, current);
+            }
+        }
+    }
+}
+
+fn load_enabled_flag() -> bool {
+    fs::read_to_string(config_path(ENABLED_PATH))
+        .map(|s| s.trim() == "1")
+        .unwrap_or(true)
+}
+
+fn save_enabled_flag(enabled: bool) {
+    let path = config_path(ENABLED_PATH);
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(path, if enabled { "1" } else { "0" });
+}
 // Graph hosting: the filter graph runs INSIDE the main PipeWire daemon via
 // a drop-in (a nested `pipewire -c` host exposes nodes but, on PipeWire
 // >= 1.6, never exposes their ports — verified empirically). Structure is
@@ -344,7 +408,7 @@ fn initialize_profiles() {
     let profile_names = ["Music", "Gaming", "Movie", "Voice", "Communication", "Smart", "Custom"];
     
     for name in profile_names.iter() {
-        let profile_path = format!("{}/{}.json", PROFILES_DIR, name);
+        let profile_path = format!("{}/{}.json", config_path(PROFILES_DIR), name);
         if let Ok(content) = fs::read_to_string(&profile_path) {
             if let Ok(profile) = serde_json::from_str::<AudioProfile>(&content) {
                 info!("Loaded profile {} from disk", name);
@@ -363,17 +427,21 @@ fn initialize_profiles() {
 }
 
 fn save_profile_to_file(profile: &AudioProfile) -> Result<()> {
-    fs::create_dir_all(PROFILES_DIR)?;
-    let path = format!("{}/{}.json", PROFILES_DIR, profile.name);
+    let dir = config_path(PROFILES_DIR);
+    fs::create_dir_all(&dir)?;
+    let path = format!("{}/{}.json", dir, profile.name);
     let json = serde_json::to_string_pretty(profile)?;
     fs::write(path, json)?;
     Ok(())
 }
 
 fn load_saved_profile() -> AudioProfile {
-    if let Ok(content) = fs::read_to_string(PROFILE_PATH) {
-        if let Ok(profile) = serde_json::from_str(&content) {
-            info!("Loaded saved profile from {}", PROFILE_PATH);
+    if let Ok(content) = fs::read_to_string(config_path(PROFILE_PATH)) {
+        if let Ok(mut profile) = serde_json::from_str::<AudioProfile>(&content) {
+            info!("Loaded saved profile from {}", config_path(PROFILE_PATH));
+            // Heal files written when clamp_profile baked tempered (real)
+            // units into profile.volume: struct/file volume is display units.
+            profile.volume = profile.volume.clamp(0.0, 1.0);
             return profile;
         }
     }
@@ -382,10 +450,13 @@ fn load_saved_profile() -> AudioProfile {
 }
 
 fn save_profile(profile: &AudioProfile) -> Result<()> {
-    fs::create_dir_all("/tmp/msi_dsp_config")?;
+    let path = config_path(PROFILE_PATH);
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        fs::create_dir_all(parent)?;
+    }
     let json = serde_json::to_string_pretty(profile)?;
-    fs::write(PROFILE_PATH, json)?;
-    info!("Profile saved to {}", PROFILE_PATH);
+    fs::write(&path, json)?;
+    info!("Profile saved to {}", path);
     Ok(())
 }
 
@@ -1386,9 +1457,19 @@ async fn main() -> Result<()> {
     info!("MSI DSP Service v0.4.0");
     info!("=================================");
     info!("Socket: {}", SOCKET_PATH);
-    info!("Profile: {}", PROFILE_PATH);
+    info!("Profile: {}", config_path(PROFILE_PATH));
 
     initialize_profiles();
+
+    // Persistent state first: adopt legacy /tmp state once, then honor
+    // the saved on/off flag so the service behaves identically with or
+    // without the app ever starting.
+    migrate_legacy_state();
+    DSP_ENABLED.store(load_enabled_flag(), Ordering::SeqCst);
+    info!(
+        "DSP enabled at startup: {}",
+        DSP_ENABLED.load(Ordering::SeqCst)
+    );
 
     *CURRENT_VOLUME.lock().unwrap() = load_persisted_volume();
     info!(
@@ -1460,6 +1541,7 @@ async fn main() -> Result<()> {
                                     if message == "ENABLE" {
                                         info!("Received ENABLE command");
                                         DSP_ENABLED.store(true, Ordering::SeqCst);
+                                        save_enabled_flag(true);
                                         ROUTING_OK.store(false, Ordering::SeqCst);
                                         if !check_filter_chain_running() {
                                             let profile = load_saved_profile();
@@ -1475,6 +1557,7 @@ async fn main() -> Result<()> {
                                     } else if message == "DISABLE" {
                                         info!("Received DISABLE command");
                                         DSP_ENABLED.store(false, Ordering::SeqCst);
+                                        save_enabled_flag(false);
                                         disable_dsp_switch_to_direct();
                                         // Graph stays warm on purpose: re-enable is
                                         // instant (relink + default) with no 2s rebuild.
@@ -1489,7 +1572,7 @@ async fn main() -> Result<()> {
                                         };
 
                                         if profile_opt.is_none() {
-                                            let profile_path = format!("{}/{}.json", PROFILES_DIR, profile_name);
+                                            let profile_path = format!("{}/{}.json", config_path(PROFILES_DIR), profile_name);
                                             if let Ok(content) = fs::read_to_string(&profile_path) {
                                                 if let Ok(profile) = serde_json::from_str::<AudioProfile>(&content) {
                                                     info!("Loaded profile {} from disk on demand", profile_name);
@@ -1654,6 +1737,12 @@ fn clamp_profile(profile: &mut AudioProfile) {
     for gain in profile.eq_gains.iter_mut() {
         *gain = gain.clamp(-15.0, 15.0);
     }
-    profile.volume = temper_volume(profile.volume);
+    // INVARIANT: profile.volume is ALWAYS display units (0.0-1.0). Tempering
+    // (display -> real x1.5) happens exactly once, at the sink-write sites
+    // (VOLUME command, apply_persisted_volume). Tempering here used to bake
+    // real units into the struct AND profile.json, so a stored value could be
+    // tempered again on a later pass (ratchet toward 150%+ and snap-back
+    // fights with the panel/keys). Never temper here.
+    profile.volume = profile.volume.clamp(0.0, 1.0);
     profile.stereo_width = profile.stereo_width.clamp(0.0, 2.0);
 }
