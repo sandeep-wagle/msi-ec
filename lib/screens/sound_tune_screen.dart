@@ -550,24 +550,17 @@ class _SurroundPanel extends StatelessWidget {
                       boxShadow: active
                           ? [
                               BoxShadow(
-                                color: colors.performance.withValues(
-                                  alpha: 0.15,
+                                color: Colors.black.withValues(
+                                  alpha: 0.35,
                                 ),
-                                blurRadius: 25,
-                                spreadRadius: 5,
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
                               ),
                             ]
                           : null,
-                      gradient: active
-                          ? RadialGradient(
-                              colors: [
-                                colors.performance.withValues(alpha: 0.3),
-                                colors.performance.withValues(alpha: 0.1),
-                                Colors.transparent,
-                              ],
-                              stops: const [0.0, 0.6, 1.0],
-                            )
-                          : null,
+                      color: active
+                          ? colors.performance.withValues(alpha: 0.12)
+                          : Colors.transparent,
                     ),
                   ),
                   Icon(

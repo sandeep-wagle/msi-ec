@@ -46,13 +46,9 @@ class GlassBottomNav extends StatelessWidget {
                 bottom: bottomPadding > 0 ? bottomPadding + 4 : AppSpacing.xxs,
               ),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: isDark
-                      ? const [Color(0xFF0D0D2B), Color(0xFF08081A)]
-                      : const [Color(0xFFF0F2F5), Color(0xFFE8ECF0)],
-                ),
+                color: isDark
+                    ? const Color(0xFF141416)
+                    : const Color(0xFFF0F2F5),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(topRadius),
                   topRight: Radius.circular(topRadius),
@@ -77,17 +73,10 @@ class GlassBottomNav extends StatelessWidget {
                       left: 0,
                       right: 0,
                       child: Container(
-                        height: 2,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFFEB1D24).withValues(alpha: 0.0),
-                              const Color(0xFFEB1D24).withValues(alpha: 0.8),
-                              const Color(0xFFEB1D24).withValues(alpha: 0.0),
-                            ],
-                            stops: const [0.0, 0.5, 1.0],
-                          ),
-                        ),
+                        height: 1,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.08),
                       ),
                     ),
                     Padding(

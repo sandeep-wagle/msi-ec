@@ -51,12 +51,12 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF050510),
+      scaffoldBackgroundColor: const Color(0xFF0B0B0D),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFFEB1D24),
+        seedColor: const Color(0xFFE5484D),
         brightness: Brightness.dark,
-        primary: const Color(0xFFEB1D24),
-        surface: const Color(0xFF0A0A1E),
+        primary: const Color(0xFFE5484D),
+        surface: const Color(0xFF141416),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -64,11 +64,11 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Colors.white.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
-        color: const Color(0xFF0A0A1E),
+        color: const Color(0xFF141416),
       ),
       navigationBarTheme: NavigationBarThemeData(
         indicatorColor: const Color(0xFFEB1D24).withValues(alpha: 0.2),
@@ -85,7 +85,7 @@ class AppTheme {
       ),
       extensions: const <ThemeExtension<dynamic>>[AppColors.dark],
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF050510),
+        backgroundColor: Color(0xFF0B0B0D),
         foregroundColor: Colors.white,
         elevation: 0,
       ),

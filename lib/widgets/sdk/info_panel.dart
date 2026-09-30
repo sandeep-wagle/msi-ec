@@ -59,8 +59,9 @@ class InfoPanel extends StatelessWidget {
                 borderRadius: BorderRadius.circular(2),
                 boxShadow: [
                   BoxShadow(
-                    color: colors.performance.withValues(alpha: 0.4),
-                    blurRadius: 8,
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),

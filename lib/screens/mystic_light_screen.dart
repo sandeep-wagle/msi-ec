@@ -222,8 +222,9 @@ class _MysticLightScreenState extends State<MysticLightScreen>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _color.withValues(alpha: 0.4),
-                    blurRadius: 12,
+                    color: Colors.black.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),

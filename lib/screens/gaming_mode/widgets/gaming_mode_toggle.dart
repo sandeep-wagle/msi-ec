@@ -35,8 +35,9 @@ class GamingModeToggle extends StatelessWidget {
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: colors.performance.withValues(alpha: 0.1),
-                  blurRadius: 10,
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ]
             : [],

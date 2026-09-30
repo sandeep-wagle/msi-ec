@@ -690,14 +690,7 @@ class _Header extends StatelessWidget {
               width: 4,
               height: 32,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    colors.performance,
-                    colors.performance.withValues(alpha: 0.5),
-                  ],
-                ),
+                color: colors.performance,
                 borderRadius: AppRadius.xsAll,
               ),
             ),

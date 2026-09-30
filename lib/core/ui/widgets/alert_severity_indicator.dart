@@ -28,8 +28,9 @@ class AlertSeverityIndicator extends StatelessWidget {
         borderRadius: BorderRadius.circular(100),
         boxShadow: [
           BoxShadow(
-            color: severityColor.withValues(alpha: 0.4),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
           ),
         ],
       ),

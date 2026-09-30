@@ -161,27 +161,32 @@ class AppColors extends ThemeExtension<AppColors> {
   );
 
   static const dark = AppColors(
-    performance: Color(0xFFEF4444),
-    balanced: Color(0xFF3B82F6),
-    silent: Color(0xFF22C55E),
-    superBattery: Color(0xFFC084FC),
-    success: Color(0xFF22C55E),
-    warning: Color(0xFFFBBF24),
-    tempCool: Color(0xFF34D399),
-    tempWarm: Color(0xFFFB923C),
-    tempHot: Color(0xFFF87171),
-    cardBackground: Color(0xFF0A0A1E),
-    border: Color(0x15FFFFFF),
-    gaugeTrack: Color(0x15FFFFFF),
-    surfaceElevated: Color(0xFF0D0D2B),
-    textPrimary: Color(0xFFF1F5F9),
-    textSecondary: Color(0xFF94A3B8),
-    textTertiary: Color(0xFF64748B),
-    glassBg: Color(0xBB0A0A1E),
-    glassBorder: Color(0x550A0A1E),
+    // Flat MSI red accent — no glow, no gradient. Used sparingly.
+    performance: Color(0xFFE5484D),
+    // Muted steel blue, desaturated for dark surfaces.
+    balanced: Color(0xFF648FD1),
+    // Quiet green.
+    silent: Color(0xFF4CAF7D),
+    // Dusty lavender.
+    superBattery: Color(0xFF938BD1),
+    success: Color(0xFF4CAF7D),
+    warning: Color(0xFFE3A008),
+    tempCool: Color(0xFF3FB97F),
+    tempWarm: Color(0xFFE09112),
+    tempHot: Color(0xFFE5484D),
+    // Warm charcoal scale — neutral, no blue-black tint.
+    cardBackground: Color(0xFF141416),
+    border: Color(0x14FFFFFF),
+    gaugeTrack: Color(0x14FFFFFF),
+    surfaceElevated: Color(0xFF1C1C1F),
+    textPrimary: Color(0xFFF5F4F0),
+    textSecondary: Color(0xFFA1A1AA),
+    textTertiary: Color(0xFF6B6B70),
+    glassBg: Color(0xFF141416),
+    glassBorder: Color(0x14FFFFFF),
     glassHighlight: Color(0x0AFFFFFF),
-    liquidStart: Color(0x22EB1D24),
-    liquidMid: Color(0x182A0A8B),
-    liquidEnd: Color(0x12050510),
+    liquidStart: Color(0xFF1C1C1F),
+    liquidMid: Color(0xFF141416),
+    liquidEnd: Color(0xFF0B0B0D),
   );
 }

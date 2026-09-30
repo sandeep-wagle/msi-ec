@@ -37,9 +37,9 @@ class FabAction extends StatelessWidget {
           boxShadow: [
             if (primary)
               BoxShadow(
-                color: colors.performance.withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
           ],
         ),

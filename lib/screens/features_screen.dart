@@ -171,14 +171,7 @@ class _FeaturesScreenState extends State<FeaturesScreen>
                                 width: 4,
                                 height: 32,
                                 decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      colors.performance,
-                                      colors.performance.withValues(alpha: 0.5),
-                                    ],
-                                  ),
+                                  color: colors.performance,
                                   borderRadius: AppRadius.xsAll,
                                 ),
                               ),
@@ -346,21 +339,12 @@ class _FeatureItemState extends State<_FeatureItem> {
           curve: Curves.easeOutCubic,
           child: GlassCard(
             padding: EdgeInsets.zero,
-            child: Container(
+              child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                gradient: _isHovering
-                    ? LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          widget.data.color.withValues(
-                            alpha: isDark ? 0.08 : 0.05,
-                          ),
-                          widget.data.secondaryColor.withValues(
-                            alpha: isDark ? 0.03 : 0.02,
-                          ),
-                        ],
+                color: _isHovering
+                    ? widget.data.color.withValues(
+                        alpha: isDark ? 0.06 : 0.04,
                       )
                     : null,
               ),
@@ -372,26 +356,14 @@ class _FeatureItemState extends State<_FeatureItem> {
                     Container(
                       padding: const EdgeInsets.all(AppSpacing.md),
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            widget.data.color,
-                            widget.data.secondaryColor,
-                          ],
+                        color: widget.data.color.withValues(
+                          alpha: isDark ? 0.14 : 0.1,
                         ),
                         borderRadius: AppRadius.smAll,
-                        boxShadow: [
-                          BoxShadow(
-                            color: widget.data.color.withValues(alpha: 0.3),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
                       ),
                       child: Icon(
                         widget.data.icon,
-                        color: Colors.white,
+                        color: widget.data.color,
                         size: 24,
                       ),
                     ),
@@ -432,21 +404,13 @@ class _FeatureItemState extends State<_FeatureItem> {
                     const SizedBox(height: AppSpacing.md),
                     Row(
                       children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) => LinearGradient(
-                            colors: [
-                              widget.data.color,
-                              widget.data.secondaryColor,
-                            ],
-                          ).createShader(bounds),
-                          child: const Text(
-                            'LAUNCH_MODULE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 1.2,
-                            ),
+                        Text(
+                          'LAUNCH_MODULE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: widget.data.color,
+                            letterSpacing: 1.2,
                           ),
                         ),
                         const SizedBox(width: 6),

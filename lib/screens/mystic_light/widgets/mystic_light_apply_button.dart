@@ -14,17 +14,12 @@ class MysticLightApplyButton extends StatelessWidget {
       height: 54,
       decoration: BoxDecoration(
         borderRadius: AppRadius.mdAll,
-        gradient: LinearGradient(
-          colors: [
-            colors.performance,
-            colors.performance.withValues(alpha: 0.8),
-          ],
-        ),
+        color: colors.performance,
         boxShadow: [
           BoxShadow(
-            color: colors.performance.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),

@@ -643,8 +643,9 @@ class _TactileButtonState extends State<_TactileButton> {
             boxShadow: [
               if (_isPressed)
                 BoxShadow(
-                  color: widget.color.withValues(alpha: 0.4),
-                  blurRadius: 15,
+                  color: Colors.black.withValues(alpha: 0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
             ],
           ),

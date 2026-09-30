@@ -234,11 +234,7 @@ class _NahimicSliderState extends State<NahimicSlider> {
                           child: Container(
                             width: 6,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                                colors: [kAccent, Color(0xBB00F0FF)],
-                              ),
+                              color: kAccent,
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -249,11 +245,7 @@ class _NahimicSliderState extends State<NahimicSlider> {
                           child: Container(
                             height: 6,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight,
-                                colors: [kAccent, Color(0xBB00F0FF)],
-                              ),
+                              color: kAccent,
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
