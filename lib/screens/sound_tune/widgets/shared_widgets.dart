@@ -25,7 +25,7 @@ class _NahimicPanelState extends State<NahimicPanel> {
         margin: const EdgeInsets.all(1),
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
-          color: _isHovered ? const Color(0xFF10141C) : kPanel,
+            color: _isHovered ? const Color(0xFF1C1C1F) : kPanel,
           border: Border.all(
             color: _isHovered ? kAccent.withValues(alpha: 0.5) : kPanelBorder,
             width: 0.5,

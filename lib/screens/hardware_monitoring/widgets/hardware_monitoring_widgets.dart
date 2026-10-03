@@ -113,12 +113,16 @@ class GaugeCardWidget extends StatelessWidget {
                       color: getTempColor(temperature!),
                     ),
                     const SizedBox(width: AppSpacing.xxxs),
-                    Text(
-                      '$temperature°C',
-                      style: TextStyle(
-                        fontSize: AppTypography.bodySmall.fontSize,
-                        fontWeight: FontWeight.bold,
-                        color: getTempColor(temperature!),
+                    Flexible(
+                      child: Text(
+                        '$temperature°C',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: AppTypography.bodySmall.fontSize,
+                          fontWeight: FontWeight.bold,
+                          color: getTempColor(temperature!),
+                        ),
                       ),
                     ),
                   ],

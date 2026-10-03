@@ -67,44 +67,54 @@ class _SdkInitializationLoaderState extends State<SdkInitializationLoader>
 
   @override
   Widget build(BuildContext context) {
+    final screen = MediaQuery.of(context).size;
     return Container(
-      width: 480,
+      width: (480.0).clamp(0.0, screen.width - AppSpacing.xxxl),
       padding: const EdgeInsets.all(AppSpacing.xxxl),
       decoration: BoxDecoration(
-        color: const Color(0xFF050510).withValues(alpha: 0.95),
+        color: const Color(0xFF141416).withValues(alpha: 0.97),
         borderRadius: AppRadius.lgAll,
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 40,
-            spreadRadius: 10,
+            blurRadius: 32,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+      child: ConstrainedBox(
+        // Short windows (720p, tiled) used to overflow this Column by
+        // ~40px. Cap + scroll instead of overflowing.
+        constraints: BoxConstraints(
+          maxHeight: (screen.height - AppSpacing.xxxl).clamp(0.0, 640.0),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              ProceduralRadar(
-                progress: widget.progress,
-                rotateController: _rotateController,
-                scanAnimation: _scanAnimation,
+              Row(
+                children: [
+                  ProceduralRadar(
+                    progress: widget.progress,
+                    rotateController: _rotateController,
+                    scanAnimation: _scanAnimation,
+                  ),
+                  const SizedBox(width: AppSpacing.xxxl),
+                  Expanded(
+                    child: InfoPanel(
+                      message: widget.message,
+                      version: widget.version,
+                      progress: widget.progress,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: AppSpacing.xxxl),
-              Expanded(
-                child: InfoPanel(
-                  message: widget.message,
-                  version: widget.version,
-                  progress: widget.progress,
-                ),
-              ),
+              const SizedBox(height: AppSpacing.xxl),
+              SystemLogs(progress: widget.progress),
             ],
           ),
-          const SizedBox(height: AppSpacing.xxl),
-          SystemLogs(progress: widget.progress),
-        ],
+        ),
       ),
     );
   }
