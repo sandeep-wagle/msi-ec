@@ -65,9 +65,9 @@ class MsiSectionHeader extends StatelessWidget {
               Container(
                 width: 3,
                 height: 20,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFEB1D24),
-                  borderRadius: BorderRadius.all(Radius.circular(2)),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).extension<AppColors>()!.performance,
+                  borderRadius: const BorderRadius.all(Radius.circular(2)),
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),

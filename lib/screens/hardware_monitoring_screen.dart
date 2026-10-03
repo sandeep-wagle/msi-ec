@@ -4,6 +4,8 @@ import 'package:msi_controller/core/di/injection.dart';
 import 'package:msi_controller/domain/entities/system_info.dart';
 import 'package:msi_controller/domain/repositories/msi_repository.dart';
 import 'package:msi_controller/screens/hardware_monitoring/widgets/hardware_monitoring_widgets.dart';
+import 'package:msi_controller/core/tokens/tokens.dart';
+import 'package:msi_controller/core/ui/widgets/screen_header.dart';
 
 class HardwareMonitoringScreen extends StatefulWidget {
   const HardwareMonitoringScreen({super.key});
@@ -88,25 +90,22 @@ class _HardwareMonitoringScreenState extends State<HardwareMonitoringScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(
-                  'Monitor',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
+            ScreenHeader(
+              title: 'Monitor',
+              subtitle: 'Live telemetry from your machine.',
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.grid_view, size: 20),
+                  const SizedBox(width: AppSpacing.md),
+                  const Icon(Icons.settings, size: 20),
+                  const SizedBox(width: AppSpacing.md),
+                  const CircleAvatar(
+                    radius: 12,
+                    child: Icon(Icons.person, size: 16),
                   ),
-                ),
-                const Spacer(),
-                const Icon(Icons.grid_view, size: 20),
-                const SizedBox(width: 16),
-                const Icon(Icons.settings, size: 20),
-                const SizedBox(width: 16),
-                const CircleAvatar(
-                  radius: 12,
-                  child: Icon(Icons.person, size: 16),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 48),
             Row(

@@ -9,6 +9,7 @@ import 'package:msi_controller/services/hyprland_service.dart';
 import 'package:msi_controller/services/persistence_service.dart';
 import 'package:msi_controller/services/toast_service.dart';
 import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/core/ui/widgets/screen_header.dart';
 
 /// Accessories / Controls tab: the Hardware and System Settings Center.
 ///
@@ -278,7 +279,11 @@ class _ControlsScreenState extends State<ControlsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Header(colors: colors, theme: theme),
+                const ScreenHeader(
+                  title: 'Controls',
+                  subtitle:
+                      'Pointer, touchpad and MSI hardware accessories — instant apply, reboot-safe.',
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 _SectionTitle(
                   title: 'MOUSE & POINTER',
@@ -669,50 +674,6 @@ class _ControlsScreenState extends State<ControlsScreen>
           );
         },
       ),
-    );
-  }
-}
-
-class _Header extends StatelessWidget {
-  final AppColors colors;
-  final ThemeData theme;
-
-  const _Header({required this.colors, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              width: 4,
-              height: 32,
-              decoration: BoxDecoration(
-                color: colors.performance,
-                borderRadius: AppRadius.xsAll,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Text(
-              'Controls',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.w900,
-                color: colors.textPrimary,
-                letterSpacing: -1.0,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Text(
-          'Pointer, touchpad and MSI hardware accessories — instant apply, reboot-safe.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colors.textSecondary,
-          ),
-        ),
-      ],
     );
   }
 }

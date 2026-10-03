@@ -5,6 +5,7 @@ import 'package:msi_controller/core/tokens/tokens.dart';
 import 'package:msi_controller/domain/entities/system_info.dart';
 import 'package:msi_controller/domain/repositories/msi_repository.dart';
 import 'package:msi_controller/widgets/glass_container.dart';
+import 'package:msi_controller/core/ui/widgets/screen_header.dart';
 import 'package:msi_controller/core/widgets/app_button.dart';
 import 'package:msi_controller/screens/system_diagnosis/widgets/section_title_widget.dart';
 import 'package:msi_controller/screens/system_diagnosis/widgets/status_badge_widget.dart';
@@ -84,38 +85,14 @@ class _SystemDiagnosisScreenState extends State<SystemDiagnosisScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 3,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: colors.performance,
-                              borderRadius: AppRadius.xsAll,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Text(
-                            'System Health',
-                            style: theme.textTheme.headlineMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.monitor_heart_outlined,
-                            color: colors.performance,
-                            size: 24,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        'Deep diagnostics and storage analysis for your MSI machine.',
-                        style: TextStyle(
-                          color: colors.textTertiary,
-                          fontSize: 13,
+                      ScreenHeader(
+                        title: 'System Health',
+                        subtitle:
+                            'Deep diagnostics and storage analysis for your MSI machine.',
+                        trailing: Icon(
+                          Icons.monitor_heart_outlined,
+                          color: colors.performance,
+                          size: 24,
                         ),
                       ),
                     ],

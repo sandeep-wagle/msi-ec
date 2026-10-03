@@ -7,6 +7,7 @@ import 'package:msi_controller/core/tokens/tokens.dart';
 import 'package:msi_controller/domain/repositories/msi_repository.dart';
 import 'package:msi_controller/services/toast_service.dart';
 import 'package:msi_controller/core/widgets/app_button.dart';
+import 'package:msi_controller/core/ui/widgets/screen_header.dart';
 import 'package:msi_controller/widgets/glass_container.dart';
 import 'package:msi_controller/screens/gaming_mode/widgets/gaming_mode_toggle.dart';
 import 'package:msi_controller/screens/gaming_mode/widgets/add_game_button.dart';
@@ -130,32 +131,16 @@ class _GamingModeScreenState extends State<GamingModeScreen>
                     AppSpacing.xxxl,
                     AppSpacing.xl,
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 3,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: colors.performance,
-                          borderRadius: AppRadius.xsAll,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.md),
-                      Text(
-                        'Gaming Mode',
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const Spacer(),
-                      GamingModeToggle(
-                        isActive: _globalGamingMode,
-                        isApplying: _isApplying,
-                        colors: colors,
-                        onChanged: _toggleGamingMode,
-                      ),
-                    ],
+                  child: ScreenHeader(
+                    title: 'Gaming Mode',
+                    subtitle:
+                        'One switch for full performance, cooling and audio.',
+                    trailing: GamingModeToggle(
+                      isActive: _globalGamingMode,
+                      isApplying: _isApplying,
+                      colors: colors,
+                      onChanged: _toggleGamingMode,
+                    ),
                   ),
                 ),
               ),

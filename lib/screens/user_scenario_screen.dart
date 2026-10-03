@@ -9,6 +9,7 @@ import 'package:msi_controller/logic/blocs/settings/settings_event.dart';
 import 'package:msi_controller/logic/blocs/settings/settings_state.dart';
 import 'package:msi_controller/domain/repositories/msi_repository.dart';
 import 'package:msi_controller/core/di/injection.dart';
+import 'package:msi_controller/core/ui/widgets/screen_header.dart';
 import 'package:msi_controller/widgets/glass_container.dart';
 import 'package:msi_controller/screens/user_scenario/widgets/user_scenario_telemetry_item.dart';
 
@@ -53,41 +54,13 @@ class _UserScenarioScreenState extends State<UserScenarioScreen>
                         AppSpacing.xxxl,
                         AppSpacing.xl,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 3,
-                                height: 24,
-                                decoration: BoxDecoration(
-                                  color: colors.performance,
-                                  borderRadius: AppRadius.xsAll,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              Text(
-                                'User Scenario',
-                                style: theme.textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const Spacer(),
-                              if (info != null)
-                                _buildTelemetryHeader(info, colors),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          Text(
+                      child: ScreenHeader(
+                        title: 'User Scenario',
+                        subtitle:
                             'Select a performance profile to synchronize hardware protocols with your current mission.',
-                            style: TextStyle(
-                              color: colors.textTertiary,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                        trailing: info != null
+                            ? _buildTelemetryHeader(info, colors)
+                            : null,
                       ),
                     ),
                   ),
