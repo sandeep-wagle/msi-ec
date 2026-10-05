@@ -130,9 +130,11 @@ class SoundBloc extends Bloc<SoundEvent, SoundState> {
     unawaited(
       _repository.setSoundStereoWidth(newState.stereoWidth).timeout(timeout),
     );
-    unawaited(
-      _repository.setSoundVolumeBoost(newState.volumeBoost).timeout(timeout),
-    );
+    // NOTE: volume is deliberately NOT synced here. The live sink level
+    // (owned by the service, persisted across reboots) is the truth; the
+    // repository adopts it on connect and the slider follows. Blasting the
+    // saved value on every app start is exactly what made volume jump —
+    // and made it feel like audio "needs" the app to start.
     unawaited(
       _repository
           .setSoundEffectGain('bass', newState.bassGain)

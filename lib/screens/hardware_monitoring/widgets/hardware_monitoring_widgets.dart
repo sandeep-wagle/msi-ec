@@ -324,21 +324,29 @@ class SsdRowWidget extends StatelessWidget {
           const SizedBox(width: AppSpacing.xxs),
           Icon(Icons.storage, size: 14, color: ac.textSecondary),
           const Spacer(),
-          Text(
-            '${free.toStringAsFixed(1)} GB available',
-            style: TextStyle(
-              fontSize: AppTypography.labelSmall.fontSize,
-              color: ac.textSecondary,
+          Flexible(
+            child: Text(
+              '${free.toStringAsFixed(1)} GB available',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: AppTypography.labelSmall.fontSize,
+                color: ac.textSecondary,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
-          SizedBox(
-            width: 80,
-            child: LinearProgressIndicator(
-              value: diskUsage,
-              minHeight: 4,
-              backgroundColor: ac.gaugeTrack,
-              color: Colors.blue.shade700,
+          Flexible(
+            flex: 0,
+            child: SizedBox(
+              width: 80,
+              child: LinearProgressIndicator(
+                value: diskUsage,
+                minHeight: 4,
+                backgroundColor: ac.gaugeTrack,
+                color: ac.balanced,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.xs),
