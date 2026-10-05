@@ -82,6 +82,22 @@ fn save_enabled_flag(enabled: bool) {
     }
     let _ = fs::write(path, if enabled { "1" } else { "0" });
 }
+
+const MIC_MUTE_PATH: &str = ".config/msi-center/mic-muted";
+
+fn load_mic_muted() -> bool {
+    fs::read_to_string(config_path(MIC_MUTE_PATH))
+        .map(|s| s.trim() == "1")
+        .unwrap_or(false)
+}
+
+fn save_mic_muted(muted: bool) {
+    let path = config_path(MIC_MUTE_PATH);
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let _ = fs::write(path, if muted { "1" } else { "0" });
+}
 // Graph hosting: the filter graph runs INSIDE the main PipeWire daemon via
 // a drop-in (a nested `pipewire -c` host exposes nodes but, on PipeWire
 // >= 1.6, never exposes their ports — verified empirically). Structure is
@@ -90,7 +106,7 @@ fn save_enabled_flag(enabled: bool) {
 const FILTER_DROPIN_PATH: &str = ".config/pipewire/pipewire.conf.d/99-msi-dsp.conf";
 /// Bump whenever the graph TEMPLATE changes so a newer binary reloads the
 /// daemon exactly once (gain values are live params, not structure).
-const GRAPH_VERSION: u32 = 4;
+const GRAPH_VERSION: u32 = 6;
 
 fn filter_dropin_path() -> String {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
@@ -792,6 +808,71 @@ fn set_default_sink_to_dsp() {
         .output();
 }
 
+/// Ensures the system default SOURCE is a real microphone, never one of
+/// our DSP nodes or a stale echo-cancel source. WHY: wireplumber can leave
+/// the default source pointing at DSP plumbing (e.g. echo-cancel-source),
+/// and from then on every mic mute toggle, mic volume write (@DEFAULT_-
+/// SOURCE@) and capturing app hits OUR graph instead of the hardware mic.
+/// Symptoms of this exact failure: mic mute "does nothing" (wrong node
+/// muted), krr bursts on mute toggles (graph renegotiation), and callers
+/// hearing processed monitor audio. Runs at startup; cheap enough to be
+/// safe (single pactl round-trip, no-op when already sane).
+fn ensure_sane_default_source() {
+    let current = Command::new("pactl")
+        .args(["get-default-source"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+    if current.is_empty()
+        || current.starts_with("msi_dsp")
+        || current.contains("echo-cancel")
+        || current.contains("monitor")
+    {
+        // Pick the first real hardware mic (alsa input, not a monitor).
+        let list = Command::new("pactl")
+            .args(["list", "short", "sources"])
+            .output();
+        if let Ok(list) = list {
+            for line in String::from_utf8_lossy(&list.stdout).lines() {
+                let parts: Vec<&str> = line
+                    .split(char::is_whitespace)
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                if parts.len() < 2 {
+                    continue;
+                }
+                let name = parts[1];
+                if (name.starts_with("alsa_input") || name.starts_with("bluez_input"))
+                    && !name.contains("monitor")
+                {
+                    let _ = Command::new("pw-metadata")
+                        .args([
+                            "-n",
+                            "default",
+                            "0",
+                            "default.audio.source",
+                            &format!("{{\"name\":\"{}\"}}", name),
+                        ])
+                        .output();
+                    info!("Default source repaired: {} -> {}", current, name);
+                    return;
+                }
+            }
+        }
+        warn!(
+            "Default source '{}' looks wrong but no hardware mic found; leaving untouched",
+            current
+        );
+    }
+}
+
 /// True iff the chain output is actually linked to a physical (non-DSP)
 /// sink. `pw-link -l` prints each port followed by peer lines:
 ///   msi_dsp_output:output_FL
@@ -915,6 +996,9 @@ fn watchdog_once() {
                 .output();
         }
     }
+
+    // Keep mic persistence in sync with system-level key toggles.
+    sync_mic_persisted();
 
     if DSP_ENABLED.load(Ordering::SeqCst) && !chain_alive {
         warn!("Watchdog: rebuilding missing filter graph...");
@@ -1166,17 +1250,12 @@ context.modules = [
             }}
         }}
     }}
-    {{ name = libpipewire-module-echo-cancel
-        flags = [ ifexists nofail ]
-        args = {{
-            monitor.mode = true
-            capture.props = {{
-                node.name = "msi_dsp_echo_cancel"
-                node.description = "MSI DSP Echo Cancel & Noise Suppression"
-            }}
-        }}
-    }}
-
+    # No echo-cancel module on purpose: it consumed BOTH the microphone
+    # and our chain monitor, coupling mic state changes to the output
+    # graph (audible krr on mute toggles). Mic mute is system-level and
+    # must never hamper the speaker — muting is done straight on the
+    # ALSA source via pactl (see apply_mic_settings), with no graph
+    # involvement at all.
 ]
 "#);
     
@@ -1367,11 +1446,41 @@ fn apply_mic_settings(profile: &AudioProfile) {
         .args(["set-source-volume", "@DEFAULT_SOURCE@", &format!("{}%", pct)])
         .output();
 
+    // Persist the mute flag so sleep/reboot restores the user's last
+    // choice instead of defaulting back to mic-on every time.
+    save_mic_muted(!profile.mic_enabled);
+
     if profile.echo_cancellation || profile.mic_noise_suppression {
         info!(
             "Mic FX requested (echo-cancel={}, noise-suppression={}): no WebRTC backend on this system — mic stays dry apart from mute/gain",
             profile.echo_cancellation, profile.mic_noise_suppression
         );
+    }
+}
+
+/// Re-applies the persisted mic mute state (used at startup and by the
+/// watchdog). System-level mute changes from key bindings are respected
+/// as-is; this only heals drift back to the persisted intent.
+fn enforce_persisted_mic() {
+    if load_mic_muted() {
+        let _ = Command::new("pactl")
+            .args(["set-source-mute", "@DEFAULT_SOURCE@", "true"])
+            .output();
+    }
+}
+
+/// Adopts the live system mic state into persistence (watchdog path).
+/// Key-binding toggles always win live; this just keeps the file in sync
+/// so a later reboot restores what the user last chose anywhere.
+fn sync_mic_persisted() {
+    let out = Command::new("pactl")
+        .args(["get-source-mute", "@DEFAULT_SOURCE@"])
+        .output();
+    if let Ok(out) = out {
+        let muted = String::from_utf8_lossy(&out.stdout).contains("yes");
+        if muted != load_mic_muted() {
+            save_mic_muted(muted);
+        }
     }
 }
 
@@ -1496,12 +1605,31 @@ async fn main() -> Result<()> {
         error!("Startup graph generation failed: {}", e);
     }
 
+    // Fresh daemon load, unconditionally, exactly once per service start.
+    // WHY not "only if nodes are missing": node names survive template
+    // changes (a stale graph exposes the same msi_dsp_input while running
+    // removed stages or stale coefficients), so presence proves nothing
+    // about content. One ~2s blip at (re)start beats silent rot forever.
+    // Service starts are rare (boot, updates, crashes); value changes
+    // never come through here.
+    if !start_filter_chain() {
+        error!("Initial daemon load failed; will keep retrying via watchdog");
+    }
+    forget_node_id(&FILTER_NODE_ID);
+    LAST_PARAMS.lock().unwrap().clear();
+
     // Auto-apply saved profile on startup
     info!("Auto-applying saved DSP profile on service startup...");
     apply_dsp_settings(&saved_profile, false);
     // ...then restore the persisted level on top (gapless volume set,
     // no blast of anything stale — the file holds the last intent).
     apply_persisted_volume();
+    // ...and the persisted mic state (sleep/reboot must not resurrect
+    // a muted-by-choice mic, nor unmute one the user left muted).
+    enforce_persisted_mic();
+    // ...and a sane default source (see ensure_sane_default_source for
+    // the failure this prevents: DSP nodes as system mic).
+    ensure_sane_default_source();
 
     // Start background device monitor for seamless switching
     start_device_monitor();
