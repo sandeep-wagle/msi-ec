@@ -524,6 +524,33 @@ class MsiRepositoryImpl implements MsiRepository {
 
   // Consolidated into _getBufferSizeForMode above
 
+  /// Records headless hardware intent for the service keeper
+  /// (~/.config/msi-center/hardware.json). Called ONLY after a confirmed
+  /// hardware write: the file must contain user intent, never guesses or
+  /// defaults, so boot restore re-applies exactly what was chosen.
+  /// Read-modify-write preserves keys owned by other setters.
+  Future<void> _recordHwIntent(String key, dynamic value) async {
+    try {
+      final home = Platform.environment['HOME'];
+      if (home == null) return;
+      final file = File('$home/.config/msi-center/hardware.json');
+      Map<String, dynamic> map = {};
+      if (await file.exists()) {
+        try {
+          final decoded = json.decode(await file.readAsString());
+          if (decoded is Map) {
+            map = Map<String, dynamic>.from(decoded);
+          }
+        } catch (_) {}
+      }
+      map[key] = value;
+      await file.parent.create(recursive: true);
+      await file.writeAsString(json.encode(map));
+    } catch (_) {
+      // Intent recording is best-effort; the live write already succeeded.
+    }
+  }
+
   @override
   Future<bool> setPerformanceMode(PerformanceMode mode) async {
     _currentMode = mode;
@@ -553,7 +580,9 @@ class MsiRepositoryImpl implements MsiRepository {
       final result = await _channel.invokeMethod<bool>('setMode', {
         'mode': modeStr,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      if (ok) await _recordHwIntent('shift_mode', modeStr);
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set mode: ${e.message}');
       return false;
@@ -568,7 +597,9 @@ class MsiRepositoryImpl implements MsiRepository {
       final result = await _channel.invokeMethod<bool>('setSuperBattery', {
         'enable': enable,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      if (ok) await _recordHwIntent('super_battery', enable);
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set super battery: ${e.message}');
       return false;
@@ -583,7 +614,9 @@ class MsiRepositoryImpl implements MsiRepository {
       final result = await _channel.invokeMethod<bool>('setBatteryLimit', {
         'limit': limit,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      if (ok) await _recordHwIntent('battery_threshold', limit);
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set battery limit: ${e.message}');
       return false;
@@ -636,7 +669,9 @@ class MsiRepositoryImpl implements MsiRepository {
       final result = await _channel.invokeMethod<bool>('setFanMode', {
         'mode': mode,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      if (ok) await _recordHwIntent('fan_mode', mode);
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set fan mode: ${e.message}');
       return false;
@@ -650,7 +685,20 @@ class MsiRepositoryImpl implements MsiRepository {
       final result = await _channel.invokeMethod<bool>('setFanModeUnified', {
         'mode': mode.name,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      // Record intent exactly the way native applies it (see
+      // setFanModeUnified): auto/manual also force cooler_boost off, so
+      // record that too — otherwise the keeper would resurrect a stale
+      // cooler-on against the live cooler-off state on every tick.
+      if (ok) {
+        if (mode == FanMode.coolerBoost) {
+          await _recordHwIntent('cooler_boost', true);
+        } else {
+          await _recordHwIntent('fan_mode', mode.name);
+          await _recordHwIntent('cooler_boost', false);
+        }
+      }
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set unified fan mode: ${e.message}');
       return false;
@@ -670,7 +718,9 @@ class MsiRepositoryImpl implements MsiRepository {
         'color2': info.color2,
         'color3': info.color3,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      if (ok) await _recordHwIntent('kbd_brightness', info.brightness);
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set keyboard backlight: ${e.message}');
       return false;
@@ -748,10 +798,47 @@ class MsiRepositoryImpl implements MsiRepository {
         'key': key,
         'value': value,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      if (ok) await _recordDeviceIntent(key, value);
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set device setting: ${e.message}');
       return false;
+    }
+  }
+
+  /// Maps a successful setDeviceSetting call onto headless intent keys.
+  /// fn_key is read BACK from sysfs (not echoed from the request) because
+  /// native normalizes the firmware encoding (left/right vs on/off vs
+  /// 1/0) — recording the request string would corrupt it on restore.
+  /// Keys without hardware meaning (mic, usb_power_share stub) are skipped.
+  static const _fnKeyPaths = [
+    '/sys/devices/platform/msi-ec/fn_key',
+  ];
+
+  Future<void> _recordDeviceIntent(String key, dynamic value) async {
+    switch (key) {
+      case 'cooler_boost':
+      case 'coolerBoost':
+        await _recordHwIntent('cooler_boost', value == true || value == 'on' || value == '1');
+      case 'fn_key':
+      case 'fnKeySwap':
+      case 'fn_key_swap':
+        String? raw;
+        for (final path in _fnKeyPaths) {
+          try {
+            final file = File(path);
+            if (await file.exists()) {
+              raw = (await file.readAsString()).trim();
+              break;
+            }
+          } catch (_) {}
+        }
+        await _recordHwIntent('fn_key', raw ?? value.toString());
+      case 'webcam':
+        await _recordHwIntent('webcam', value == true || value == 'on');
+      default:
+        break;
     }
   }
 
@@ -1029,7 +1116,18 @@ class MsiRepositoryImpl implements MsiRepository {
       final result = await _channel.invokeMethod<bool>('setGpuMode', {
         'mode': mode.name,
       });
-      return result ?? false;
+      final ok = result ?? false;
+      // Record the prime-select target string native actually uses, so a
+      // headless restore re-issues exactly the effective choice.
+      if (ok) {
+        final target = mode == GpuMode.discrete
+            ? 'nvidia'
+            : mode == GpuMode.integrated
+                ? 'intel'
+                : 'on-demand';
+        await _recordHwIntent('gpu_mode', target);
+      }
+      return ok;
     } on PlatformException catch (e) {
       debugPrint('Failed to set GPU mode: ${e.message}');
       return false;

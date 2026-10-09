@@ -38,3 +38,28 @@ overwrite `/usr/share/omarchy/bin/omarchy-audio-output-volume`.
 - `msi-ec` kernel module (via `/etc/modules-load.d/msi-ec.conf`)
 - `msi-dsp.service` user unit (enabled): filter graph, default sink,
   link watchdog, volume restore, speaker pin
+
+## Headless hardware state keeper
+
+Settings survive reboot and sleep with the app closed — no daemon
+beyond `msi-dsp.service` (idle ~0% CPU / ~5MB), no new permissions:
+
+- **Contract**: `~/.config/msi-center/hardware.json` holds user INTENT
+  (`cooler_boost`, `shift_mode`, `fan_mode`, `battery_threshold`,
+  `super_battery`, `fn_key` raw encoding, `webcam`, `kbd_brightness`,
+  `gpu_mode`). Every field is optional; absent means "leave the
+  firmware default alone", so boot only ever re-applies what was
+  explicitly chosen.
+- **Writer**: the app records intent centrally in `MsiRepositoryImpl`
+  (`_recordHwIntent`) on every hardware-confirmed change (fn_key is
+  read back from sysfs to preserve firmware encoding).
+- **Restorer**: the service `restore_hardware()` runs at startup (with
+  governor coupling for shift modes, exactly like native `setShiftMode`).
+- **Healer**: a 60s watchdog tick re-reads recorded keys and rewrites
+  only diverged values. EC-gated (non-MSI machines stay silent),
+  battery/LED families probe their own nodes, `gpu_mode` is
+  restore-only (prime-select needs a session restart; re-issuing it
+  every minute would be churn).
+- **Excluded on purpose**: manual fan % speeds (unsafe blind), gaming
+  bundle / free-memory / clean-disk (momentary macros), theme / vault /
+  notifications (UI-only).

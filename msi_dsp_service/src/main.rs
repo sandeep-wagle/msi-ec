@@ -968,6 +968,257 @@ fn disable_dsp_switch_to_direct() {
 ///    100% unmuted (single-knob design: the chain carries ALL level, so a
 ///    stray/legacy speaker level can never mute the room again).
 /// Runs every 10s; covers crashes and PipeWire restarts.
+/// --- Headless hardware state keeper -------------------------------------
+/// WHY this exists: the app only runs sometimes, but cooler boost, shift
+/// mode, fan mode, battery threshold etc. must survive reboot/sleep
+/// WITHOUT it. The app records user INTENT here (only on explicit,
+/// hardware-confirmed changes — never defaults); this service restores
+/// it at startup and heals drift on a slow tick. Audio paths above are
+/// untouched by this module.
+const HARDWARE_PATH: &str = ".config/msi-center/hardware.json";
+const MSI_EC: &str = "/sys/devices/platform/msi-ec";
+const KBD_LED: &str = "/sys/class/leds/msiacpi::kbd_backlight/brightness";
+
+/// Every field is Option: absent means "no user intent recorded — leave
+/// the firmware default alone". This is what makes boot restore safe:
+/// only explicitly chosen values are ever re-applied.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct HardwareIntent {
+    cooler_boost: Option<bool>,
+    shift_mode: Option<String>,
+    fan_mode: Option<String>,
+    battery_threshold: Option<i32>,
+    super_battery: Option<bool>,
+    /// Raw string exactly as last written (left/right, on/off, 1/0) so
+    /// firmware encoding is preserved across reboots.
+    fn_key: Option<String>,
+    webcam: Option<bool>,
+    kbd_brightness: Option<i32>,
+    gpu_mode: Option<String>,
+}
+
+fn hardware_file() -> String {
+    let home = std::env::var("HOME").unwrap_or_else(|_| "/root".into());
+    format!("{}/{}", home, HARDWARE_PATH)
+}
+
+fn load_hardware_intent() -> HardwareIntent {
+    fs::read_to_string(hardware_file())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+/// Battery threshold node varies by vendor/model: first existing wins.
+/// WHY probe instead of hardcode: BAT0 vs BAT1 differs per machine, and
+/// the node only exists when the EC/battery driver exposes it.
+fn battery_threshold_path() -> Option<String> {
+    for bat in ["BAT1", "BAT0"] {
+        let p = format!("/sys/class/power_supply/{}/charge_control_end_threshold", bat);
+        if std::path::Path::new(&p).exists() {
+            return Some(p);
+        }
+    }
+    None
+}
+
+fn hw_read(path: &str) -> Option<String> {
+    fs::read_to_string(path).ok().map(|s| s.trim().to_string())
+}
+
+/// True when the MSI EC driver is bound. WHY gate on this: on non-MSI
+/// hardware (or a not-yet-loaded module) every msi-ec path is absent, and
+/// without the gate restore/enforce would sudo-spam failures every tick.
+/// Absent node = nothing to restore = skip quietly, never an error.
+fn msi_ec_present() -> bool {
+    std::path::Path::new(&format!("{}/shift_mode", MSI_EC)).exists()
+        || std::path::Path::new(MSI_EC).exists()
+}
+
+/// Passwordless sysfs write with verification. Order mirrors the native
+/// backend exactly: direct user-space write first (udev 0666 rule), then
+/// a SYNCHRONOUS non-interactive `sudo -n` with one retry (transient fork
+/// failures under rapid writes must not vanish), read-back verified both
+/// times. Never prompts; never backgrounded (callers need the truth).
+fn hw_write(path: &str, value: &str) -> bool {
+    if fs::write(path, value).is_ok() {
+        if hw_read(path).as_deref() == Some(value) {
+            return true;
+        }
+    }
+    for attempt in 0..2 {
+        let cmd = format!("echo \"{}\" | sudo -n tee {} > /dev/null 2>&1", value, path);
+        let rc = Command::new("sh").args(["-c", &cmd]).output();
+        let ok = rc.map(|o| o.status.success()).unwrap_or(false);
+        if ok && hw_read(path).as_deref() == Some(value) {
+            return true;
+        }
+        warn!("hw_write attempt {} failed for {} (retrying once)", attempt, path);
+    }
+    false
+}
+
+fn on_off(b: bool) -> &'static str {
+    if b { "on" } else { "off" }
+}
+
+/// Governor coupling mirrors native setShiftMode exactly (turbo/sport →
+/// performance, comfort → ondemand, eco → powersave). WHY here too: a
+/// shift_mode restore without its governor leaves CPU policy behind.
+fn apply_shift_mode(mode: &str) {
+    hw_write(&format!("{}/shift_mode", MSI_EC), mode);
+    let governor = match mode {
+        "turbo" | "sport" => "performance",
+        "comfort" => "ondemand",
+        "eco" => "powersave",
+        _ => "ondemand",
+    };
+    let cmd = format!(
+        "for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo {} | sudo -n tee $f > /dev/null 2>&1; done",
+        governor
+    );
+    let _ = Command::new("sh").args(["-c", &cmd]).output();
+}
+
+/// Full restore: called once at service startup. Writes ONLY keys with
+/// recorded intent; everything else keeps firmware defaults. Skips
+/// entire EC/battery/LED families whose nodes are absent (non-MSI
+/// hardware or late module load — the 60s enforce pass picks up late
+/// arrivals without spamming).
+fn restore_hardware() {
+    let intent = load_hardware_intent();
+    let ec = msi_ec_present();
+    if !ec {
+        info!("Hardware restore: no msi-ec device, skipping EC keys");
+    }
+    let mut applied = 0;
+    if ec {
+        if let Some(v) = intent.cooler_boost {
+            if hw_write(&format!("{}/cooler_boost", MSI_EC), on_off(v)) { applied += 1; }
+        }
+        if let Some(ref mode) = intent.shift_mode {
+            apply_shift_mode(mode);
+            applied += 1;
+        }
+        if let Some(ref mode) = intent.fan_mode {
+            if hw_write(&format!("{}/fan_mode", MSI_EC), mode) { applied += 1; }
+        }
+        if let Some(v) = intent.super_battery {
+            if hw_write(&format!("{}/super_battery", MSI_EC), on_off(v)) { applied += 1; }
+        }
+        if let Some(ref raw) = intent.fn_key {
+            if hw_write(&format!("{}/fn_key", MSI_EC), raw) { applied += 1; }
+        }
+        if let Some(v) = intent.webcam {
+            if hw_write(&format!("{}/webcam", MSI_EC), on_off(v)) { applied += 1; }
+        }
+    }
+    if let Some(limit) = intent.battery_threshold {
+        if let Some(path) = battery_threshold_path() {
+            if hw_write(&path, &limit.to_string()) { applied += 1; }
+        } else {
+            info!("Hardware restore: no battery threshold node, skipping");
+        }
+    }
+    if let Some(level) = intent.kbd_brightness {
+        if std::path::Path::new(KBD_LED).exists() {
+            if hw_write(KBD_LED, &level.to_string()) { applied += 1; }
+        }
+    }
+    if let Some(ref mode) = intent.gpu_mode {
+        // prime-select only takes effect after logout/reboot; re-issuing
+        // the recorded choice is harmless and converges on next login.
+        let _ = Command::new("sudo")
+            .args(["-n", "prime-select", mode])
+            .output();
+        applied += 1;
+    }
+    info!("Hardware restore: {} intent key(s) applied", applied);
+}
+
+/// Drift heal: re-reads every recorded key and rewrites ONLY diverged
+/// values (log each heal). Runs on a slow tick — EC attrs are sticky in
+/// session, so this is nearly always a no-op read pass (~10 sysfs reads,
+/// no writes, negligible CPU/battery).
+fn enforce_hardware() {
+    let intent = load_hardware_intent();
+    // Same absent-node discipline as restore: never sudo-spam for
+    // hardware that isn't there (non-MSI machines stay silent).
+    let ec = msi_ec_present();
+    let kbd = std::path::Path::new(KBD_LED).exists();
+    let check = |label: &str, current: Option<String>, want: &str, write: &dyn Fn() -> bool| {
+        match current {
+            Some(cur) if cur == want => {}
+            _ => {
+                if write() {
+                    info!("Hardware heal: {} restored to '{}'", label, want);
+                } else {
+                    warn!("Hardware heal FAILED for {} (want '{}')", label, want);
+                }
+            }
+        }
+    };
+    // EC-gated: skip entirely when the driver is absent so non-MSI
+    // machines never sudo-spam (battery_threshold_path()/KBD_LED probes
+    // below already self-gate the other two families).
+    if !ec {
+        return;
+    }
+    // EC-gated: skip EC keys when the driver is absent so non-MSI
+    // machines never sudo-spam. Battery (power_supply) and keyboard LED
+    // are generic families with their own probes below — those still run
+    // everywhere, because a ThinkPad also deserves its charge threshold.
+    if ec {
+        if let Some(v) = intent.cooler_boost {
+            let want = on_off(v).to_string();
+            check("cooler_boost", hw_read(&format!("{}/cooler_boost", MSI_EC)), &want,
+                &|| hw_write(&format!("{}/cooler_boost", MSI_EC), &want));
+        }
+        if let Some(ref mode) = intent.shift_mode {
+            check("shift_mode", hw_read(&format!("{}/shift_mode", MSI_EC)), mode,
+                &|| { apply_shift_mode(mode); hw_read(&format!("{}/shift_mode", MSI_EC)).as_deref() == Some(mode.as_str()) });
+        }
+        if let Some(ref mode) = intent.fan_mode {
+            check("fan_mode", hw_read(&format!("{}/fan_mode", MSI_EC)), mode,
+                &|| hw_write(&format!("{}/fan_mode", MSI_EC), mode));
+        }
+        if let Some(v) = intent.super_battery {
+            let want = on_off(v).to_string();
+            check("super_battery", hw_read(&format!("{}/super_battery", MSI_EC)), &want,
+                &|| hw_write(&format!("{}/super_battery", MSI_EC), &want));
+        }
+        if let Some(ref raw) = intent.fn_key {
+            check("fn_key", hw_read(&format!("{}/fn_key", MSI_EC)), raw,
+                &|| hw_write(&format!("{}/fn_key", MSI_EC), raw));
+        }
+        if let Some(v) = intent.webcam {
+            let want = on_off(v).to_string();
+            check("webcam", hw_read(&format!("{}/webcam", MSI_EC)), &want,
+                &|| hw_write(&format!("{}/webcam", MSI_EC), &want));
+        }
+    }
+    if let Some(limit) = intent.battery_threshold {
+        if let Some(path) = battery_threshold_path() {
+            let want = limit.to_string();
+            check("battery_threshold", hw_read(&path), &want,
+                &|| hw_write(&path, &want));
+        }
+    }
+    if kbd {
+        if let Some(level) = intent.kbd_brightness {
+            let want = level.to_string();
+            check("kbd_brightness", hw_read(KBD_LED), &want,
+                &|| hw_write(KBD_LED, &want));
+        }
+    }
+    // gpu_mode intentionally NOT enforced: prime-select needs a session
+    // restart to matter; re-issuing it every minute would be pure churn.
+}
+
+/// Slow-tick counter so hardware enforcement runs every ~60s while the
+/// audio watchdog stays at 10s.
+static HW_TICK: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 fn watchdog_once() {
     let chain_alive = get_node_id_by_name("msi_dsp_input").is_some();
     let default = get_default_sink_name().unwrap_or_default();
@@ -999,6 +1250,14 @@ fn watchdog_once() {
 
     // Keep mic persistence in sync with system-level key toggles.
     sync_mic_persisted();
+
+    // Slow hardware tick: drift-heal recorded intent every ~60s (every
+    // 6th 10s watchdog pass). EC sysfs is sticky in-session so this is
+    // normally a read-only pass; writes happen only on real divergence
+    // (reboot defaults, sleep resets, external tools).
+    if HW_TICK.fetch_add(1, Ordering::SeqCst) % 6 == 0 {
+        enforce_hardware();
+    }
 
     if DSP_ENABLED.load(Ordering::SeqCst) && !chain_alive {
         warn!("Watchdog: rebuilding missing filter graph...");
@@ -1150,7 +1409,7 @@ fn generate_filter_chain_config(profile: &AudioProfile) -> Result<()> {
     let bass_gain = ctl.bass;
     let treble_gain = ctl.treble;
     let voice_gain = ctl.voice;
-    let stereo_width = ctl.width;
+    let _stereo_width = ctl.width;
     let limiter_threshold = ctl.limiter_threshold;
     let compress_ratio = ctl.compress_ratio;
 
@@ -1630,6 +1889,11 @@ async fn main() -> Result<()> {
     // ...and a sane default source (see ensure_sane_default_source for
     // the failure this prevents: DSP nodes as system mic).
     ensure_sane_default_source();
+    // ...and the recorded hardware intent (cooler/shift/fan/battery/fn/
+    // webcam/kbd/gpu). This is what makes settings survive reboot and
+    // sleep with the app closed: only explicitly recorded keys are
+    // re-applied, everything else keeps firmware defaults.
+    restore_hardware();
 
     // Start background device monitor for seamless switching
     start_device_monitor();
