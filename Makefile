@@ -9,6 +9,13 @@ KMOD_DIR        := /lib/modules/$(KERNELRELEASE)/updates/drivers/platform/x86
 
 ccflags-y := -std=gnu11 -Wno-declaration-after-statement
 
+# Some kernel trees (Omarchy, upstream after the ACPI battery hook rename)
+# export acpi_battery_hook_* instead of battery_hook_*. Detect the header
+# variant and select the matching compat macros in msi-ec.c.
+BATTERY_HOOK_HEADER := /lib/modules/$(KERNELRELEASE)/build/include/acpi/battery.h
+ccflags-y += $(shell grep -qs 'void acpi_battery_hook_register' \
+	$(BATTERY_HOOK_HEADER) && echo -DMSI_EC_ACPI_BATTERY_HOOK)
+
 obj-m += $(MODNAME).o
 
 all: modules

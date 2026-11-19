@@ -40,6 +40,30 @@
 #include <linux/rtc.h>
 #include <linux/string_choices.h>
 
+/*
+ * The ACPI battery hook helpers are named acpi_battery_hook_* in kernels that
+ * carry the upstream rename (for example the Omarchy kernel) and stay
+ * battery_hook_* in older mainline trees. The Makefile detects which form the
+ * target kernel headers provide and sets MSI_EC_ACPI_BATTERY_HOOK.
+ */
+#ifdef MSI_EC_ACPI_BATTERY_HOOK
+#define msi_ec_battery_hook_register(hook)	acpi_battery_hook_register(hook)
+#define msi_ec_battery_hook_unregister(hook)	acpi_battery_hook_unregister(hook)
+#else
+#define msi_ec_battery_hook_register(hook)	battery_hook_register(hook)
+#define msi_ec_battery_hook_unregister(hook)	battery_hook_unregister(hook)
+#endif
+
+/*
+ * The battery hook struct is named struct acpi_battery_hook in kernels
+ * >= 6.2 and struct battery_hook in older trees.
+ */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,2,0))
+#define msi_ec_battery_hook struct acpi_battery_hook
+#else
+#define msi_ec_battery_hook struct battery_hook
+#endif
+
 static DEFINE_MUTEX(ec_set_by_mask_mutex);
 static DEFINE_MUTEX(ec_unset_by_mask_mutex);
 static DEFINE_MUTEX(ec_set_bit_mutex);
@@ -1956,7 +1980,7 @@ static int msi_battery_remove(struct power_supply *battery)
 	return 0;
 }
 
-static struct acpi_battery_hook battery_hook = {
+static msi_ec_battery_hook battery_hook = {
 	.add_battery = msi_battery_add,
 	.remove_battery = msi_battery_remove,
 	.name = MSI_EC_DRIVER_NAME,
@@ -2893,7 +2917,7 @@ static int __init msi_ec_init(void)
 	}
 
 	if (charge_control_supported)
-		battery_hook_register(&battery_hook);
+		msi_ec_battery_hook_register(&battery_hook);
 
 	// register LED classdevs
 	if (conf.leds.micmute_led_address != MSI_EC_ADDR_UNSUPP)
@@ -2925,7 +2949,7 @@ static void __exit msi_ec_exit(void)
 			led_classdev_unregister(&msiacpi_led_kbdlight);
 
 		if (charge_control_supported)
-			battery_hook_unregister(&battery_hook);
+			msi_ec_battery_hook_unregister(&battery_hook);
 	}
 
 	platform_device_unregister(msi_platform_device);
