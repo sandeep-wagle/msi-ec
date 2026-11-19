@@ -1,3 +1,53 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# graphify structural index (local-only, rebuild with: graphify build .)
+graphify-out/
+
+# MSI-EC kernel module build artifacts
 *.o
 *.o.d
 *.cmd
@@ -23,6 +73,6 @@ compile_commands.json
 *.txz
 
 # Scripts for package building generated from templates
-packaging/nfpm-alpine-debian-slackware/scripts/postinstall_slackware.sh 
-packaging/nfpm-alpine-debian-slackware/scripts/postinstall.sh 
+packaging/nfpm-alpine-debian-slackware/scripts/postinstall_slackware.sh
+packaging/nfpm-alpine-debian-slackware/scripts/postinstall.sh
 packaging/nfpm-alpine-debian-slackware/scripts/preremove.sh

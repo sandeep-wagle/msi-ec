@@ -1,0 +1,20 @@
+[0;1;32m●[0m wireplumber.service - Multimedia Service Session Manager
+     Loaded: loaded (/usr/local/lib/systemd/user/wireplumber.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Tue 2026-03-10 15:49:50 +0545; 2h 23min ago
+   Main PID: 1629 (wireplumber)
+      Tasks: 5 (limit: 18729)
+     Memory: 6.0M
+        CPU: 349ms
+     CGroup: /user.slice/user-1000.slice/user@1000.service/session.slice/wireplumber.service
+             └─1629 /usr/local/bin/wireplumber
+
+Mar 10 15:49:50 sandy-GF63-Thin-11SC systemd[1618]: Started Multimedia Service Session Manager.
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39mwp-device: SPA handle 'api.libcamera.enum.manager' could not be loaded; is it installed?[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39ms-monitors-libcamera: PipeWire's libcamera SPA plugin is missing or broken. Some camera types may not be supported.[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39mwp-device: SPA handle 'api.bluez5.enum.dbus' could not be loaded; is it installed?[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39ms-monitors: PipeWire's BlueZ SPA plugin is missing or broken. Bluetooth devices will not be supported.[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39mwp-device: SPA handle 'api.bluez5.midi.enum' could not be loaded; is it installed?[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39ms-monitors: PipeWire's BlueZ MIDI SPA missing or broken. Bluetooth not supported.[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mpw.resource: can't create node: No such file or directory[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mwp-node: failed to create node from factory 'spa-node-factory'[0m
+Mar 10 15:49:50 sandy-GF63-Thin-11SC wireplumber[1629]: [0;1;39m[0;1;31m[0;1;39ms-monitors: Failed to create BLE MIDI server.[0m

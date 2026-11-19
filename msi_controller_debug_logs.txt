@@ -1,0 +1,134 @@
+Launching lib/main.dart on Linux in debug mode...
+Building Linux application...                                   
+✓ Built build/linux/x64/debug/bundle/msi_controller
+Syncing files to device Linux...                                   256ms
+
+Flutter run key commands.
+r Hot reload. 🔥🔥🔥
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on Linux is available at: http://127.0.0.1:38457/9JlPc1upO48=/
+The Flutter DevTools debugger and profiler on Linux is available at: http://127.0.0.1:38457/9JlPc1upO48=/devtools/?uri=ws://127.0.0.1:38457/9JlPc1upO48=/ws
+Native: msi_dsp_service already running.
+Repository: Attempting to connect to DSP socket...
+Repository: Persistent DSP socket connected
+DSP service already running
+DSP service initialization successful
+Setting unified Fan Mode: Cooler Boost
+Loading sound profile: Gaming
+Repository: Sample rate change requested: 48000 Hz
+Repository: DSP response: OK
+{"name":"Gaming","bass":4.0,"treble":-7.113161914460285,"voice":6.0,"eq_gains":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"compressor":true,"surround":true,"volume":1.0,"buffer_size":256,"noise_level":0.0,"stereo_width":2.0,"limiter_enabled":true,"compressor_ratio":4.0,"surround_variation":"Surround","night_mode":false,"effects_enabled":true,"mic_enabled":true,"mic_gain":1.0,"mic_noise_suppression":true,"echo_cancellation":false,"voice_clarity":true,"treble_enhancer":true,"bass_boost":true,"tracker_enabled":false,"sharing_enabled":false}
+Native: setGpuMode: switching to nvidia in background
+Native: Enqueuing background task: pkexec prime-select nvidia
+Native: Enqueuing background task: echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+Native: Enqueuing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Enqueuing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: setShiftMode(turbo) -> triggered governor=performance in background
+Native: Enqueuing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Enqueuing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+Native: Enqueuing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Executing background task: pkexec prime-select nvidia
+Info: selecting the nvidia profile
+Deleting /lib/modprobe.d/nvidia-runtimepm.conf
+Updating the initramfs. Please wait for the operation to complete:
+-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|Repository: DSP response: OK
+Repository: DSP response: OK
+\Repository: DSP response: OK
+-/|\-Repository: DSP response: OK
+/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/Done
+Native: Background task finished (code -1): pkexec prime-select nvidia
+Native: Executing background task: echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+Native: Background task finished (code -1): echo "63" | pkexec tee /sys/class/power_supply/BAT1/charge_control_end_threshold > /dev/null
+Native: Executing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Background task finished (code 0): echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Executing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Background task finished (code 0): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Executing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Executing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/webcam > /dev/null
+Native: Executing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Background task finished (code -1): echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: setGpuMode: switching to intel in background
+Native: Enqueuing background task: pkexec prime-select intel
+Native: Executing background task: pkexec prime-select intel
+Info: selecting the intel profile
+Updating the initramfs. Please wait for the operation to complete:
+-/|\-/|[BLOC] _onSetPerformanceMode called with: PerformanceMode.superBattery
+Setting unified Fan Mode: Auto
+Native: Enqueuing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Enqueuing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+Native: Enqueuing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: setGpuMode: switching to intel in background
+Native: Enqueuing background task: pkexec prime-select intel
+Native: Enqueuing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-Done
+Native: Background task finished (code -1): pkexec prime-select intel
+Native: Executing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Executing background task: echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+Native: Background task finished (code 0): echo "auto" | pkexec tee /sys/devices/platform/msi-ec/fan_mode > /dev/null
+Native: Executing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Executing background task: pkexec prime-select intel
+Info: selecting the intel profile
+Updating the initramfs. Please wait for the operation to complete:
+-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-Done
+Native: Background task finished (code 0): pkexec prime-select intel
+Native: Executing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+[BLOC] _onSetPerformanceMode called with: PerformanceMode.extreme
+Setting unified Fan Mode: Cooler Boost
+Native: Enqueuing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Enqueuing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Executing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: setShiftMode(turbo) -> triggered governor=performance in background
+Native: Enqueuing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: setGpuMode: switching to nvidia in background
+Native: Enqueuing background task: pkexec prime-select nvidia
+Native: Enqueuing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Background task finished (code -1): echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Executing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Background task finished (code 0): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Executing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Executing background task: pkexec prime-select nvidia
+Info: selecting the nvidia profile
+Deleting /lib/modprobe.d/nvidia-runtimepm.conf
+Updating the initramfs. Please wait for the operation to complete:
+-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-Done
+Native: Background task finished (code 0): pkexec prime-select nvidia
+Native: Executing background task: echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Native: Background task finished (code 0): echo "off" | pkexec tee /sys/devices/platform/msi-ec/super_battery > /dev/null
+Repository: DSP socket error: SocketException: Write failed (OS Error: Broken pipe, errno = 32), address = /tmp/msi_dsp.sock, port = 0
+Repository: DSP socket closed
+Repository: Error sending DSP command: SocketException: Write failed (OS Error: Broken pipe, errno = 32), address = /tmp/msi_dsp.sock, port = 0
+Repository: Attempting to connect to DSP socket...
+Repository: Persistent DSP socket connected
+Repository: DSP response: OK
+[BLOC] _onSetPerformanceMode called with: PerformanceMode.extreme
+Setting unified Fan Mode: Cooler Boost
+Native: Enqueuing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Enqueuing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: setShiftMode(turbo) -> triggered governor=performance in background
+Native: Enqueuing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: setGpuMode: switching to nvidia in background
+Native: Enqueuing background task: pkexec prime-select nvidia
+Native: Executing background task: echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Background task finished (code 0): echo "turbo" | pkexec tee /sys/devices/platform/msi-ec/shift_mode > /dev/null
+Native: Executing background task: for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Background task finished (code 0): for f in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do echo performance | pkexec tee $f > /dev/null 2>&1; done
+Native: Executing background task: echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Background task finished (code 0): echo "on" | pkexec tee /sys/devices/platform/msi-ec/cooler_boost > /dev/null
+Native: Executing background task: pkexec prime-select nvidia
+Info: selecting the nvidia profile
+Deleting /lib/modprobe.d/nvidia-runtimepm.conf
+Updating the initramfs. Please wait for the operation to complete:
+-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|\-/|Done
+Native: Background task finished (code -1): pkexec prime-select nvidia
+Lost connection to device.

@@ -1,0 +1,30 @@
+# MSI Center Linux — passwordless hardware access (all distros)
+#
+# Install:  sudo cp 99-msi-ec.rules /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger --subsystem-match=platform
+#
+# What this does:
+#   - Makes the msi-ec platform attributes writable without root, so the app's
+#     direct user-space writes succeed and NO sudo/pkexec prompt ever appears.
+#   - MODE applies at device creation; the chmod RUN fallback covers already
+#     existing sysfs nodes (sysfs attrs ignore normal permission persistence).
+#
+# Safe on non-MSI hardware: the rules only match KERNEL=="msi-ec" and are
+# inert everywhere else.
+
+# Primary: set sane modes when the device appears.
+SUBSYSTEM=="platform", KERNEL=="msi-ec", MODE="0666"
+SUBSYSTEM=="platform", KERNEL=="msi-ec", ATTR{shift_mode} MODE="0666"
+SUBSYSTEM=="platform", KERNEL=="msi-ec", ATTR{cooler_boost} MODE="0666"
+SUBSYSTEM=="platform", KERNEL=="msi-ec", ATTR{fn_key} MODE="0666"
+SUBSYSTEM=="platform", KERNEL=="msi-ec", ATTR{super_battery} MODE="0666"
+SUBSYSTEM=="platform", KERNEL=="msi-ec", ATTR{webcam} MODE="0666"
+SUBSYSTEM=="platform", KERNEL=="msi-ec", ATTR{fan_mode} MODE="0666"
+
+# Fallback: sysfs attribute nodes are recreated by the kernel, so force the
+# bits on add/change as well (covers kernels that ignore MODE above).
+# NOTE the capital X: directories need +x to be traversable — plain a+rw
+# leaves them as d--------- and everything stays Permission denied.
+SUBSYSTEM=="platform", KERNEL=="msi-ec", RUN+="/bin/chmod -R a+rwX /sys/devices/platform/msi-ec/"
+
+# Battery charge threshold (generic — matches BAT0/BAT1 on any vendor).
+SUBSYSTEM=="power_supply", KERNEL=="BAT*", ATTR{charge_control_end_threshold} MODE="0666"
