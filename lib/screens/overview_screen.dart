@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../core/app_colors.dart';
 import '../core/di/injection.dart';
 import '../domain/entities/system_info.dart';
 import '../domain/repositories/msi_repository.dart';
@@ -107,7 +108,7 @@ class _OverviewScreenState extends State<OverviewScreen>
               const SizedBox(height: 16),
               _buildSectionTitle('Battery'),
               const SizedBox(height: 8),
-              _buildBatteryCard(),
+              _buildBatteryCard(context),
               const SizedBox(height: 16),
               _buildSectionTitle('Performance Mode'),
               const SizedBox(height: 8),
@@ -164,9 +165,12 @@ class _OverviewScreenState extends State<OverviewScreen>
     );
   }
 
-  Widget _buildBatteryCard() {
+  Widget _buildBatteryCard(BuildContext context) {
     final level = _systemInfo?.batteryLevel ?? 0;
     final isCharging = _systemInfo?.isCharging ?? false;
+    final batteryLimit = _systemInfo?.batteryLimit ?? 100;
+    final isHolding = isCharging && level >= batteryLimit;
+    final colors = Theme.of(context).extension<AppColors>()!;
     final color = level > 50
         ? Colors.green
         : level > 20
@@ -179,7 +183,11 @@ class _OverviewScreenState extends State<OverviewScreen>
         child: Row(
           children: [
             Icon(
-              isCharging ? Icons.battery_charging_full : _getBatteryIcon(level),
+              isHolding
+                  ? Icons.battery_full
+                  : isCharging
+                      ? Icons.battery_charging_full
+                      : _getBatteryIcon(level),
               size: 48,
               color: color,
             ),
@@ -197,22 +205,37 @@ class _OverviewScreenState extends State<OverviewScreen>
                     ),
                   ),
                   Text(
-                    isCharging ? 'Charging' : 'Discharging',
+                    isHolding
+                        ? 'Charge limit active — Holding'
+                        : isCharging
+                            ? 'Charging'
+                            : 'Discharging',
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: isHolding
+                          ? colors.success
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
               ),
             ),
-            if (_systemInfo?.batteryLimit != null)
+            if (batteryLimit != 100)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text('Charge Limit'),
                   Text(
-                    '${_systemInfo!.batteryLimit}%',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    isHolding ? 'Holding at' : 'Charge Limit',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isHolding ? colors.success : Colors.grey,
+                    ),
+                  ),
+                  Text(
+                    '$batteryLimit%',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isHolding ? colors.success : Colors.grey,
+                    ),
                   ),
                 ],
               ),

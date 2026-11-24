@@ -632,8 +632,7 @@ bool setSuperBattery(bool enable) {
 }
 
 bool setBatteryLimit(int limit) {
-  write_sysfs_root(BATTERY_PATH + "/charge_control_end_threshold", std::to_string(limit));
-  return true;
+  return write_sysfs_root(BATTERY_PATH + "/charge_control_end_threshold", std::to_string(limit));
 }
 
 bool setFanSpeed(int fanIndex, int rpm) {

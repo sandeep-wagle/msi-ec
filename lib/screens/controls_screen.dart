@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:msi_controller/core/app_colors.dart';
 import 'package:msi_controller/core/di/injection.dart';
 import 'package:msi_controller/core/tokens/tokens.dart';
@@ -10,6 +11,9 @@ import 'package:msi_controller/services/persistence_service.dart';
 import 'package:msi_controller/services/toast_service.dart';
 import 'package:msi_controller/widgets/glass_container.dart';
 import 'package:msi_controller/core/ui/widgets/screen_header.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_bloc.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_event.dart';
+import 'package:msi_controller/logic/blocs/settings/settings_state.dart';
 
 /// Accessories / Controls tab: the Hardware and System Settings Center.
 ///
@@ -40,7 +44,6 @@ class _ControlsScreenState extends State<ControlsScreen>
   String _accelProfile = 'adaptive';
 
   bool _coolerBoost = false;
-  int _batteryThreshold = 80;
   bool _fnKeySwap = false;
 
   bool _supportsCoolerBoost = false;
@@ -94,7 +97,6 @@ class _ControlsScreenState extends State<ControlsScreen>
       _hyprland.getNaturalScroll(),
       _hyprland.getAccelProfile(),
       _accessories.readCoolerBoost(),
-      _accessories.readBatteryThreshold(),
       _accessories.readFnKeySwap(),
     ]);
     if (!mounted || _sliderActive) return;
@@ -103,8 +105,7 @@ class _ControlsScreenState extends State<ControlsScreen>
       final natural = results[1] as bool?;
       final accel = results[2] as String?;
       final cooler = results[3] as bool?;
-      final threshold = results[4] as int?;
-      final fnSwap = results[5] as bool?;
+      final fnSwap = results[4] as bool?;
       if (sensitivity != null &&
           (sensitivity - _sensitivity).abs() > 0.005) {
         _sensitivity = sensitivity;
@@ -116,9 +117,6 @@ class _ControlsScreenState extends State<ControlsScreen>
         _accelProfile = accel;
       }
       if (cooler != null && cooler != _coolerBoost) _coolerBoost = cooler;
-      if (threshold != null && threshold != _batteryThreshold) {
-        _batteryThreshold = threshold;
-      }
       if (fnSwap != null && fnSwap != _fnKeySwap) _fnKeySwap = fnSwap;
     });
   }
@@ -130,7 +128,6 @@ class _ControlsScreenState extends State<ControlsScreen>
       _sensitivity = storage.loadSensitivity();
       _naturalScroll = storage.loadNaturalScroll();
       _accelProfile = storage.loadAccelProfile();
-      _batteryThreshold = storage.loadBatteryThreshold();
       _supportsCoolerBoost = _accessories.supportsCoolerBoost;
       _supportsBatteryThreshold = _accessories.supportsBatteryThreshold;
       _supportsFnKeySwap = _accessories.supportsFnKeySwap;
@@ -146,7 +143,6 @@ class _ControlsScreenState extends State<ControlsScreen>
       liveAccel = await _hyprland.getAccelProfile();
     }
     final cooler = await _accessories.readCoolerBoost();
-    final threshold = await _accessories.readBatteryThreshold();
     final fnSwap = await _accessories.readFnKeySwap();
 
     if (!mounted) return;
@@ -156,7 +152,6 @@ class _ControlsScreenState extends State<ControlsScreen>
       if (liveNatural != null) _naturalScroll = liveNatural;
       if (liveAccel != null) _accelProfile = liveAccel;
       if (cooler != null) _coolerBoost = cooler;
-      if (threshold != null) _batteryThreshold = threshold;
       if (fnSwap != null) _fnKeySwap = fnSwap;
       _loading = false;
     });
@@ -225,20 +220,6 @@ class _ControlsScreenState extends State<ControlsScreen>
     if (!ok) {
       setState(() => _coolerBoost = !value);
       _fail('FAILED TO SYNCHRONIZE COOLER BOOST');
-    }
-  }
-
-  Future<void> _onBatteryThresholdChanged(int limit) async {
-    final previous = _batteryThreshold;
-    _markUserEdit();
-    setState(() => _batteryThreshold = limit);
-    final ok = await _accessories.setBatteryThreshold(limit);
-    if (!mounted) return;
-    if (ok) {
-      await getIt<PersistenceService>().saveBatteryThreshold(limit);
-    } else {
-      setState(() => _batteryThreshold = previous);
-      _fail('FAILED TO SET CHARGE THRESHOLD');
     }
   }
 
@@ -556,68 +537,80 @@ class _ControlsScreenState extends State<ControlsScreen>
                           ],
                         ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '$_batteryThreshold%',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'monospace',
-                                  color: colors.success,
+                      BlocBuilder<SettingsBloc, SettingsState>(
+                        builder: (context, settings) {
+                          final batteryLimit = settings.batteryLimit;
+                          return Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '$batteryLimit%',
+                                        style: TextStyle(
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.w900,
+                                          fontFamily: 'monospace',
+                                          color: colors.success,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      _supportsBatteryThreshold
+                                          ? 'STOPS CHARGING HERE'
+                                          : 'READ-ONLY PRESET',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5,
+                                        color: colors.textTertiary,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            Text(
-                              _supportsBatteryThreshold
-                                  ? 'STOPS CHARGING HERE'
-                                  : 'READ-ONLY PRESET',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.5,
-                                color: colors.textTertiary,
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+                                child: SliderTheme(
+                                  data: SliderThemeData(
+                                    trackHeight: 4,
+                                    activeTrackColor: colors.success,
+                                    thumbColor: colors.success,
+                                    overlayColor:
+                                        colors.success.withValues(alpha: 0.15),
+                                    thumbShape:
+                                        const RoundSliderThumbShape(
+                                      enabledThumbRadius: 10,
+                                    ),
+                                  ),
+                                  child: Slider(
+                                    value: batteryLimit.toDouble(),
+                                    min: 30,
+                                    max: 100,
+                                    divisions: 14,
+                                    label: '$batteryLimit%',
+                                    onChanged: _supportsBatteryThreshold
+                                        ? (v) {
+                                            _markUserEdit();
+                                            // Optimistic UI update via BLoC
+                                            context
+                                                .read<SettingsBloc>()
+                                                .add(SetBatteryLimitEvent(
+                                                    v.round()));
+                                          }
+                                        : null,
+                                    onChangeEnd: (v) {
+                                      _sliderActive = false;
+                                      // Final confirm already sent onChanged
+                                    },
+                                  ),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-                        child: SliderTheme(
-                          data: SliderThemeData(
-                            trackHeight: 4,
-                            activeTrackColor: colors.success,
-                            thumbColor: colors.success,
-                            overlayColor:
-                                colors.success.withValues(alpha: 0.15),
-                            thumbShape: const RoundSliderThumbShape(
-                              enabledThumbRadius: 10,
-                            ),
-                          ),
-                          child: Slider(
-                            value: _batteryThreshold.toDouble(),
-                            min: 30,
-                            max: 100,
-                            divisions: 14,
-                            label: '$_batteryThreshold%',
-                            onChanged: _supportsBatteryThreshold
-                                ? (v) {
-                                    _markUserEdit();
-                                    setState(
-                                      () => _batteryThreshold = v.round(),
-                                    );
-                                  }
-                                : null,
-                            onChangeEnd: (v) {
-                              _sliderActive = false;
-                              _onBatteryThresholdChanged(v.round());
-                            },
-                          ),
-                        ),
+                            ],
+                          );
+                        },
                       ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

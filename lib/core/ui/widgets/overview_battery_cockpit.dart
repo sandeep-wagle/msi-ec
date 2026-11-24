@@ -18,7 +18,10 @@ class OverviewBatteryCockpit extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final level = info?.batteryLevel ?? 0;
-    final chargeColor = level > 50 ? colors.success : colors.warning;
+    final isCharging = info?.isCharging ?? false;
+    final batteryLimit = info?.batteryLimit ?? 100;
+    final isHolding = isCharging && level >= batteryLimit;
+    final chargeColor = isHolding ? colors.success : (level > 50 ? colors.success : colors.warning);
 
     return GlassCard(
       padding: const EdgeInsets.all(AppSpacing.xl),
@@ -53,7 +56,11 @@ class OverviewBatteryCockpit extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      info?.isCharging ?? false ? 'CHARGING' : 'DISCHARGING',
+                      isHolding
+                          ? 'HOLDING — Charge limit active'
+                          : isCharging
+                              ? 'CHARGING'
+                              : 'DISCHARGING',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
@@ -61,7 +68,7 @@ class OverviewBatteryCockpit extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'LIMIT: ${info?.batteryLimit ?? 100}%',
+                      'LIMIT: $batteryLimit%',
                       style: TextStyle(
                         fontSize: 9,
                         color: colors.textTertiary,

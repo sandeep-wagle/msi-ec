@@ -1877,42 +1877,6 @@ static int set_end_threshold(u8 value)
 	return ec_write(conf.charge_control_address, value | BIT(7));
 }
 
-static ssize_t
-charge_control_start_threshold_show(struct device *device,
-				    struct device_attribute *attr, char *buf)
-{
-	int result;
-	u8 threshold;
-
-	result = get_end_threshold(&threshold);
-
-	if (result == -ENODATA)
-		return sysfs_emit(buf, "0\n");
-	else if (result < 0)
-		return result;
-
-	return sysfs_emit(buf, "%u\n", threshold - 10);
-}
-
-static ssize_t
-charge_control_start_threshold_store(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
-{
-	int result;
-	u8 threshold;
-
-	result = kstrtou8(buf, 10, &threshold);
-	if (result < 0)
-		return result;
-
-	result = set_end_threshold(threshold + 10);
-	if (result < 0)
-		return result;
-
-	return count;
-}
-
 static ssize_t charge_control_end_threshold_show(struct device *device,
 						 struct device_attribute *attr,
 						 char *buf)
@@ -1948,11 +1912,9 @@ static ssize_t charge_control_end_threshold_store(struct device *dev,
 	return count;
 }
 
-static DEVICE_ATTR_RW(charge_control_start_threshold);
 static DEVICE_ATTR_RW(charge_control_end_threshold);
 
 static struct attribute *msi_battery_attrs[] = {
-	&dev_attr_charge_control_start_threshold.attr,
 	&dev_attr_charge_control_end_threshold.attr,
 	NULL
 };
@@ -2906,18 +2868,14 @@ static int __init msi_ec_init(void)
 		return 0;
 
 	/*
-	 * Additional check: battery thresholds are supported only if
-	 * the 7th bit is set.
+	 * Battery thresholds are supported if the charge control address
+	 * is configured for this model. Register the hook unconditionally
+	 * so users can set the initial threshold (bit 7 starts cleared).
 	 */
 	if (conf.charge_control_address != MSI_EC_ADDR_UNSUPP) {
-		result = ec_check_bit(conf.charge_control_address, 7,
-				      &charge_control_supported);
-		if (result < 0)
-			return result;
-	}
-
-	if (charge_control_supported)
+		charge_control_supported = true;
 		msi_ec_battery_hook_register(&battery_hook);
+	}
 
 	// register LED classdevs
 	if (conf.leds.micmute_led_address != MSI_EC_ADDR_UNSUPP)
